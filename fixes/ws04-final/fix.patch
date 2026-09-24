@@ -445,3 +445,18 @@ index 18e3914..f0c8d80 100644
          return 1
      port = srv.server_address[1]
      C.atomic_write(pid_file(), "%d %d\n" % (os.getpid(), port))
+diff --git a/tests/test_copy.py b/tests/test_copy.py
+index 59f76e7..48f7d42 100644
+--- a/tests/test_copy.py
++++ b/tests/test_copy.py
+@@ -54,7 +54,9 @@ def test_the_copy_gets_its_own_port_and_none_of_the_running_copys_files(world, t
+     assert not (dest / "state").exists()
+     assert not list(dest.glob("config.json.bak-*"))
+     out = capsys.readouterr().out
+-    assert str(got["port"]) in out and "python start.py" in out
++    # a Mac has python3 and no python, so the copy tells a Mac member to type python3
++    assert str(got["port"]) in out
++    assert ("python3 start.py" if sys.platform == "darwin" else "python start.py") in out
+ 
+ 
+ @pytest.mark.skipif(os.name != "nt", reason="the double-click start file is made on Windows")
