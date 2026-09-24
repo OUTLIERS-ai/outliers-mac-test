@@ -25,10 +25,31 @@ swap("const child = spawn(process.execPath, [WATCHER], { env, windowsHide: true,
   "  const base = `http://127.0.0.1:${port}`;\n  await waitFor(base + '/api/meta');\n" +
   "  const info = async () => { let m = {}; try { m = await (await fetch(base + '/api/meta')).json(); } catch (e) { m = { error: String(e) }; }\n" +
   "    return 'PROBE port ' + port + '; answered by pid ' + m.pid + ' reading ' + m.logsFolder + '; this test\\'s FleetView pid ' + child.pid +\n" +
-  "      ' reading ' + projects + ', exit ' + exitCode + '; it said: ' + said.slice(0, 600); };\n" +
+  "      ' reading ' + projects + ', exit ' + exitCode + '; it said: ' + said.slice(0, 8000); };\n" +
   "  return { root, projects, port, base, cfgFile, info };");
 swap("  assert.equal(tokens, 100000, 'the whole file was read (' + (size / 1048576).toFixed(1) + ' MB)');",
   "  if (tokens !== 100000) console.log(await s.info());\n" +
   "  assert.equal(tokens, 100000, 'the whole file was read (' + (size / 1048576).toFixed(1) + ' MB)');");
 fs.writeFileSync(f, crlf ? s.replace(/\n/g, '\r\n') : s);
 console.log('instrumented ' + f + ' (' + n0 + ' -> ' + s.length + ' characters)');
+
+// Part 2: FleetView itself (the downloaded copy only) tells its error output what chokidar
+// reported and what its reading line did, with times, so the failure message above shows them.
+const w = 'watcher.js';
+const wraw = fs.readFileSync(w, 'utf8');
+const wcrlf = wraw.includes('\r\n');
+let ws = wraw.replace(/\r\n/g, '\n');
+function wswap(a, b) {
+  if (!ws.includes(a)) { console.error('instrument: watcher text not found: ' + a.slice(0, 80)); process.exit(1); }
+  ws = ws.replace(a, b);
+}
+wswap("function readNext() {\n  if (reading) return;",
+  "const T0 = Date.now();\nconst say = (s) => process.stderr.write('[+' + (Date.now() - T0) + 'ms] ' + s + '\\n');\n" +
+  "function readNext() {\n  say('readNext reading=' + reading + ' line=' + readLine.length);\n  if (reading) return;");
+wswap("  const next = () => { reading = false; setImmediate(readNext); };",
+  "  say('start ' + path.basename(f));\n  const next = () => { say('done ' + path.basename(f)); reading = false; setImmediate(readNext); };");
+wswap("  watcher.on('add', f => { if (want(f)) readSafely(f); });",
+  "  watcher.on('all', (ev, p) => say('chokidar ' + ev + ' ' + p));\n  watcher.on('ready', () => say('chokidar ready'));\n" +
+  "  watcher.on('add', f => { if (want(f)) readSafely(f); });");
+fs.writeFileSync(w, wcrlf ? ws.replace(/\n/g, '\r\n') : ws);
+console.log('instrumented ' + w);
