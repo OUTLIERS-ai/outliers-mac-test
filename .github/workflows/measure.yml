@@ -1,0 +1,102 @@
+name: Measure (run a command N times, keep every output)
+
+# Build plan V3, section 6b rows 5 and 9: a fault that is not yet named is measured before it is
+# fixed. This downloads 1 public member repo's current main, optionally applies the patches of
+# 1 folder under fixes/ (test.patch then fix.patch), runs the setup line once, then runs the
+# command N times, keeping every run's whole output as a record (30 days). Nothing is pushed.
+# Only the 25 public repos in harness/public_repos.txt may be named. $PY is python3 on a Mac,
+# python on Windows.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Public member repo"
+        required: true
+      setup:
+        description: "Bash line run once in the repo before the command"
+        required: false
+        default: "true"
+      cmd:
+        description: "Bash line run N times in the repo"
+        required: true
+      repeat:
+        description: "How many times"
+        required: false
+        default: "10"
+      os:
+        description: "Machines, comma separated"
+        required: false
+        default: "macos-15-intel"
+      fix:
+        description: "Optional folder under fixes/ whose patches are applied first"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        run: |
+          python3 -c "import json,sys; print('matrix=' + json.dumps({'os': [s.strip() for s in sys.argv[1].split(',') if s.strip()]}))" "${{ inputs.os }}" >> "$GITHUB_OUTPUT"
+
+  measure:
+    needs: plan
+    name: ${{ inputs.repo }} x${{ inputs.repeat }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: "3.13"
+      - name: Run it N times
+        env:
+          REPO: ${{ inputs.repo }}
+          SETUP: ${{ inputs.setup }}
+          CMD: ${{ inputs.cmd }}
+          N: ${{ inputs.repeat }}
+          FIX: ${{ inputs.fix }}
+        run: |
+          set -u
+          grep -qxF "$REPO" _mactest/harness/public_repos.txt || { echo "REFUSED: $REPO is not 1 of the 25 public repos"; exit 1; }
+          if [ "$RUNNER_OS" = "Windows" ]; then export PY=python; else export PY=python3; fi
+          OUT="$RUNNER_TEMP/measure"; mkdir -p "$OUT"
+          git -c core.autocrlf=false clone -q "https://github.com/OUTLIERS-ai/$REPO" member
+          cd member
+          echo "member repo $REPO at $(git rev-parse --short HEAD)" | tee "$OUT/meta.txt"
+          if [ -n "$FIX" ]; then
+            git apply --verbose "../_mactest/fixes/$FIX/test.patch"
+            git apply --verbose "../_mactest/fixes/$FIX/fix.patch"
+            echo "patches from fixes/$FIX applied" | tee -a "$OUT/meta.txt"
+          fi
+          set +e
+          ( eval "$SETUP" ) > "$OUT/setup.log" 2>&1; echo "setup exit $?" | tee -a "$OUT/meta.txt"
+          for i in $(seq 1 "$N"); do
+            ( eval "$CMD" ) > "$OUT/run-$i.log" 2>&1; code=$?
+            echo "run $i exit $code" | tee -a "$OUT/meta.txt"
+            grep -E "^(not ok|FAILED|ERROR)|^# (pass|fail)|^ℹ (pass|fail)|[0-9]+ (passed|failed)" "$OUT/run-$i.log" | tail -8
+          done
+          exit 0
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: measure-${{ inputs.repo }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/measure/
+          retention-days: 30

@@ -1,0 +1,37 @@
+diff --git a/install.py b/install.py
+index a5d8ab0..982b38a 100644
+--- a/install.py
++++ b/install.py
+@@ -275,6 +275,19 @@ def launcher_path():
+     return None
+ 
+ 
++def mac_login_path(node):
++    """The folders a Mac login job searches for programs. launchd gives a login job only
++    /usr/bin:/bin:/usr/sbin:/sbin, where npx is never found, so the token panel's
++    `npx ccusage` failed when FleetView started with the Mac (measured 2026-09-24).
++    Node.js's own folder comes first, so npx finds the same node that runs FleetView."""
++    dirs = [str(Path(node).parent), "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
++    seen = []
++    for d in dirs:
++        if d not in seen:
++            seen.append(d)
++    return ":".join(seen)
++
++
+ def launcher_text(node):
+     watcher = HERE / "watcher.js"
+     if sys.platform == "win32":
+@@ -297,10 +310,11 @@ def launcher_text(node):
+             '  <key>Label</key><string>%s</string>\n'
+             '  <key>ProgramArguments</key><array><string>%s</string><string>%s</string></array>\n'
+             '  <key>WorkingDirectory</key><string>%s</string>\n'
++            '  <key>EnvironmentVariables</key><dict><key>PATH</key><string>%s</string></dict>\n'
+             '  <key>RunAtLoad</key><true/>\n'
+             '  <key>StandardOutPath</key><string>%s</string>\n'
+             '  <key>StandardErrorPath</key><string>%s</string>\n'
+-            '</dict></plist>\n' % (LAUNCHER_MARK, MAC_LABEL, node, watcher, HERE, log, log)
++            '</dict></plist>\n' % (LAUNCHER_MARK, MAC_LABEL, node, watcher, HERE, mac_login_path(node), log, log)
+         )
+     return None
+ 

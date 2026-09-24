@@ -1,9 +1,9 @@
 diff --git a/tests/mac/mac_stop_spares_caller.py b/tests/mac/mac_stop_spares_caller.py
 new file mode 100644
-index 0000000..815eb4a
+index 0000000..f9f1a43
 --- /dev/null
 +++ b/tests/mac/mac_stop_spares_caller.py
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,84 @@
 +"""Mac only (fault row 3, build plan V3): stopping agent-flow must never stop the program that asked.
 +
 +On GitHub's test Macs on 2026-09-24 the whole test run died with SIGTERM straight after the
@@ -40,7 +40,10 @@ index 0000000..815eb4a
 +    """) + textwrap.dedent(body) + "\nprint('CALLER SURVIVED', flush=True)\n", encoding="utf-8")
 +    env = {"HOME": str(home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
 +           "AGENT_FLOW_NPX_CMD": json.dumps([sys.executable, str(KIT / "tests" / "fake_agent_flow.py")])}
-+    return subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=120, env=env)
++    # The caller runs in a session of its own, so a wrong kill_tree ends only the caller and
++    # what it started, never pytest or the terminal pytest runs in.
++    return subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=120, env=env,
++                          start_new_session=True)
 +
 +
 +def test_ending_agent_flow_started_by_the_guard_spares_the_caller(tmp_path):

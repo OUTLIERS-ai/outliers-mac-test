@@ -1,0 +1,349 @@
+diff --git a/tests/mac/mac_node_advice.py b/tests/mac/mac_node_advice.py
+new file mode 100644
+index 0000000..6d7d8b8
+--- /dev/null
++++ b/tests/mac/mac_node_advice.py
+@@ -0,0 +1,43 @@
++"""Mac only (fault row 21, build plan V3): with no Node.js, the Mac advice must work without Homebrew.
++
++The installer used to print `brew install node` first on every Mac. On a Mac without Homebrew that
++line fails with "command not found". nodejs.org's installer works on every Mac, so it comes first,
++and `brew install node` is offered only when Homebrew is there.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_node_advice.py
++"""
++import importlib.util
++import sys
++from pathlib import Path
++
++import pytest
++
++HERE = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac advice")
++
++
++def load_install():
++    spec = importlib.util.spec_from_file_location("fv_install_node", str(HERE / "install.py"))
++    mod = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(mod)
++    return mod
++
++
++def advice(monkeypatch, capsys, brew):
++    m = load_install()
++    real = m.shutil.which
++    monkeypatch.setattr(m.shutil, "which", lambda name, *a, **k: brew if name == "brew" else real(name, *a, **k))
++    m.how_to_get_node()
++    return capsys.readouterr().out
++
++
++def test_without_homebrew_there_is_no_brew_line(monkeypatch, capsys):
++    out = advice(monkeypatch, capsys, None)
++    assert "nodejs.org" in out
++    assert "brew install" not in out, out
++
++
++def test_with_homebrew_nodejs_org_still_comes_first(monkeypatch, capsys):
++    out = advice(monkeypatch, capsys, "/opt/homebrew/bin/brew")
++    assert "brew install node" in out
++    assert out.index("nodejs.org") < out.index("brew install node"), out
+diff --git a/tests/mac/mac_plist_path.py b/tests/mac/mac_plist_path.py
+new file mode 100644
+index 0000000..5d29a61
+--- /dev/null
++++ b/tests/mac/mac_plist_path.py
+@@ -0,0 +1,49 @@
++"""Mac only (fault row 4, build plan V3): FleetView's Mac login job must let the token panel find npx.
++
++launchd starts a login job with only /usr/bin:/bin:/usr/sbin:/sbin as its program folders. The
++token panel runs `npx ccusage`, and npx lives beside Node.js (in /usr/local/bin for nodejs.org's
++installer, /opt/homebrew/bin for Homebrew), so under launchd it answered "npx: command not found"
++(measured on GitHub's test Macs 2026-09-24). The login job must carry a PATH with Node.js's folder.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_plist_path.py
++"""
++import importlib.util
++import plistlib
++import re
++import shutil
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++HERE = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac login job (LaunchAgent)")
++NODE = shutil.which("node")
++
++
++def load_install():
++    spec = importlib.util.spec_from_file_location("fv_install_mac", str(HERE / "install.py"))
++    mod = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(mod)
++    return mod
++
++
++@pytest.mark.skipif(not NODE, reason="needs Node.js")
++def test_login_job_names_the_folders_npx_is_in():
++    text = load_install().launcher_text(NODE)
++    job = plistlib.loads(re.sub(r"<!--.*?-->\n", "", text).encode("utf-8"))
++    path = (job.get("EnvironmentVariables") or {}).get("PATH")
++    assert path, "the login job sets no PATH, so launchd's /usr/bin:/bin:/usr/sbin:/sbin is all it gets"
++    assert str(Path(NODE).parent) == path.split(":")[0], "Node.js's own folder must come first"
++
++
++@pytest.mark.skipif(not NODE, reason="needs Node.js")
++def test_npx_is_found_with_exactly_that_path():
++    """The token panel's command runs through /bin/sh with the login job's PATH and nothing else."""
++    text = load_install().launcher_text(NODE)
++    job = plistlib.loads(re.sub(r"<!--.*?-->\n", "", text).encode("utf-8"))
++    path = (job.get("EnvironmentVariables") or {}).get("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
++    r = subprocess.run(["/usr/bin/env", "-i", "HOME=" + str(Path.home()), "PATH=" + path, "/bin/sh", "-c",
++                        "command -v npx && npx --version"], capture_output=True, text=True, timeout=120)
++    assert r.returncode == 0, "npx not found with the login job's PATH %r: %s" % (path, r.stdout + r.stderr)
+diff --git a/tests/mac/mac_printed_commands_python3.py b/tests/mac/mac_printed_commands_python3.py
+new file mode 100644
+index 0000000..0837477
+--- /dev/null
++++ b/tests/mac/mac_printed_commands_python3.py
+@@ -0,0 +1,77 @@
++"""Mac only (fault row 18, build plan V3): what FleetView prints must never tell a Mac member to type `python`.
++
++A Mac has `python3` and no plain `python`; "To stop it:  python install.py --stop" fails there with
++"command not found" (wave 0a M7, 2026-09-24). Windows keeps printing `python`.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_printed_commands_python3.py
++"""
++import json
++import os
++import re
++import shutil
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++HERE = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++WINDOWS_WORDS = re.compile(r"(?i)\b(windows|notepad|powershell)\b")
++
++
++def env_for(tmp_path, **extra):
++    home = tmp_path / "home"
++    (home / ".claude" / "projects").mkdir(parents=True, exist_ok=True)
++    env = dict(os.environ, HOME=str(home), CLAUDE_CONFIG_DIR=str(home / ".claude"),
++               FLEETVIEW_CONFIG=str(tmp_path / "config.json"))
++    env.update(extra)
++    return env
++
++
++def run(args, env):
++    return subprocess.run([sys.executable, str(HERE / "install.py")] + args, env=env, capture_output=True,
++                          text=True, cwd=str(HERE), timeout=300)
++
++
++def bad(text):
++    return [ln for ln in text.splitlines() if COMMAND.search(ln) or WINDOWS_WORDS.search(ln)]
++
++
++def test_install_says_python3(tmp_path):
++    sb = tmp_path / "Second Brain"
++    sb.mkdir()
++    r = run(["--yes", "--skip-npm", "--second-brain", str(sb), "--crm", "-", "--port", "3013",
++             "--no-launcher", "--no-start"], env_for(tmp_path))
++    assert r.returncode == 0, r.stdout + r.stderr
++    assert "python3 install.py --start" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++
++
++def test_start_without_an_install_says_python3(tmp_path):
++    r = run(["--start"], env_for(tmp_path))
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++
++
++def test_no_node_says_python3(tmp_path):
++    empty = tmp_path / "empty-path"
++    empty.mkdir()
++    r = run(["--yes", "--skip-npm", "--no-launcher"], env_for(tmp_path, PATH=str(empty)))
++    assert r.returncode == 1
++    assert bad(r.stdout) == [], r.stdout
++
++
++@pytest.mark.skipif(not shutil.which("node"), reason="needs Node.js")
++@pytest.mark.parametrize("raw", [b"", b"\xef\xbb\xbf{}", b'{"port": 3011, "folders": [\xff]}', b'{"port": 3011,}'])
++def test_the_servers_config_messages_say_python3(tmp_path, raw):
++    cfg = tmp_path / "config.json"
++    cfg.write_bytes(raw)
++    js = ("const c = require(%s); const r = c.readConfigFile(%s);"
++          "console.log(JSON.stringify([r.error && r.error.message].concat(r.error ? c.refusalLines(r.error, 'config.json') : [])))"
++          % (json.dumps(str(HERE / "lib" / "config.js")), json.dumps(str(cfg))))
++    r = subprocess.run([shutil.which("node"), "-e", js], capture_output=True, text=True, timeout=60)
++    lines = [ln for ln in json.loads(r.stdout) if ln]
++    assert lines, r.stdout + r.stderr
++    assert bad("\n".join(lines)) == [], lines
+diff --git a/tests/mac/mac_token_panel.js b/tests/mac/mac_token_panel.js
+new file mode 100644
+index 0000000..7573b48
+--- /dev/null
++++ b/tests/mac/mac_token_panel.js
+@@ -0,0 +1,101 @@
++'use strict';
++// Fault row 6, build plan V3: the token panel was never seen working on a test Mac.
++//
++// Measured 2026-09-24: with a made-up Claude Code history, ccusage (the tool behind the panel)
++// answers with the tokens used; with no history at all (a computer where Claude Code has not run
++// a session yet, as on GitHub's test Macs) ccusage stops with "No valid Claude data directories
++// found", and the panel said "ccusage could not run". Nothing is broken on such a computer:
++// nothing has been used yet, and the panel must say that.
++//
++// Not a Mac-only fault, but kept in tests/mac/ and named mac_*.js so the plain `npm test`
++// never runs it and the 60 checks the guides print stay 60. Run it by name, on either system:
++//   node --test tests/mac/mac_token_panel.js
++// It needs `npm install` first, and the internet for the first npx download of ccusage.
++const test = require('node:test');
++const assert = require('node:assert');
++const fs = require('fs');
++const os = require('os');
++const path = require('path');
++const net = require('net');
++const http = require('http');
++const { spawn } = require('child_process');
++
++const HERE = path.join(__dirname, '..', '..');
++
++function freePort() {
++  return new Promise((resolve) => {
++    const s = net.createServer();
++    s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); });
++  });
++}
++
++function getJson(port, p) {
++  return new Promise((resolve, reject) => {
++    http.get({ host: '127.0.0.1', port, path: p, timeout: 5000 }, (res) => {
++      let body = '';
++      res.on('data', (c) => { body += c; });
++      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
++    }).on('error', reject);
++  });
++}
++
++async function startFleetView(claudeDir) {
++  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fleetview-panel-'));
++  const port = await freePort();
++  const cfg = path.join(root, 'config.json');
++  fs.writeFileSync(cfg, JSON.stringify({ port, host: '127.0.0.1', folders: [] }));
++  const child = spawn(process.execPath, [path.join(HERE, 'watcher.js')], {
++    cwd: HERE, windowsHide: true, stdio: 'ignore',
++    env: { ...process.env, HOME: root, USERPROFILE: root, FLEETVIEW_CONFIG: cfg, CLAUDE_CONFIG_DIR: claudeDir, PORT: String(port) },
++  });
++  const end = Date.now() + 20000;
++  while (Date.now() < end) {
++    try { await getJson(port, '/api/meta'); return { child, port }; } catch { await new Promise((r) => setTimeout(r, 250)); }
++  }
++  child.kill();
++  throw new Error('FleetView did not start');
++}
++
++// Ask /api/usage until the panel has an answer (the first ccusage run downloads it).
++async function panelAnswer(port, ms) {
++  const end = Date.now() + ms;
++  let u;
++  while (Date.now() < end) {
++    u = await getJson(port, '/api/usage');
++    if (u.fetchedAt && !u.pending) return u;
++    await new Promise((r) => setTimeout(r, 1000));
++  }
++  return u;
++}
++
++test('with no Claude Code history yet, the panel says nothing is used, not "could not run"', { timeout: 240000 }, async () => {
++  const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleetview-no-history-'));
++  const { child, port } = await startFleetView(claudeDir);
++  try {
++    const u = await panelAnswer(port, 200000);
++    assert.ok(u && u.fetchedAt, 'the panel never answered: ' + JSON.stringify(u));
++    assert.strictEqual(u.error, null, 'panel error: ' + u.error);
++    assert.strictEqual(u.block, null);
++  } finally { child.kill(); }
++});
++
++test('with a made-up Claude Code history, the panel shows the tokens used', { timeout: 240000 }, async () => {
++  const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleetview-history-'));
++  const proj = path.join(claudeDir, 'projects', '-Users-member-Second-Brain');
++  fs.mkdirSync(proj, { recursive: true });
++  const line = {
++    type: 'assistant', timestamp: new Date().toISOString(), sessionId: 's1', requestId: 'r1',
++    cwd: '/Users/member/Second Brain',
++    message: { id: 'm1', model: 'claude-sonnet-4-5', role: 'assistant', content: [{ type: 'text', text: 'hi' }],
++      usage: { input_tokens: 1200, output_tokens: 300, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } },
++  };
++  fs.writeFileSync(path.join(proj, 's1.jsonl'), JSON.stringify(line) + '\n');
++  const { child, port } = await startFleetView(claudeDir);
++  try {
++    const u = await panelAnswer(port, 200000);
++    assert.ok(u && u.fetchedAt, 'the panel never answered: ' + JSON.stringify(u));
++    assert.strictEqual(u.error, null, 'panel error: ' + u.error);
++    assert.ok(u.block, 'no current 5-hour window: ' + JSON.stringify(u));
++    assert.strictEqual(u.block.totalTokens, 1500);
++  } finally { child.kill(); }
++});
+diff --git a/tests/mac/mac_vault_lookup.py b/tests/mac/mac_vault_lookup.py
+new file mode 100644
+index 0000000..93eb4fc
+--- /dev/null
++++ b/tests/mac/mac_vault_lookup.py
+@@ -0,0 +1,49 @@
++"""Mac only (fault row 23, build plan V3): on a Mac, FleetView suggests ~/Second Brain first.
++
++macOS may refuse a program that starts by itself access to ~/Documents, so the Mac guides put the
++Second Brain at ~/Second Brain. The installer must suggest it there first, then at
++~/Documents/Second Brain. Windows keeps its own order, unchanged.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_lookup.py
++"""
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++HERE = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac look-up order")
++
++
++def install_and_read_second_brain(tmp_path, home):
++    (home / ".claude" / "projects").mkdir(parents=True, exist_ok=True)
++    env = dict(os.environ, HOME=str(home), CLAUDE_CONFIG_DIR=str(home / ".claude"),
++               FLEETVIEW_CONFIG=str(tmp_path / "config.json"))
++    r = subprocess.run([sys.executable, str(HERE / "install.py"), "--yes", "--skip-npm", "--crm", "-",
++                        "--port", "3014", "--no-launcher", "--no-start"], env=env, capture_output=True,
++                       text=True, cwd=str(HERE), timeout=300)
++    assert r.returncode == 0, r.stdout + r.stderr
++    cfg = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
++    return {f["name"]: f["path"] for f in cfg["folders"]}.get("Second Brain")
++
++
++def test_second_brain_outside_documents_comes_first(tmp_path):
++    home = tmp_path / "home"
++    for p in (home / "Second Brain", home / "Documents" / "Second Brain"):
++        (p / ".obsidian").mkdir(parents=True)
++    assert install_and_read_second_brain(tmp_path, home) == str(home / "Second Brain")
++
++
++def test_a_plain_second_brain_folder_outside_documents_is_suggested(tmp_path):
++    home = tmp_path / "home"
++    (home / "Second Brain").mkdir(parents=True)
++    assert install_and_read_second_brain(tmp_path, home) == str(home / "Second Brain")
++
++
++def test_documents_is_still_found_when_it_is_the_only_one(tmp_path):
++    home = tmp_path / "home"
++    (home / "Documents" / "Second Brain" / ".obsidian").mkdir(parents=True)
++    assert install_and_read_second_brain(tmp_path, home) == str(home / "Documents" / "Second Brain")

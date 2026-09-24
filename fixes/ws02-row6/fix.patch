@@ -1,0 +1,17 @@
+diff --git a/watcher.js b/watcher.js
+index 7502e6e..30ed8d5 100644
+--- a/watcher.js
++++ b/watcher.js
+@@ -199,6 +199,12 @@ app.post('/api/open-folder', express.json(), (req, res) => {
+ // 5-hour window is re-read at most once a minute, the 7-day total every 5 minutes).
+ const usage = { block: null, week: null, error: null, weekError: null, blockAt: 0, weekAt: 0, busyBlock: false, busyWeek: false };
+ function runCcusage(args, cb) {
++  // No Claude Code session has run on this computer yet, so there is no log folder. ccusage
++  // then stops with an error, and the panel said "ccusage could not run" on every new computer
++  // (found on GitHub's test Macs 2026-09-24). Nothing has been used yet: say that instead.
++  if (!fs.existsSync(CFG.projectsDir)) {
++    return cb(null, JSON.stringify(args.startsWith('blocks') ? { blocks: [] } : { daily: [] }));
++  }
+   const env = { ...process.env, CLAUDE_CONFIG_DIR: path.dirname(CFG.projectsDir) };
+   let cmd;
+   try { cmd = usageLib.command(CFG.ccusagePackage, args); } catch (e) { return cb(e); }

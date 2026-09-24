@@ -1,0 +1,201 @@
+diff --git a/install.py b/install.py
+index a5d8ab0..aec4594 100644
+--- a/install.py
++++ b/install.py
+@@ -45,6 +45,8 @@ CCUSAGE_PACKAGE = "ccusage@20.0.24"
+ PID_FILE = CONFIG.with_name("fleetview.pid")
+ LAUNCHER_MARK = "FleetView logon launcher (made by install.py)"
+ MAC_LABEL = "com.outliers.fleetview"
++# The command a member types to run Python: a Mac has python3 and no plain python.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ 
+ def say(msg=""):
+@@ -91,7 +93,10 @@ def check_python():
+     say("")
+     say("  Stopping: this is Python %d.%d. FleetView needs Python 3.11 or newer." % tuple(sys.version_info[:2]))
+     say("  Python 3.10 gets security fixes only until 2026-10-31, and older versions get none.")
+-    say("  Get it from https://python.org (tick \"Add python.exe to PATH\"), then run  python install.py  again.")
++    if sys.platform == "darwin":
++        say("  Get it from https://python.org, then run  python3 install.py  again.")
++    else:
++        say("  Get it from https://python.org (tick \"Add python.exe to PATH\"), then run  python install.py  again.")
+     say("  Nothing was changed.")
+     return False
+ 
+@@ -130,7 +135,7 @@ def how_to_get_node():
+         say("              or download the LTS installer from https://nodejs.org")
+     else:
+         say("    Linux:    use your package manager, or https://nodejs.org")
+-    say("  Then close this terminal, open a new one, and run  python install.py  again.")
++    say("  Then close this terminal, open a new one, and run  %s install.py  again." % PY)
+ 
+ 
+ # ---------- 3. finding folders ----------
+@@ -510,14 +515,14 @@ def start_only():
+     if not check_python():
+         return 1
+     if not CONFIG.exists():
+-        say("  FleetView is not installed yet (no %s). Run  python install.py  first." % CONFIG.name)
++        say("  FleetView is not installed yet (no %s). Run  %s install.py  first." % (CONFIG.name, PY))
+         return 1
+     _cfg, problem = read_config()
+     if problem:
+         say("  FleetView was NOT started, so your settings are not quietly thrown away.")
+         say("  %s" % problem["message"])
+         say("  The fault is on line %d of %s." % (problem["line"], CONFIG))
+-        say("  Fix that line, or run  python install.py  to write the file again. Your file was not touched.")
++        say("  Fix that line, or run  %s install.py  to write the file again. Your file was not touched." % PY)
+         return 1
+     node, _npm, info = check_node()
+     if not node:
+@@ -525,7 +530,7 @@ def start_only():
+         how_to_get_node()
+         return 1
+     if not (HERE / "node_modules" / "express").is_dir():
+-        say("  The code packages FleetView needs are missing. Run  python install.py  first.")
++        say("  The code packages FleetView needs are missing. Run  %s install.py  first." % PY)
+         return 1
+     port = config_port()
+     live = running()
+@@ -536,9 +541,9 @@ def start_only():
+         if ask_fleetview(port):
+             say("  Port %d is already used by the FleetView in another folder, so this one was not started." % port)
+             say("  To run this folder as well, change \"port\" in this folder's config.json, for example to 3012,")
+-            say("  then run  python install.py --start  again.")
++            say("  then run  %s install.py --start  again." % PY)
+         else:
+-            say("  Port %d is used by another program. Run  python install.py  again and choose another port." % port)
++            say("  Port %d is used by another program. Run  %s install.py  again and choose another port." % (port, PY))
+         return 1
+     if start_hidden(node):
+         say("  FleetView started in the background. Open  http://localhost:%d/graph.html" % port)
+@@ -629,7 +634,7 @@ def main(argv=None):
+             if r.returncode != 0:
+                 say("  npm install failed:")
+                 say("  " + (r.stderr or r.stdout).strip()[-800:])
+-                say("  Check your internet connection and run  python install.py  again. config.json was not changed.")
++                say("  Check your internet connection and run  %s install.py  again. config.json was not changed." % PY)
+                 return 1
+             say("  Code packages downloaded.")
+ 
+@@ -748,7 +753,7 @@ def main(argv=None):
+             stop()
+             restart = True
+         if port_in_use(port):
+-            say("  Port %d is used by another program. Run  python install.py  again and choose another port." % port)
++            say("  Port %d is used by another program. Run  %s install.py  again and choose another port." % (port, PY))
+         else:
+             if restart and a.start is None:
+                 start_now = True
+@@ -764,12 +769,12 @@ def main(argv=None):
+     say("")
+     if already:
+         say("  Done. FleetView is already running. Open  http://localhost:%d/graph.html" % port)
+-        say("  To stop it:  python install.py --stop")
++        say("  To stop it:  %s install.py --stop" % PY)
+     elif started:
+         say("  Done. Open  http://localhost:%d/graph.html  in your browser." % port)
+-        say("  To stop it:  python install.py --stop")
++        say("  To stop it:  %s install.py --stop" % PY)
+     else:
+-        say("  Done. Start it with:  python install.py --start")
++        say("  Done. Start it with:  %s install.py --start" % PY)
+         say("  then open  http://localhost:%d/graph.html" % port)
+     say("  Dollar figures on the page are what the tokens would cost if you paid per token.")
+     say("  They are not money taken from your subscription.")
+diff --git a/lib/config.js b/lib/config.js
+index 4abba72..295fd09 100644
+--- a/lib/config.js
++++ b/lib/config.js
+@@ -33,6 +33,13 @@ function plainReason(message, snippet, atEnd) {
+ 
+ // Reads the file's bytes. Returns { text, config, error }.
+ // error is null, or { message, line, column, kind } with message already in plain words.
++// The command a member types to run Python: a Mac has python3 and no plain python.
++const PY = process.platform === 'darwin' ? 'python3' : 'python';
++// A Mac has no Notepad or PowerShell, so it is not told about them.
++const MARK_ADDED_BY = process.platform === 'darwin'
++  ? 'config.json starts with an invisible mark some editors add when they save. Save it again as UTF-8 without that mark'
++  : 'config.json starts with an invisible mark that Notepad and PowerShell add when they save. In Notepad choose Save as and pick UTF-8 without that mark';
++
+ function readConfigFile(file) {
+   let bytes;
+   try { bytes = fs.readFileSync(file); }
+@@ -41,18 +48,18 @@ function readConfigFile(file) {
+     return { text: '', config: {}, error: { message: 'config.json could not be opened: ' + e.message, line: 1, column: 1, kind: 'unreadable' } };
+   }
+   if (bytes.length === 0) {
+-    return { text: '', config: {}, error: { message: 'config.json is empty. Run  python install.py  to write it again.', line: 1, column: 1, kind: 'empty' } };
++    return { text: '', config: {}, error: { message: 'config.json is empty. Run  ' + PY + ' install.py  to write it again.', line: 1, column: 1, kind: 'empty' } };
+   }
+   if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+     return { text: '', config: {}, error: { kind: 'bom', line: 1, column: 1,
+-      message: 'config.json starts with an invisible mark that Notepad and PowerShell add when they save. In Notepad choose Save as and pick UTF-8 without that mark, or run  python install.py  to write it fresh.' } };
++      message: MARK_ADDED_BY + ', or run  ' + PY + ' install.py  to write it fresh.' } };
+   }
+   const text = bytes.toString('utf8');
+   if (text.includes('�')) {
+     const at = text.indexOf('�');
+     const { line, column } = lineAndColumn(text, at);
+     return { text, config: {}, error: { kind: 'encoding', line, column,
+-      message: 'config.json is not saved as UTF-8: line ' + line + ' has a character FleetView cannot read. Save it as UTF-8, or run  python install.py  to write it fresh.' } };
++      message: 'config.json is not saved as UTF-8: line ' + line + ' has a character FleetView cannot read. Save it as UTF-8, or run  ' + PY + ' install.py  to write it fresh.' } };
+   }
+   try {
+     const config = JSON.parse(text);
+@@ -101,7 +108,7 @@ function refusalLines(error, file) {
+     'FleetView was NOT started, so your settings are not quietly thrown away.',
+     error.message,
+     'The fault is on line ' + error.line + ' of ' + file + '.',
+-    'Fix that line, or run  python install.py  to write the file again. Your file was not touched.',
++    'Fix that line, or run  ' + PY + ' install.py  to write the file again. Your file was not touched.',
+   ];
+ }
+ 
+@@ -112,8 +119,8 @@ function damagedLines(error, file, port) {
+     error.message,
+     'FleetView has started on port ' + port + ', the port it last ran on, so a browser tab you already have open still works.',
+     'None of your folder names are in use until the file is fixed.',
+-    'Fix that line, or run  python install.py  to write the file again. Your file was not touched.',
++    'Fix that line, or run  ' + PY + ' install.py  to write the file again. Your file was not touched.',
+   ];
+ }
+ 
+-module.exports = { readConfigFile, lineAndColumn, plainReason, lastGoodPort, refusalLines, damagedLines };
++module.exports = { PY, readConfigFile, lineAndColumn, plainReason, lastGoodPort, refusalLines, damagedLines };
+diff --git a/tests/test_install.py b/tests/test_install.py
+index 7e24336..e28c39c 100644
+--- a/tests/test_install.py
++++ b/tests/test_install.py
+@@ -339,7 +339,7 @@ def test_uninstall_stops_a_copy_started_at_logon(tmp_path):
+ def test_start_without_an_install_says_what_to_do(tmp_path):
+     r = run(["--start"], env_for(tmp_path))
+     assert r.returncode == 1
+-    assert "python install.py" in r.stdout
++    assert ("python3 install.py" if sys.platform == "darwin" else "python install.py") in r.stdout
+     assert not (tmp_path / "config.json").exists()
+ 
+ 
+diff --git a/watcher.js b/watcher.js
+index 7502e6e..9a7bca8 100644
+--- a/watcher.js
++++ b/watcher.js
+@@ -15,7 +15,7 @@ const chokidar = require('chokidar');
+ const { createStore, DEFAULT_WAIT_CAP_H, DEFAULT_FRESH_MIN } = require('./lib/sessions');
+ const { makeGrouper, lastPart } = require('./lib/groups');
+ const { PRICES_CHECKED, PRICES_SOURCE } = require('./lib/pricing');
+-const { readConfigFile, lastGoodPort, refusalLines, damagedLines } = require('./lib/config');
++const { PY, readConfigFile, lastGoodPort, refusalLines, damagedLines } = require('./lib/config');
+ const usageLib = require('./lib/usage');
+ 
+ // ---------- config ----------
+@@ -295,7 +295,7 @@ const server = app.listen(CFG.port, CFG.host, () => {
+ });
+ server.on('error', (err) => {
+   if (err.code === 'EADDRINUSE') {
+-    console.error(`Port ${CFG.port} is already in use. If FleetView is already running, open http://localhost:${CFG.port}/graph.html. Otherwise run  python install.py  again and choose another port.`);
++    console.error(`Port ${CFG.port} is already in use. If FleetView is already running, open http://localhost:${CFG.port}/graph.html. Otherwise run  ${PY} install.py  again and choose another port.`);
+     process.exit(1);
+   }
+   throw err;
