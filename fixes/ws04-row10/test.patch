@@ -1,0 +1,48 @@
+diff --git a/tests/mac/mac_today_names_python3.py b/tests/mac/mac_today_names_python3.py
+new file mode 100644
+index 0000000..ea8ae0f
+--- /dev/null
++++ b/tests/mac/mac_today_names_python3.py
+@@ -0,0 +1,42 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 10, build plan V3): the Today panel must not tell a Mac member to type `python`.
++
++With no Today.md in the CRM folder, the Today panel said "In your CRM folder run: python
++_engine/today.py --write" (jeeves/vaults.py) and the overview card said the same
++(jeeves/static/app.js), on every computer (seen on GitHub's test Macs, 2026-09-24). A Mac has
++python3 and no python.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_today_names_python3.py
++"""
++import re
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def test_the_today_panel_says_python3(tmp_path):
++    from jeeves import vaults
++    crm = tmp_path / "CRM"
++    crm.mkdir()
++    brain = tmp_path / "Second Brain"
++    brain.mkdir()
++    out = vaults.today({"crm_vault": str(crm), "second_brain": str(brain)})
++    hint = out["crm"]["hint"]
++    assert "python3 _engine/today.py --write" in hint
++    assert not COMMAND.search(hint), hint
++
++
++def test_the_page_is_told_which_python_to_print(tmp_path):
++    from jeeves.server import public_config
++    assert public_config({})["python"] == "python3"
++
++
++def test_the_overview_card_prints_the_python_the_page_is_told():
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "<code>python _engine/today.py" not in js
++    assert "CFG.python" in js

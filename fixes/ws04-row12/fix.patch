@@ -1,0 +1,23 @@
+diff --git a/install.py b/install.py
+index aba75e8..fa12e47 100644
+--- a/install.py
++++ b/install.py
+@@ -391,6 +391,18 @@ def main(argv=None):
+             "Nothing has been changed.", "")
+         return 1
+     claude = shutil.which("claude")
++    if not claude and os.name != "nt":
++        # Claude Code's own Mac installer puts claude in ~/.local/bin and may leave that
++        # folder off the PATH a Mac's Terminal uses (seen on GitHub's Intel test Mac,
++        # 2026-09-24): it is installed, just not found by name.
++        for c in (home() / ".local" / "bin" / "claude", home() / ".claude" / "local" / "claude"):
++            if c.is_file() and os.access(str(c), os.X_OK):
++                claude = str(c)
++                say("Found Claude Code at %s. That folder is not on this Terminal's PATH, so" % c,
++                    "typing  claude  may say \"command not found\"; Jeeves finds it anyway. To fix",
++                    "it for typing too:  echo 'export PATH=\"%s:$PATH\"' >> ~/.zshrc" % c.parent,
++                    "then open a new Terminal window.", "")
++                break
+     if not claude and not a.skip_claude_check:
+         say("Claude Code is not installed, or not on your PATH.", "",
+             "Jeeves has no brain of its own: every answer comes from your Claude Code.",

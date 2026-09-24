@@ -1,0 +1,85 @@
+diff --git a/tests/mac/mac_vault_refusal_shown.py b/tests/mac/mac_vault_refusal_shown.py
+new file mode 100644
+index 0000000..6b5a3e4
+--- /dev/null
++++ b/tests/mac/mac_vault_refusal_shown.py
+@@ -0,0 +1,79 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 20, build plan V3): when macOS refuses a vault, Jeeves' page says so.
++
++A program that starts by itself on a Mac (Jeeves' start-up file) may be refused the Documents
++folder with "Operation not permitted". Python then reads the folder as not there, so the page said
++"Your second brain folder is not there" about a vault that was where it should be. It must say
++"macOS refused access to <folder>", and never that the vault is missing.
++
++GitHub's test Macs cannot show a real refusal (System Integrity Protection is off there, wave 0a
++M5), so the first check makes reading the vault raise the error macOS gives, and the second uses
++a folder this user may not read, which the test Macs do refuse.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_refusal_shown.py
++"""
++import errno
++import os
++import sys
++from pathlib import Path
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS folder refusal")
++
++
++def said_plainly(text, folder):
++    return "macOS refused access to" in text and str(folder) in text and "not there" not in text
++
++
++def check_every_view(cfg, crm, brain):
++    from jeeves import vaults
++    today = vaults.today(cfg)
++    assert today["crm"]["exists"] is False and said_plainly(today["crm"]["refused"], crm), today["crm"]
++    assert today["brain"]["found"] is False and said_plainly(today["brain"]["refused"], brain), today["brain"]
++    listed = {v["key"]: v for v in vaults.listing(cfg)}
++    assert said_plainly(listed["brain"]["refused"], brain) and listed["brain"]["exists"] is False
++    tree = vaults.tree(cfg, "brain")
++    assert tree["exists"] is False and said_plainly(tree["refused"], brain)
++
++
++def test_operation_not_permitted_is_reported_as_a_refusal(tmp_path, monkeypatch):
++    crm = tmp_path / "Documents" / "CRM"
++    brain = tmp_path / "Documents" / "Second Brain"
++    for v in (crm, brain):
++        v.mkdir(parents=True)
++    refused = {crm, brain}
++    real_listdir, real_is_dir, real_is_file = os.listdir, Path.is_dir, Path.is_file
++
++    def no_listdir(p="."):
++        if Path(p) in refused:
++            raise PermissionError(errno.EPERM, "Operation not permitted", str(p))
++        return real_listdir(p)
++
++    monkeypatch.setattr(os, "listdir", no_listdir)
++    # What Python answers for a folder macOS refuses, and for anything inside it: not there.
++    monkeypatch.setattr(Path, "is_dir", lambda self, **kw: False if (self in refused or self.parent in refused)
++                        else real_is_dir(self, **kw))
++    monkeypatch.setattr(Path, "is_file", lambda self, **kw: False if self.parent in refused
++                        else real_is_file(self, **kw))
++    check_every_view({"crm_vault": str(crm), "second_brain": str(brain)}, crm, brain)
++
++
++def test_a_folder_this_user_may_not_open_is_reported_as_a_refusal(tmp_path):
++    crm = tmp_path / "CRM"
++    brain = tmp_path / "Second Brain"
++    for v in (crm, brain):
++        v.mkdir()
++        v.chmod(0)
++    try:
++        check_every_view({"crm_vault": str(crm), "second_brain": str(brain)}, crm, brain)
++    finally:
++        for v in (crm, brain):
++            v.chmod(0o755)
++
++
++def test_the_page_shows_the_refusal_instead_of_missing():
++    from conftest import ROOT
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "function missingFolder(path, setting, refused)" in js
++    assert js.count("missingFolder(") >= 5 and "t.refused" in js

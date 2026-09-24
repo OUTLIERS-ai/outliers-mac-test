@@ -1,0 +1,60 @@
+diff --git a/tests/mac/mac_printed_commands_python3.py b/tests/mac/mac_printed_commands_python3.py
+new file mode 100644
+index 0000000..131abf5
+--- /dev/null
++++ b/tests/mac/mac_printed_commands_python3.py
+@@ -0,0 +1,54 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 18, build plan V3): what Jeeves prints must never tell a Mac member to type `python`.
++
++A Mac has `python3` and no plain `python`. On GitHub's test Macs (wave 0a M7, 2026-09-24) the
++installer ended with "Done. Start it now:  python start.py", which fails there with "command not
++found". Windows keeps `python`.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_printed_commands_python3.py
++"""
++import importlib
++import json
++import re
++import subprocess
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def bad(text):
++    # "nothing to pip install" is a sentence, not a command
++    return [ln for ln in text.splitlines() if COMMAND.search(ln.replace("nothing to pip install", ""))]
++
++
++def test_the_installer_says_python3(world, tmp_path, monkeypatch, capsys):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    assert install.main(["--copy", str(tmp_path / "jeeves-trial")]) == 0
++    out = capsys.readouterr().out
++    assert "python3 start.py" in out
++    assert bad(out) == [], bad(out)
++
++
++def test_start_says_python3(tmp_path):
++    empty = tmp_path / "config.json"
++    empty.write_text("{}", encoding="utf-8")
++    r = subprocess.run([sys.executable, str(ROOT / "start.py"), "--no-open", "--config", str(empty)],
++                       capture_output=True, text=True, timeout=60)
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++    broken = tmp_path / "broken.json"
++    broken.write_text("{ not json", encoding="utf-8")
++    r = subprocess.run([sys.executable, str(ROOT / "start.py"), "--no-open", "--config", str(broken)],
++                       capture_output=True, text=True, timeout=60)
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout

@@ -1,0 +1,41 @@
+diff --git a/tests/mac/mac_app_links.py b/tests/mac/mac_app_links.py
+new file mode 100644
+index 0000000..48f79f0
+--- /dev/null
++++ b/tests/mac/mac_app_links.py
+@@ -0,0 +1,35 @@
++# -*- coding: utf-8 -*-
++"""Mac only (wave 0b fault, build plan V3 row list): Jeeves' Work board and FleetView links must
++lead a Mac member to the Mac repos.
++
++The panels for the Work board (ProjectForge) and FleetView link to the repo to download when the
++app is not running. They named the Windows repos, whose guides print Windows commands. On a Mac
++they name the Mac copy of each (its name ends in -mac).
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_app_links.py
++"""
++import importlib
++import json
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac repo links")
++WANT = {"projectforge": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge-mac",
++        "fleetview": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview-mac"}
++
++
++def test_the_installer_writes_the_mac_links(world, tmp_path, monkeypatch):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    apps = json.loads(cfg.read_text(encoding="utf-8"))["apps"]
++    assert {k: v["repo"] for k, v in apps.items()} == WANT
++
++
++def test_the_built_in_settings_name_the_mac_links():
++    from jeeves import config as C
++    assert {k: v["repo"] for k, v in C.DEFAULTS["apps"].items()} == WANT

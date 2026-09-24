@@ -1,0 +1,51 @@
+diff --git a/install.py b/install.py
+index aba75e8..28a90a9 100644
+--- a/install.py
++++ b/install.py
+@@ -483,11 +483,13 @@ def main(argv=None):
+     cfg.setdefault("permission_mode", "dontAsk")
+     cfg.setdefault("allow_actions", False)
+     cfg.setdefault("claude_command", "claude")
++    # A Mac member is sent to the Mac copy of each repo (its name ends in -mac).
++    app_repo = "https://github.com/OUTLIERS-ai/%s" + ("-mac" if sys.platform == "darwin" else "")
+     cfg.setdefault("apps", {
+         "projectforge": {"url": "http://127.0.0.1:3020",
+-                         "repo": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge"},
++                         "repo": app_repo % "outliers-ws-03-projectforge"},
+         "fleetview": {"url": "http://127.0.0.1:3010",
+-                      "repo": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview"}})
++                      "repo": app_repo % "outliers-ws-02-fleetview"}})
+     say("")
+     if cfg == old:
+         say("config.json already says exactly this. Nothing changed.")
+diff --git a/jeeves/config.py b/jeeves/config.py
+index cc9d250..bae5d94 100644
+--- a/jeeves/config.py
++++ b/jeeves/config.py
+@@ -8,8 +8,13 @@ whole program somewhere else by setting JEEVES_CONFIG to another file.
+ 
+ import json
+ import os
++import sys
+ from pathlib import Path
+ 
++# Where the Work board and FleetView are downloaded from. A Mac member gets the Mac
++# copy of each (its name ends in -mac); the Windows repos print Windows commands.
++APP_REPO = "https://github.com/OUTLIERS-ai/%s" + ("-mac" if sys.platform == "darwin" else "")
++
+ ROOT = Path(__file__).resolve().parent.parent
+ 
+ DEFAULTS = {
+@@ -32,10 +37,8 @@ DEFAULTS = {
+     "inbox_file": "",
+     "daily_note_folders": ["Daily", "Daily Notes", "Journal", "Diary", "Calendar"],
+     "apps": {
+-        "projectforge": {"url": "http://127.0.0.1:3020",
+-                         "repo": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge"},
+-        "fleetview": {"url": "http://127.0.0.1:3010",
+-                      "repo": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview"},
++        "projectforge": {"url": "http://127.0.0.1:3020", "repo": APP_REPO % "outliers-ws-03-projectforge"},
++        "fleetview": {"url": "http://127.0.0.1:3010", "repo": APP_REPO % "outliers-ws-02-fleetview"},
+     },
+     "ccusage": "auto",
+     "orb": {"inner": "At your service", "outer": "Your second brain is listening"},

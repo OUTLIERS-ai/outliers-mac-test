@@ -1,0 +1,48 @@
+diff --git a/jeeves/server.py b/jeeves/server.py
+index f850991..7a6fa70 100644
+--- a/jeeves/server.py
++++ b/jeeves/server.py
+@@ -192,6 +192,8 @@ def public_config(cfg):
+         "read_only": chat.read_only(cfg),
+         "chat_updated": chat.last_updated("main"),
+         "chat_timeout_seconds": cfg.get("chat_timeout_seconds"),
++        # the command this computer runs Python with, for commands the page prints
++        "python": "python3" if sys.platform == "darwin" else "python",
+     }
+ 
+ 
+diff --git a/jeeves/static/app.js b/jeeves/static/app.js
+index 0547c83..2952714 100644
+--- a/jeeves/static/app.js
++++ b/jeeves/static/app.js
+@@ -490,7 +490,7 @@ async function renderOverview(body) {
+     let h;
+     if (!td.crm) h = '<div class="muted">No CRM folder is set in config.json.</div>';
+     else if (td.crm.exists === false) h = missingFolder(td.crm.vault, 'crm_vault');
+-    else if (!td.crm.found) h = '<div class="muted">Your CRM has no <code>Today.md</code> yet. Build it in your CRM folder with <code>python _engine/today.py --write</code>.</div>';
++    else if (!td.crm.found) h = '<div class="muted">Your CRM has no <code>Today.md</code> yet. Build it in your CRM folder with <code>' + esc(CFG.python || 'python') + ' _engine/today.py --write</code>.</div>';
+     else {
+       const rows = crmPeople(td.crm.text);
+       if (rows.length) h = '<ul>' + rows.slice(0, 4).map(r => `<li><span class="wl" data-vault="crm" data-note="${esc(r.who)}">${esc(r.who)}</span> <span class="muted">· ${inline(r.why)}</span></li>`).join('') + '</ul>' + (rows.length > 4 ? `<button class="cardlink small" data-open="today">and ${rows.length - 4} more in Today ›</button>` : '');
+diff --git a/jeeves/vaults.py b/jeeves/vaults.py
+index 3905cd7..92b9b4a 100644
+--- a/jeeves/vaults.py
++++ b/jeeves/vaults.py
+@@ -7,6 +7,7 @@ checked to be inside the vault it names, so a crafted address such as
+ """
+ 
+ import re
++import sys
+ from datetime import datetime, timedelta
+ from pathlib import Path
+ 
+@@ -211,7 +212,8 @@ def today(cfg, now=None):
+                                   "in config.json." % root}
+         else:
+             out["crm"] = {"found": False, "exists": True, "vault": str(root),
+-                          "hint": "No Today.md yet. In your CRM folder run: python _engine/today.py --write"}
++                          "hint": "No Today.md yet. In your CRM folder run: %s _engine/today.py --write"
++                                  % ("python3" if sys.platform == "darwin" else "python")}
+ 
+     if "brain" in vm:
+         root = vm["brain"][1]

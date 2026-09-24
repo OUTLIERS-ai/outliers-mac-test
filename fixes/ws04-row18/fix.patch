@@ -1,0 +1,125 @@
+diff --git a/install.py b/install.py
+index aba75e8..938e19e 100644
+--- a/install.py
++++ b/install.py
+@@ -51,6 +51,8 @@ DEFAULT_PORT = 4040
+ # so a member knows exactly what they are running. Checked live on 2026-09-22.
+ MODELS = {"best": "claude-opus-5-5", "deep": "claude-sonnet-5", "fast": "claude-haiku-4-5"}
+ PLIST_NAME = "ai.outliers.jeeves.plist"
++# The command a member types to run Python: a Mac has python3 and no plain python.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ 
+ def too_old(info):
+@@ -231,8 +233,8 @@ def belongs_here(path):
+ 
+ def not_ours(target):
+     return ("Another Jeeves folder already starts by itself when the computer starts (%s)."
+-            % target + "\n  Left as it is. To move it to this folder, run  python install.py"
+-            " --uninstall  in that folder first.")
++            % target + "\n  Left as it is. To move it to this folder, run  %s install.py" % PY
++            + " --uninstall  in that folder first.")
+ 
+ 
+ def install_launcher():
+@@ -326,7 +328,7 @@ def copy_to(dest, port=None):
+         except ValueError:
+             old = {}
+     if not old.get("second_brain"):
+-        say("Install this Jeeves first (python install.py), then make the copy.",
++        say("Install this Jeeves first (%s install.py), then make the copy." % PY,
+             "Nothing has been changed.", "")
+         return 1
+     if dest == HERE or HERE in dest.parents:
+@@ -354,7 +356,7 @@ def copy_to(dest, port=None):
+     if os.name == "nt":
+         atomic_write(dest / "Start Jeeves (hidden).vbs", vbs_text(dest, dest / "config.json"))
+         say("Its own Start Jeeves (hidden).vbs starts the copy, not this one.")
+-    say("", "Start the copy:", "", "    cd %s" % dest, "    python start.py", "",
++    say("", "Start the copy:", "", "    cd %s" % dest, "    %s start.py" % PY, "",
+         "It opens http://127.0.0.1:%d/ . Ctrl+C in that terminal stops it." % port, "")
+     return 0
+ 
+@@ -471,7 +473,7 @@ def main(argv=None):
+         # 4041 was being told to try the port that had just refused them.
+         spare = next((p for p in range(port + 1, port + 60) if port_free(p)), port + 1)
+         say("  Port %d is busy right now. Jeeves will say so when it starts; pick another "
+-            "with python install.py --port %d" % (port, spare))
++            "with %s install.py --port %d" % (port, PY, spare))
+ 
+     # 4. One config file. Keep anything you added by hand.
+     cfg = dict(old)
+@@ -511,11 +513,11 @@ def main(argv=None):
+         say(install_launcher())
+     else:
+         say("Jeeves will not start by itself when the computer starts. "
+-            "Start it yourself with:  python start.py")
++            "Start it yourself with:  %s start.py" % PY)
+ 
+     say("", "-" * 66,
+         "Done. Start it now:", "",
+-        "    python start.py", "",
++        "    %s start.py" % PY, "",
+         "Your browser opens http://127.0.0.1:%d/ . You should see the orb top left," % port,
+         "Chat on the left, Today in the middle and Across everything on the right.",
+         "On a laptop: Chat on the left and a stack of tabs on the right.",
+diff --git a/jeeves/config.py b/jeeves/config.py
+index cc9d250..0147f6f 100644
+--- a/jeeves/config.py
++++ b/jeeves/config.py
+@@ -8,8 +8,13 @@ whole program somewhere else by setting JEEVES_CONFIG to another file.
+ 
+ import json
+ import os
++import sys
+ from pathlib import Path
+ 
++# The command a member types to run Python. A Mac has python3 and no python, so a
++# printed "python start.py" fails there with "command not found".
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ ROOT = Path(__file__).resolve().parent.parent
+ 
+ DEFAULTS = {
+@@ -98,8 +103,8 @@ def problem(path=None):
+         if line:
+             where = "\n  Look at line %d:  %s" % (line, text.splitlines()[line - 1].strip()[:90])
+         return ("%s could not be read: %s%s\n"
+-                "  Fix that line, or run  python install.py  to write a fresh one."
+-                % (p, exc.msg if hasattr(exc, "msg") else exc, where))
++                "  Fix that line, or run  %s install.py  to write a fresh one."
++                % (p, exc.msg if hasattr(exc, "msg") else exc, where, PY))
+     if not isinstance(data, dict):
+         return "%s could not be read: it must start with { and end with }." % p
+     return None
+diff --git a/start.py b/start.py
+index 18e3914..f0c8d80 100644
+--- a/start.py
++++ b/start.py
+@@ -123,7 +123,7 @@ def main(argv=None):
+         print("  " + broken)
+         return 1
+     if not cfg.get("second_brain"):
+-        print("  No config.json yet. Run:  python install.py")
++        print("  No config.json yet. Run:  %s install.py" % C.PY)
+         return 1
+     try:
+         srv = make_server(a.port, cfg_file)
+@@ -134,7 +134,7 @@ def main(argv=None):
+             url = "http://127.0.0.1:%d/" % int(port)
+             print("  Jeeves is already running at %s (process %d). Not starting a second copy."
+                   % (url, h["pid"]))
+-            print("  To stop it:  python start.py --stop")
++            print("  To stop it:  %s start.py --stop" % C.PY)
+             if not a.no_open:
+                 try:
+                     webbrowser.open(url)
+@@ -142,7 +142,7 @@ def main(argv=None):
+                     pass
+             return 0
+         print("  Could not listen on port %s: %s" % (port, exc))
+-        print("  Another program is using it. Try:  python start.py --port %d" % free_port(port))
++        print("  Another program is using it. Try:  %s start.py --port %d" % (C.PY, free_port(port)))
+         return 1
+     port = srv.server_address[1]
+     C.atomic_write(pid_file(), "%d %d\n" % (os.getpid(), port))

@@ -1,0 +1,66 @@
+diff --git a/tests/mac/mac_finds_claude_in_local_bin.py b/tests/mac/mac_finds_claude_in_local_bin.py
+new file mode 100644
+index 0000000..7d3a679
+--- /dev/null
++++ b/tests/mac/mac_finds_claude_in_local_bin.py
+@@ -0,0 +1,60 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 12, build plan V3): the installer must find Claude Code in ~/.local/bin.
++
++Claude Code's own installer puts `claude` in ~/.local/bin and, on GitHub's Intel test Mac
++(2026-09-24), told the member to add that folder to ~/.bash_profile, which a Mac's shell (zsh)
++never reads. So `claude` was installed but not found by name, and Jeeves' installer refused:
++"Claude Code is not installed, or not on your PATH. Nothing has been changed."
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_finds_claude_in_local_bin.py
++"""
++import importlib
++import json
++import os
++import stat
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Claude Code's Mac install folder")
++
++
++def fake_claude(folder):
++    folder.mkdir(parents=True)
++    c = folder / "claude"
++    c.write_text("#!/bin/sh\necho '2.1.280 (Claude Code)'\n", encoding="utf-8")
++    c.chmod(c.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
++    return c
++
++
++@pytest.mark.parametrize("where", [".local/bin", ".claude/local"])
++def test_claude_off_the_path_is_found_where_its_installer_puts_it(world, fake_home, tmp_path, monkeypatch,
++                                                                   capsys, where):
++    fake_claude(fake_home.joinpath(*where.split("/")))
++    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")  # a Terminal that lacks that folder
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    rc = install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--port", "4556", "--yes"])
++    out = capsys.readouterr().out
++    assert rc == 0, out
++    assert "not installed" not in out
++    assert "Found Claude Code" in out and "2.1.280" in out
++    assert cfg.exists()
++
++
++def test_with_no_claude_anywhere_it_still_refuses(world, fake_home, tmp_path, monkeypatch, capsys):
++    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    if os.path.exists("/usr/local/bin/claude") or os.path.exists("/opt/homebrew/bin/claude"):
++        pytest.skip("this Mac has claude in a folder the test cannot take off the PATH")
++    rc = install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes"])
++    assert rc == 1
++    assert "not installed" in capsys.readouterr().out
++    assert not cfg.exists()
