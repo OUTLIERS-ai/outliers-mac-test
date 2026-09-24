@@ -104,7 +104,7 @@ index a230a94..454ac4d 100644
   .brand i {{ display:block; font-style:normal; font-size:14px; letter-spacing:.3em; color:{ACC}; }}
  """
 diff --git a/make_diagrams.py b/make_diagrams.py
-index 96227bd..608a69a 100644
+index 96227bd..d3945b1 100644
 --- a/make_diagrams.py
 +++ b/make_diagrams.py
 @@ -34,7 +34,8 @@ PNG.mkdir(parents=True, exist_ok=True)
@@ -112,7 +112,7 @@ index 96227bd..608a69a 100644
  VELLUM = "#E7DEC9"
  SERIF = "Constantia,Georgia,serif"
 -MONO = "Consolas,monospace"
-+# Menlo is the Mac's: it comes after Consolas, so a Windows drawing does not change.
++# Menlo, the Mac's own, comes after Consolas, so drawings made where Consolas exists do not change.
 +MONO = "Consolas,Menlo,monospace"
  
  

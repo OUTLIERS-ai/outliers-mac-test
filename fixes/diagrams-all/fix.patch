@@ -17,7 +17,7 @@ index f0b8931..5637385 100644
  python make_diagrams.py
  ```
 diff --git a/labs/colour_measure.py b/labs/colour_measure.py
-index f60ec7d..c5c1b92 100644
+index f60ec7d..a63ba93 100644
 --- a/labs/colour_measure.py
 +++ b/labs/colour_measure.py
 @@ -27,8 +27,8 @@ from __future__ import annotations
@@ -64,11 +64,11 @@ index f60ec7d..c5c1b92 100644
 -            subprocess.Popen([ff, out.as_uri()])
 -            print("opened in Firefox")
 -            break
-+    # Opens in the member's own default browser, on Windows and on a Mac.
++    # Opens the page in the member's own default browser.
 +    if webbrowser.open(out.as_uri()):
 +        print("opened in your browser")
 diff --git a/labs/phone_width.py b/labs/phone_width.py
-index 3c7ac06..24c9141 100644
+index 3c7ac06..80d3aff 100644
 --- a/labs/phone_width.py
 +++ b/labs/phone_width.py
 @@ -17,8 +17,8 @@ from __future__ import annotations
@@ -111,14 +111,14 @@ index 3c7ac06..24c9141 100644
 -            subprocess.Popen([ff, out.as_uri()])
 -            print("opened in Firefox")
 -            break
-+    # Opens in the member's own default browser, on Windows and on a Mac.
++    # Opens the page in the member's own default browser.
 +    if webbrowser.open(out.as_uri()):
 +        print("opened in your browser")
  
  
  if __name__ == "__main__":
 diff --git a/labs/ten_design_systems.py b/labs/ten_design_systems.py
-index d7b65bb..8bbd19a 100644
+index d7b65bb..b24cb98 100644
 --- a/labs/ten_design_systems.py
 +++ b/labs/ten_design_systems.py
 @@ -22,8 +22,8 @@ import re
@@ -141,11 +141,11 @@ index d7b65bb..8bbd19a 100644
 -                subprocess.Popen([ff, p.as_uri()])
 -                print("opened in Firefox")
 -                break
-+        # Opens in the member's own default browser, on Windows and on a Mac.
++        # Opens the page in the member's own default browser.
 +        if webbrowser.open(p.as_uri()):
 +            print("opened in your browser")
 diff --git a/labs/what_a_background_is_for.py b/labs/what_a_background_is_for.py
-index a230a94..cb85885 100644
+index a230a94..617e6b8 100644
 --- a/labs/what_a_background_is_for.py
 +++ b/labs/what_a_background_is_for.py
 @@ -39,8 +39,8 @@ from __future__ import annotations
@@ -217,14 +217,14 @@ index a230a94..cb85885 100644
 -            subprocess.Popen([ff, out.as_uri()])
 -            print("opened in Firefox")
 -            break
-+    # Opens in the member's own default browser, on Windows and on a Mac.
++    # Opens the page in the member's own default browser.
 +    if webbrowser.open(out.as_uri()):
 +        print("opened in your browser")
  
  
  if __name__ == "__main__":
 diff --git a/make_diagrams.py b/make_diagrams.py
-index 96227bd..608a69a 100644
+index 96227bd..d3945b1 100644
 --- a/make_diagrams.py
 +++ b/make_diagrams.py
 @@ -34,7 +34,8 @@ PNG.mkdir(parents=True, exist_ok=True)
@@ -232,7 +232,7 @@ index 96227bd..608a69a 100644
  VELLUM = "#E7DEC9"
  SERIF = "Constantia,Georgia,serif"
 -MONO = "Consolas,monospace"
-+# Menlo is the Mac's: it comes after Consolas, so a Windows drawing does not change.
++# Menlo, the Mac's own, comes after Consolas, so drawings made where Consolas exists do not change.
 +MONO = "Consolas,Menlo,monospace"
  
  
