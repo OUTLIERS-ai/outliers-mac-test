@@ -90,6 +90,26 @@ code, out = T.run([py, "_engine/today.py"], vault, home)
 T.check(job.exists() and "refused access" not in out,
         "a refusal of a folder this second brain is no longer in is not shown", out)
 
+# 2c. A timetable that has stopped: with the entry on and nothing written for over a day, today.py
+#     says so; installing again (what it advises) adds an "installed" line, which starts the clock
+#     again and also ends an old refusal of this folder.
+import json  # noqa: E402
+cfg_path = vault / "_layers" / "config.json"
+cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+cfg["morning_list_on_timetable"] = True
+cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+log.write_text("", encoding="utf-8")
+add(log, ["2020-01-06T07:00", "written", str(vault), "old list"])
+code, out = T.run([py, "_engine/today.py"], vault, home)
+T.check("The morning list has not been written since Monday 06 January 2020, 07:00" in out,
+        "a timetable that has stopped writing is reported", out)
+add(log, ["2020-01-07T07:00", "refused", str(vault), "[Errno 1] Operation not permitted"])
+from datetime import datetime  # noqa: E402
+add(log, [datetime.now().isoformat(timespec="minutes"), "installed", str(vault), "timetable entry added by Part 4"])
+code, out = T.run([py, "_engine/today.py"], vault, home)
+T.check(job.exists() and "has not been written since" not in out and "refused access" not in out,
+        "installing again starts the clock again and ends the old refusal", out)
+
 # 3. On a Mac, a real refusal from the file system, not an injected one. The job file itself is
 #    inside the refused folder, so a copy is run from outside it, as the Mac timetable does
 #    (~/Library/Application Support/Outliers Second Brain/morning_job.py).
