@@ -321,3 +321,27 @@ index 74718b0..4d5dde0 100644
          log_line(f"{REFUSED} port {port} is already in use by another program")
          return 3
      proc = launch(workspace, package, port, foreground, wait_s)
+diff --git a/tests/fake_agent_flow.py b/tests/fake_agent_flow.py
+index 8d828a1..255bc1c 100644
+--- a/tests/fake_agent_flow.py
++++ b/tests/fake_agent_flow.py
+@@ -104,7 +104,18 @@ class UI(BaseHTTPRequestHandler):
+         pass
+ 
+ 
+-ui = ThreadingHTTPServer(("127.0.0.1", port), UI)
++class QuickServer(ThreadingHTTPServer):
++    """No name look-up when it starts. The real agent-flow (Node.js) does none; Python's
++    server looks up the name of 127.0.0.1, which took 35 seconds on GitHub's test Macs
++    (2026-09-24), so this stand-in answered later than the checks wait."""
++
++    def server_bind(self):
++        import socketserver
++        socketserver.TCPServer.server_bind(self)
++        self.server_name, self.server_port = self.server_address[0], self.server_address[1]
++
++
++ui = QuickServer(("127.0.0.1", port), UI)
+ threading.Thread(target=ui.serve_forever, daemon=True).start()
+ 
+ hk = socket.socket()
