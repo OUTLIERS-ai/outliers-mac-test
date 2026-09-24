@@ -36,7 +36,12 @@ UID = os.getuid()
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 VENV = HOME / "outliers-venv"
 OLD_WS_COMMITS = {"f6f30d9", "af0e3e5", "bee130f", "d5089ca"}
-TAIL = 4000
+TAIL = int(os.environ.get("MACTEST_TAIL", "4000"))  # wave 0a M7 keeps whole outputs
+
+# Strict run (build plan V3, section 9a): every step works exactly as printed or FAILS.
+# No stand-in command is tried, and no private Python folder (venv) is made unless a printed
+# step makes one. Off unless MACTEST_STRICT=1, so the baseline run is unchanged.
+STRICT = os.environ.get("MACTEST_STRICT") == "1"
 
 STATE = {"venv": None, "bg": [], "plists_before": set(), "plists": [], "shots": []}
 
@@ -110,6 +115,9 @@ def mac_substitute(cmd):
 
 
 def make_venv(log):
+    if STRICT:  # STRICT-RULE-A
+        log.append("strict run: refused to make a private Python folder that no printed step made")  # STRICT-RULE-A
+        return False  # STRICT-RULE-A
     if STATE["venv"]:
         return True
     code, out, secs = run_shell("python3 -m venv '%s'" % VENV, str(HOME), timeout=300)
@@ -171,6 +179,8 @@ def do_member_step(step, ctx):
     attempts.append(a)
     if a["ok"]:
         return attempts, "WORKS", ""
+    if STRICT:  # STRICT-RULE-B
+        return attempts, "FAILS", ""  # STRICT-RULE-B
 
     subs = list(step.get("subs") or [])
     auto = mac_substitute(printed)
@@ -348,7 +358,10 @@ def launchd_cleanup(ctx):
 def run_bg(step, ctx):
     """Start a server the way the guide says, wait for its page, photograph it, stop it."""
     attempts = []
-    for label, cmd in [("as printed", step["cmd"])] + [("Mac substitute", s) for s in (step.get("subs") or [mac_substitute(step["cmd"])]) if s != step["cmd"]]:
+    cands = [("as printed", step["cmd"])] + [("Mac substitute", s) for s in (step.get("subs") or [mac_substitute(step["cmd"])]) if s != step["cmd"]]
+    if STRICT:  # STRICT-RULE-C
+        cands = cands[:1]  # STRICT-RULE-C
+    for label, cmd in cands:
         STATE["as_printed"] = (label == "as printed")
         env = env_for_step(step.get("env"))
         STATE["as_printed"] = False
@@ -386,7 +399,7 @@ def run_interactive(step, ctx):
     attempts = []
     cands = [("as printed", step["cmd"])]
     sub = (step.get("subs") or [mac_substitute(step["cmd"])])[0]
-    if sub != step["cmd"]:
+    if sub != step["cmd"] and not STRICT:  # strict run: no stand-in command
         cands.append(("Mac substitute", sub))
     for label, cmd in cands:
         logf = ctx["out"] / ("int-%s-%s.log" % (step["id"], len(attempts)))

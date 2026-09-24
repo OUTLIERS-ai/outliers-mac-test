@@ -1,0 +1,56 @@
+name: Wave 0a M7 program output
+
+# Build plan V3, wave 0a, M7: on macos-15, walk each of the 25 public member repos with the
+# baseline harness, keeping every step's WHOLE output (not the last 4,000 characters), then
+# run each command-line program with --help. The records are scanned afterwards with
+# harness/windows_words.py (the section 8f rules). Started by hand only; no secret used.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Repos, comma separated (blank = all 25)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: echo "matrix=$(cd harness && python3 specs.py "${{ github.event.inputs.only }}" "macos-15")" >> "$GITHUB_OUTPUT"
+
+  member:
+    needs: plan
+    name: M7 ${{ matrix.repo }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - name: Walk through the repo, whole output kept
+        env:
+          MAC_LABEL: ${{ matrix.os }}
+          MACTEST_TAIL: "400000"
+        run: /usr/bin/python3 _mactest/harness/mactest.py "${{ matrix.repo }}" "$RUNNER_TEMP/out"
+      - name: Every command-line program with --help
+        if: always()
+        run: /usr/bin/python3 _mactest/harness/help_sweep.py "${{ matrix.repo }}" "$RUNNER_TEMP/out"
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-${{ matrix.repo }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30

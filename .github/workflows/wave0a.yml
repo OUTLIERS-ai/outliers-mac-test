@@ -1,0 +1,103 @@
+name: Wave 0a measurements
+
+# Build plan V3, wave 0a: measurements M1 to M6 and M8 on GitHub's test Macs.
+# (M7 is its own workflow, wave0a-m7.yml, because it walks all 25 repos.)
+# Started by hand only. No secret is used or needed; nothing logs in to anything.
+
+on:
+  workflow_dispatch:
+    inputs:
+      part:
+        description: "all, clean, homebrew, m6 or m8"
+        required: false
+        default: "all"
+
+permissions:
+  contents: read
+
+jobs:
+  clean:
+    if: inputs.part == 'all' || inputs.part == 'clean'
+    name: M1 M2 M3 M5 clean set-up on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          bash wave0a/clean.sh "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/out/clean-${{ matrix.os }}.log"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave0a-clean--${{ matrix.os }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+
+  homebrew:
+    if: inputs.part == 'all' || inputs.part == 'homebrew'
+    name: M4 Homebrew order ${{ matrix.order }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+        order: [A, B]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          bash wave0a/homebrew.sh ${{ matrix.order }} "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/out/homebrew-${{ matrix.order }}-${{ matrix.os }}.log"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave0a-homebrew-${{ matrix.order }}--${{ matrix.os }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+
+  m6:
+    if: inputs.part == 'all' || inputs.part == 'm6'
+    name: M6 mac_ test names on macos-15
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          bash wave0a/m6.sh "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/out/m6-macos-15.log"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave0a-m6--macos-15
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+
+  m8:
+    if: inputs.part == 'all' || inputs.part == 'm8'
+    name: M8 strict run makes no private Python folder
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Green with the strict rules in place
+        run: /usr/bin/python3 -m unittest -v harness/tests/test_strict_no_venv.py
+      - name: Red with each strict rule removed (the test must fail on purpose)
+        run: |
+          for tag in A B; do
+            d="$RUNNER_TEMP/norule$tag"; mkdir -p "$d"
+            grep -v "STRICT-RULE-$tag" harness/mactest.py > "$d/mactest.py"
+            cp harness/specs.py "$d/"
+            echo "== rule $tag removed: $(grep -c "STRICT-RULE-$tag" harness/mactest.py) lines taken out"
+            if MACTEST_DIR="$d" /usr/bin/python3 -m unittest -v harness/tests/test_strict_no_venv.py; then
+              echo "RESULT M8 rule $tag removed: still green (the test does not catch it)"; exit 1
+            else
+              echo "RESULT M8 rule $tag removed: red, as it must be"
+            fi
+          done

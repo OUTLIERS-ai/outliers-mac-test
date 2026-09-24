@@ -58,3 +58,9 @@ secret, and this repo stores none, so it is left out on purpose.
 | `.github/workflows/mac-test.yml` | The run: every repo on both Macs, at most 5 Macs at once |
 | `harness/specs.py` | For each repo, the steps a member would take, each copied from that repo's own words |
 | `harness/mactest.py` | Runs those steps, tries the Mac replacement when one fails, writes the record |
+| `.github/workflows/wave0a.yml` | Wave 0a of the Mac-version build: python.org Python, Homebrew, login-shell PATH, a login job reading `~/Documents`, test-file names, the strict-run rule. Started by hand |
+| `.github/workflows/wave0a-m7.yml` | Wave 0a: every repo walked again on 1 Mac with whole outputs kept, plus each program's `--help`, to count Windows words in what the programs print. Started by hand |
+| `wave0a/` | The shell scripts those 2 runs use |
+| `harness/windows_words.py` | The Windows-word rules, as a scanner with its own self-test |
+| `harness/help_sweep.py` | Runs each command-line program in a repo with `--help` and keeps the output |
+| `harness/tests/test_strict_no_venv.py` | Proves a strict run (`MACTEST_STRICT=1`) never makes a private Python folder no step made |
