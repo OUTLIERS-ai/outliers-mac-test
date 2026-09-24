@@ -1,0 +1,1 @@
+$PY _mac_regress/test_hints_third_folder.py && $PY _mac_regress/test_hints_run.py && $PY _mac_regress/test_printed_commands.py

@@ -1,0 +1,39 @@
+diff --git a/engine/agent_check.py b/engine/agent_check.py
+index 93a237c..b25d6d5 100644
+--- a/engine/agent_check.py
++++ b/engine/agent_check.py
+@@ -45,16 +45,17 @@ def _typed(name):
+     return '"%s"' % typed if " " in typed else typed
+ 
+ 
+-def _agents_typed():
+-    """The CRM's `_agents` folder as the member types it from the folder they are in:
+-    `_agents` from the CRM folder, `../_agents` from inside `_engine`."""
++def _agents_typed(rest=""):
++    """A path in the CRM's `_agents` folder as the member types it from the folder they are in:
++    `_agents/<rest>` from the CRM folder, `../_agents/<rest>` from inside `_engine`. The whole
++    path is built first and then quoted if it has a space, so a shell reads it as 1 argument."""
+     import os
+     path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_agents")
+     try:
+         typed = os.path.relpath(path)
+     except ValueError:                      # the member is on another drive
+         typed = path
+-    typed = typed.replace("\\", "/")
++    typed = typed.replace("\\", "/") + "/" + rest
+     return '"%s"' % typed if " " in typed else typed
+ 
+ # The keys a definition must carry in its front matter (the block between the two
+@@ -319,9 +320,9 @@ def main(argv):
+     args = [a for a in argv[1:] if not a.startswith("--")]
+     as_json = "--json" in argv
+     if not args:
+-        print(__doc__.replace("    python _engine/agent_check.py", "    python " + _typed("agent_check.py"))
+-              .replace(" _agents/", " %s/" % _agents_typed())
+-              .replace("    python ", "    %s " % PY))
++        usage = __doc__.replace("    python _engine/agent_check.py", "    python " + _typed("agent_check.py"))
++        usage = re.sub(r"(?<= )_agents/(\S*)", lambda m: _agents_typed(m.group(1)), usage)
++        print(usage.replace("    python ", "    %s " % PY))
+         return 2
+ 
+     files = []

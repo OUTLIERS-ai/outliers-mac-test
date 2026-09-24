@@ -1,0 +1,778 @@
+diff --git a/_mac_regress/test_hints_run.py b/_mac_regress/test_hints_run.py
+new file mode 100644
+index 0000000..d86a0ef
+--- /dev/null
++++ b/_mac_regress/test_hints_run.py
+@@ -0,0 +1,244 @@
++#!/usr/bin/env python3
++"""CRM layers 2 to 8: every command a layer prints must run from the folder the member is in.
++
++Found in wave 1 (review/wave1-crm.md, "Found, not in any row"): usage text and hints such as
++`python ledger.py stats` name a program without its folder. The member runs the CRM's programs
++from the CRM folder (every CRM README prints `python _engine/<program>.py ...`), so a hint
++without `_engine/` stops with "can't open file", on a Mac and on Windows alike.
++
++Runs the layer the way a member does, in a throwaway home folder:
++  1. the earlier layers, cloned from GitHub and installed (pressing Enter for every default);
++  2. this layer's installer, from the folder this test is run in (the repo under test);
++  3. every command the layer's README prints, then each program's usage, as in
++     test_printed_commands.py;
++then reads every line printed and every note the installer wrote into the CRM, picks out each
++command of the form `python[3] <file>.py ...`, and RUNS it from the folder the member is in when
++they run it: the repo folder for `install.py`; for every program, the folder the member ran the
++command from that printed it. Each command is run twice, from the CRM folder (each CRM README and
++installer says "from inside" the CRM) and from inside `_engine` (where the Layer 2 and Layer 6
++guides open the terminal), so a hint must be right from both.
++A command fails if its program file is not there, if Python says "can't open file", or if a
++file or folder it names (not a <placeholder>) is not there. Placeholders are filled in: <file.csv>
++with a made-up export, <note.md> with a note the CRM has, any other <...> with a made-up name;
++[optional parts] are left out; a name the member chooses (`your-file.md`) becomes a file already in
++that folder. The installer is never run again: for `install.py` the test only
++checks that the file is there.
++
++Run from the repo under test:   python3 _mac_regress/test_hints_run.py
++Needs the network for the earlier layers. Nothing outside the throwaway folder is touched.
++"""
++import os
++import re
++import shlex
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++HERE = Path.cwd()
++GH = "https://github.com/OUTLIERS-ai/"
++LAYERS = ["outliers-crm-01-foundation", "outliers-crm-02-rules", "outliers-crm-03-records",
++          "outliers-crm-04-capture", "outliers-crm-05-judgement", "outliers-crm-06-safety",
++          "outliers-crm-07-today", "outliers-crm-08-verification"]
++ENTER = "\n" * 60
++NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++
++# The same README commands and usage calls as regress/crm/test_printed_commands.py.
++COMMANDS = {
++    "outliers-crm-02-rules": [
++        ["_engine/identity.py", "stats"], ["_engine/identity.py", "who", "a name"],
++        ["_engine/identity.py", "duplicates"], ["_engine/identity.py", "collisions"],
++        ["_engine/schema.py", "contract"], ["_engine/schema.py", "sweep"],
++        ["_engine/identity.py", "help"], ["_engine/schema.py", "help"]],
++    "outliers-crm-03-records": [
++        ["_engine/ledger.py", "types"], ["_engine/ledger.py", "stats"], ["_engine/ledger.py", "tail", "20"],
++        ["_engine/derive.py", "show", "a name or link"], ["_engine/derive.py", "quiet", "60"],
++        ["_engine/derive.py", "summary"], ["_engine/ledger.py", "help"], ["_engine/derive.py", "help"]],
++    "outliers-crm-04-capture": [
++        ["_engine/collect.py", "list"],
++        ["_engine/collect.py", "run", "connections", "{export}", "--dry-run"],
++        ["_engine/collect.py", "run", "connections", "{export}"],
++        ["_engine/collect.py", "all"], ["_engine/refresh.py", "due"], ["_engine/refresh.py", "tiers"],
++        ["_engine/collect.py", "help"], ["_engine/refresh.py", "help"]],
++    "outliers-crm-05-judgement": [
++        ["_engine/agent_check.py", "_agents/"], ["_engine/agent_check.py"]],
++    "outliers-crm-06-safety": [
++        ["_engine/holds.py", "hold", "Someone You Know", "testing the gate"],
++        ["_engine/sendgate.py", "Someone You Know"],
++        ["_engine/holds.py", "release", "Someone You Know"],
++        ["_engine/limits.py"], ["_engine/holds.py", "help"], ["_engine/holds.py", "status"]],
++    "outliers-crm-07-today": [
++        ["_engine/today.py", "--write"], ["_engine/today.py"]],
++    "outliers-crm-08-verification": [
++        ["_engine/fourbox.py", "reply_in", "meeting_booked", "--within", "30"],
++        ["_engine/watchdog.py"], ["_engine/fourbox.py"]],
++}
++
++CMD = re.compile(r"(?<![\w/.\-])python3?\s+(?P<prog>[\w./\\~\-]+\.py)\b(?P<rest>.*)$")
++
++
++def env_for(home):
++    env = dict(os.environ)
++    env.update(HOME=str(home), USERPROFILE=str(home), PYTHONIOENCODING="utf-8",
++               GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
++               GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
++    return env
++
++
++def run(args, cwd, env, stdin=None, timeout=900):
++    try:
++        p = subprocess.run(args, cwd=str(cwd), env=env, input=stdin, capture_output=True,
++                           timeout=timeout, creationflags=NO_WINDOW)
++    except subprocess.TimeoutExpired:
++        return "timeout", ""
++    return p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")
++
++
++def snapshot(folder):
++    shot = {}
++    if folder.is_dir():
++        for p in folder.rglob("*.md"):
++            if ".git" not in p.parts:
++                shot[p] = p.read_bytes()
++    return shot
++
++
++def parse(text):
++    """(program, [arguments]) from 1 printed line, or None. The command ends at a backtick, at
++    2 spaces in a row (where usage text starts its description) or at a ' #'."""
++    m = CMD.search(text)
++    if not m:
++        return None
++    rest = re.split(r"`|\s{2,}|\s#", m.group("rest"), maxsplit=1)[0]
++    rest = re.sub(r"\[[^\]]*\]", " ", rest)            # [optional parts] left out
++    try:
++        args = shlex.split(rest)
++    except ValueError:
++        args = rest.split()
++    return m.group("prog"), [a for a in args if a not in ("...", "…")]
++
++
++def fill(arg, export, note, cwd):
++    if re.search(r"(^|/)your[-_]", arg):              # "_agents/your-file.md": a name to choose
++        folder = cwd / arg.rsplit("/", 1)[0] if "/" in arg else cwd
++        mine = sorted(folder.glob("*.md")) if folder.is_dir() else []
++        return (str(mine[0]) if mine else arg), not mine
++    if "<" in arg and ">" in arg:
++        if ".csv" in arg:
++            return export, False
++        if ".md" in arg:
++            return note, False
++        return "Someone You Know", False
++    return arg, ("/" in arg or arg.endswith((".md", ".csv", ".json"))) and not arg.startswith("-")
++
++
++def main():
++    repo = HERE.name
++    if repo not in LAYERS:
++        try:
++            url = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=str(HERE),
++                                 capture_output=True, text=True, creationflags=NO_WINDOW).stdout.strip()
++            repo = url.rstrip("/").split("/")[-1].replace(".git", "")
++        except OSError:
++            pass
++    if repo not in COMMANDS:
++        print("REFUSED: %s is not a CRM layer this test covers" % repo)
++        return 2
++
++    work = Path(tempfile.mkdtemp(prefix="crm-hints-"))
++    home = work / "home"
++    home.mkdir()
++    env = env_for(home)
++    seen = []  # (where the member reads it, the folder they are in, the line)
++    faults = []
++    checked = 0
++    try:
++        for earlier in LAYERS[:LAYERS.index(repo)]:
++            dest = work / earlier
++            rc, out = run(["git", "clone", "-q", GH + earlier, str(dest)], work, env)
++            if rc != 0:
++                print("SETUP FAILED: could not clone %s\n%s" % (earlier, out))
++                return 2
++            rc, out = run([sys.executable, "install.py"], dest, env, stdin=ENTER.encode())
++            if rc != 0:
++                print("SETUP FAILED: %s installer exit %s\n%s" % (earlier, rc, out[-3000:]))
++                return 2
++        crm = home / "CRM"
++        before = snapshot(crm)
++
++        member = work / "under-test"
++        shutil.copytree(str(HERE), str(member),
++                        ignore=shutil.ignore_patterns(".git", "_mac_regress", "__pycache__"))
++        rc, out = run([sys.executable, "install.py"], member, env, stdin=ENTER.encode())
++        print("installer exit %s" % rc)
++        if rc != 0 or not (crm / "_layers" / "config.json").exists():
++            print("SETUP FAILED: the layer under test did not install\n%s" % out[-3000:])
++            return 2
++        # The installer's own lines: `install.py` is run from the repo folder; every program
++        # it names is run from the CRM folder, as each installer and README says.
++        seen += [("installer", None, l) for l in out.splitlines()]
++        for p, data in sorted(snapshot(crm).items()):
++            if before.get(p) != data:
++                where = "note " + p.relative_to(crm).as_posix()
++                seen += [(where, crm, l) for l in data.decode("utf-8", "replace").splitlines()]
++
++        export = home / "exports" / "connections.csv"
++        export.parent.mkdir(parents=True, exist_ok=True)
++        export.write_text("First Name,Last Name,URL,Email Address,Company,Position,Connected On\n"
++                          "Sam,Testperson,https://www.linkedin.com/in/sam-testperson-000,,Made Up Ltd,Owner,"
++                          "01 Sep 2026\n", encoding="utf-8")
++        # Each command once from the CRM folder (as the READMEs and installers print it) and
++        # once from inside `_engine` (where the Layer 2 and Layer 6 guides open the terminal).
++        engine = crm / "_engine"
++        for cmd in COMMANDS[repo]:
++            args = [a.replace("{export}", str(export)) for a in cmd]
++            rc, out = run([sys.executable] + args, crm, env, timeout=300)
++            seen += [("python %s" % " ".join(cmd), crm, l) for l in out.splitlines()]
++            inside = [args[0].replace("_engine/", "", 1)] + args[1:]
++            rc, out = run([sys.executable] + inside, engine, env, timeout=300)
++            seen += [("in _engine: python %s" % " ".join(inside), engine, l) for l in out.splitlines()]
++
++        note = next((str(p) for p in sorted(crm.rglob("*.md")) if ".git" not in p.parts), "README.md")
++        done = set()
++        for where, cwd, text in seen:
++            got = parse(text)
++            if not got:
++                continue
++            prog, args = got
++            if cwd is None:
++                cwd = member if prog.endswith("install.py") else crm
++            key = (str(cwd), prog, tuple(args))
++            if key in done:
++                continue
++            done.add(key)
++            checked += 1
++            shown = text.strip()
++            if not (cwd / prog).is_file():
++                faults.append((where, shown, "no file %s in the folder the member is in (%s)"
++                               % (prog, {member: "the repo folder", crm: "the CRM folder"}.get(cwd, "_engine"))))
++                continue
++            if prog.endswith("install.py"):
++                continue
++            filled = []
++            for a in args:
++                value, is_path = fill(a, str(export), note, cwd)
++                if is_path and not (cwd / value).exists():
++                    faults.append((where, shown, "names %s, which is not there" % a))
++                filled.append(value)
++            rc, out = run([sys.executable, prog] + filled, cwd, env, timeout=180)
++            if "can't open file" in out or rc == "timeout":
++                faults.append((where, shown, "ran: exit %s: %s" % (rc, out.strip()[-300:])))
++    finally:
++        shutil.rmtree(str(work), ignore_errors=True)
++
++    print("%d printed or written lines read, %d distinct commands run or checked" % (len(seen), checked))
++    for f in faults:
++        print("FAULT | %s | %s | %s" % f)
++    print("RESULT %s: %d command(s) a member cannot run from where they are"
++          % ("FAIL" if faults else "PASS", len(faults)))
++    return 1 if faults or checked == 0 else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/_mac_regress/test_hints_third_folder.py b/_mac_regress/test_hints_third_folder.py
+new file mode 100644
+index 0000000..6c0652c
+--- /dev/null
++++ b/_mac_regress/test_hints_third_folder.py
+@@ -0,0 +1,180 @@
++#!/usr/bin/env python3
++"""CRM layer 5: every command the agent checker prints must work, typed into the member's own
++terminal, from a 3rd folder (neither the CRM folder nor `_engine`) whose path has a space.
++
++Found in the wave 1 read (review/wave1-read-other.md, SHOULD 1): from such a folder
++`agent_check.py` printed `"../my home/CRM/_agents"/fit-scorer.md`: the folder quoted, then
++`/fit-scorer.md` stuck on after the closing quote. zsh on a Mac joins that into 1 argument;
++PowerShell on Windows splits it into 2 (`../my home/CRM/_agents` and `/fit-scorer.md`), so the
++checker reads the wrong file or the wrong folder. test_hints_run.py splits commands the way a Mac
++shell does, so it cannot see this; this test hands every printed command to the real shell.
++
++What it does, in a throwaway folder whose home folder has a space in its name (`my home`):
++  1. clones the earlier layers from GitHub and installs them, pressing Enter for every default;
++  2. installs the layer under test from the folder this test is run in;
++  3. from a 3rd folder (`other folder`, beside `my home`) asks the checker for its usage, typing
++     the program's full path, as a member there would;
++  4. takes each printed command of the form `python[3] <file>.py ...` (up to 2 spaces in a row,
++     where the description starts) and types it into the member's shell from that 3rd folder:
++     Windows PowerShell (`powershell.exe`, and `pwsh` too if it is installed) on Windows, zsh on a
++     Mac (sh if zsh is missing). The leading `python`/`python3` is swapped for this test's Python.
++A command passes only if
++  (a) the shell hands Python exactly the arguments the printed line means (read the way a Mac
++      shell reads it), checked by running the same line with an argument echo in place of the
++      program; and
++  (b) run for real through the shell, it prints exactly what the program prints when started
++      with those intended arguments directly, and its exit code is the same.
++
++Run from the repo under test:   python3 _mac_regress/test_hints_third_folder.py
++Needs the network for the earlier layers. Nothing outside the throwaway folder is touched.
++"""
++import base64
++import json
++import os
++import re
++import shlex
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++HERE = Path.cwd()
++GH = "https://github.com/OUTLIERS-ai/"
++LAYERS = ["outliers-crm-01-foundation", "outliers-crm-02-rules", "outliers-crm-03-records",
++          "outliers-crm-04-capture", "outliers-crm-05-judgement"]
++# The layer's programs whose usage names another file or folder; asked with no arguments.
++USAGE = {"outliers-crm-05-judgement": ["agent_check.py"]}
++ENTER = "\n" * 60
++NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++IS_WINDOWS = os.name == "nt"
++ECHO = "import sys,json;print(json.dumps(sys.argv[1:]))"
++CMD = re.compile(r"(?<![\w/.\-\"])python3?\s+(?P<rest>\S.*)$")
++
++
++def env_for(home):
++    env = dict(os.environ)
++    env.update(HOME=str(home), USERPROFILE=str(home), PYTHONIOENCODING="utf-8",
++               GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
++               GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
++    return env
++
++
++def run(args, cwd, env, stdin=None, timeout=900):
++    try:
++        p = subprocess.run(args, cwd=str(cwd), env=env, input=stdin, capture_output=True,
++                           timeout=timeout, creationflags=NO_WINDOW)
++    except subprocess.TimeoutExpired:
++        return "timeout", ""
++    return p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")
++
++
++def shells():
++    """The member's shell(s): [(name, function turning 1 command line into argv)]."""
++    found = []
++    if IS_WINDOWS:
++        for exe in ("powershell.exe", "pwsh.exe"):
++            path = shutil.which(exe)
++            if path:
++                found.append((exe, lambda line, p=path: [
++                    p, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
++                    "-EncodedCommand", base64.b64encode(line.encode("utf-16-le")).decode("ascii")]))
++    else:
++        path = shutil.which("zsh") or shutil.which("sh")
++        found.append((Path(path).name, lambda line, p=path: [p, "-c", line]))
++    return found
++
++
++def as_typed(line, program_args):
++    """The line with the leading `python`/`python3` swapped for this test's Python."""
++    if IS_WINDOWS:
++        return "& '%s' %s" % (sys.executable.replace("'", "''"), program_args)
++    return "%s %s" % (shlex.quote(sys.executable), program_args)
++
++
++def main():
++    repo = HERE.name
++    if repo not in LAYERS:
++        try:
++            url = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=str(HERE),
++                                 capture_output=True, text=True, creationflags=NO_WINDOW).stdout.strip()
++            repo = url.rstrip("/").split("/")[-1].replace(".git", "")
++        except OSError:
++            pass
++    if repo not in USAGE:
++        print("REFUSED: %s is not a CRM layer this test covers" % repo)
++        return 2
++
++    work = Path(tempfile.mkdtemp(prefix="crm-third-")).resolve()
++    home = work / "my home"
++    third = work / "other folder"
++    home.mkdir()
++    third.mkdir()
++    env = env_for(home)
++    faults = []
++    checked = 0
++    try:
++        for earlier in LAYERS[:LAYERS.index(repo)]:
++            dest = work / earlier
++            rc, out = run(["git", "clone", "-q", GH + earlier, str(dest)], work, env)
++            if rc != 0:
++                print("SETUP FAILED: could not clone %s\n%s" % (earlier, out))
++                return 2
++            rc, out = run([sys.executable, "install.py"], dest, env, stdin=ENTER.encode())
++            if rc != 0:
++                print("SETUP FAILED: %s installer exit %s\n%s" % (earlier, rc, out[-3000:]))
++                return 2
++        member = work / "under-test"
++        shutil.copytree(str(HERE), str(member),
++                        ignore=shutil.ignore_patterns(".git", "_mac_regress", "__pycache__"))
++        rc, out = run([sys.executable, "install.py"], member, env, stdin=ENTER.encode())
++        crm = home / "CRM"
++        print("installer exit %s" % rc)
++        if rc != 0 or not (crm / "_layers" / "config.json").exists():
++            print("SETUP FAILED: the layer under test did not install\n%s" % out[-3000:])
++            return 2
++
++        member_shells = shells()
++        print("shells: %s" % ", ".join(n for n, _ in member_shells))
++        for program in USAGE[repo]:
++            rc, out = run([sys.executable, str(crm / "_engine" / program)], third, env, timeout=300)
++            for text in out.splitlines():
++                m = CMD.search(text)
++                if not m:
++                    continue
++                program_args = re.split(r"`|\s{2,}|\s#", m.group("rest"), maxsplit=1)[0].strip()
++                meant = shlex.split(program_args)
++                shown = text.strip()
++                direct_rc, direct_out = run([sys.executable] + meant, third, env, timeout=180)
++                for name, argv_for in member_shells:
++                    checked += 1
++                    echo_line = as_typed(text, "-c '%s' %s" % (ECHO, program_args))
++                    rc, got = run(argv_for(echo_line), third, env, timeout=180)
++                    try:
++                        delivered = json.loads(got.strip().splitlines()[-1])
++                    except (ValueError, IndexError):
++                        delivered = None
++                    if delivered != meant:
++                        faults.append((name, shown, "the shell hands Python %s, the line means %s"
++                                       % (delivered if delivered is not None else got.strip()[-300:],
++                                          meant)))
++                        continue
++                    rc, got = run(argv_for(as_typed(text, program_args)), third, env, timeout=180)
++                    if rc != direct_rc or got.replace("\r\n", "\n") != direct_out.replace("\r\n", "\n"):
++                        faults.append((name, shown, "typed in: exit %s, %r; meant: exit %s, %r"
++                                       % (rc, got.strip()[-200:], direct_rc, direct_out.strip()[-200:])))
++                    else:
++                        print("ok | %s | %s | exit %s" % (name, shown, rc))
++    finally:
++        shutil.rmtree(str(work), ignore_errors=True)
++
++    print("%d command(s) typed into a shell from a 3rd folder with a space in its path" % checked)
++    for f in faults:
++        print("FAULT | %s | %s | %s" % f)
++    print("RESULT %s: %d command(s) that do not work as printed"
++          % ("FAIL" if faults else "PASS", len(faults)))
++    return 1 if faults or checked == 0 else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/_mac_regress/test_printed_commands.py b/_mac_regress/test_printed_commands.py
+new file mode 100644
+index 0000000..d2b5ef2
+--- /dev/null
++++ b/_mac_regress/test_printed_commands.py
+@@ -0,0 +1,209 @@
++#!/usr/bin/env python3
++"""Fault row 18 (build plan V3, section 6b), CRM layers 2 to 8: what a member reads must name
++the command they can actually type.
++
++Runs the layer the way a member does, in a throwaway home folder:
++  1. the earlier layers, cloned from GitHub and installed (pressing Enter for every default);
++  2. this layer's installer, from the folder this test is run in (the repo under test);
++  3. every command the layer's README prints, then each of its programs with no options,
++     or with "help", which prints its usage;
++and keeps every line printed, plus every note the layer's installer wrote or changed in the CRM.
++
++On a Mac: any of those lines telling the member to type `python` or `pip` (or carrying any other
++section 8f Windows mark) fails the test, because a Mac has no `python` command.
++On Windows: the same lines must still say `python`, and none may say `python3`, so the fix
++cannot change what a Windows member reads.
++
++Run from the repo under test:   python3 _mac_regress/test_printed_commands.py
++It needs the test repo checked out beside it (../_mactest) for the 8f rules, and the network
++for the earlier layers. Nothing outside the throwaway folder is touched.
++"""
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++HERE = Path.cwd()
++sys.path.insert(0, str(HERE.parent / "_mactest" / "harness"))
++import check_no_windows as CNW  # noqa: E402
++
++GH = "https://github.com/OUTLIERS-ai/"
++LAYERS = ["outliers-crm-01-foundation", "outliers-crm-02-rules", "outliers-crm-03-records",
++          "outliers-crm-04-capture", "outliers-crm-05-judgement", "outliers-crm-06-safety",
++          "outliers-crm-07-today", "outliers-crm-08-verification"]
++ENTER = "\n" * 60
++MAC = sys.platform == "darwin"
++# Local rehearsal on a Windows PC only: ROW18_AS_MAC=1 judges by the Mac rule, with the programs
++# told they are on a Mac by a sitecustomize.py on PYTHONPATH. The proof is the run on the test Macs.
++if os.environ.get("ROW18_AS_MAC") == "1":
++    MAC = True
++NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++
++# What each layer's README tells the member to type once it is installed (run in ~/CRM),
++# as in harness/specs.py, then each program asked for its usage (no options, or "help").
++COMMANDS = {
++    "outliers-crm-02-rules": [
++        ["_engine/identity.py", "stats"], ["_engine/identity.py", "who", "a name"],
++        ["_engine/identity.py", "duplicates"], ["_engine/identity.py", "collisions"],
++        ["_engine/schema.py", "contract"], ["_engine/schema.py", "sweep"],
++        ["_engine/identity.py", "help"], ["_engine/schema.py", "help"]],
++    "outliers-crm-03-records": [
++        ["_engine/ledger.py", "types"], ["_engine/ledger.py", "stats"], ["_engine/ledger.py", "tail", "20"],
++        ["_engine/derive.py", "show", "a name or link"], ["_engine/derive.py", "quiet", "60"],
++        ["_engine/derive.py", "summary"], ["_engine/ledger.py", "help"], ["_engine/derive.py", "help"]],
++    "outliers-crm-04-capture": [
++        ["_engine/collect.py", "list"],
++        ["_engine/collect.py", "run", "connections", "{export}", "--dry-run"],
++        ["_engine/collect.py", "run", "connections", "{export}"],
++        ["_engine/collect.py", "all"], ["_engine/refresh.py", "due"], ["_engine/refresh.py", "tiers"],
++        ["_engine/collect.py", "help"], ["_engine/refresh.py", "help"]],
++    # Layer 4 installs only collect.py, refresh.py and safe_write.py into the CRM; the
++    # ledger.py and derive.py its README also names come from Layer 3 and are judged there.
++    "outliers-crm-05-judgement": [
++        ["_engine/agent_check.py", "_agents/"], ["_engine/agent_check.py"]],
++    "outliers-crm-06-safety": [
++        ["_engine/holds.py", "hold", "Someone You Know", "testing the gate"],
++        ["_engine/sendgate.py", "Someone You Know"],
++        ["_engine/holds.py", "release", "Someone You Know"],
++        ["_engine/limits.py"], ["_engine/holds.py", "help"], ["_engine/holds.py", "status"]],
++    "outliers-crm-07-today": [
++        ["_engine/today.py", "--write"], ["_engine/today.py"]],
++    "outliers-crm-08-verification": [
++        ["_engine/fourbox.py", "reply_in", "meeting_booked", "--within", "30"],
++        ["_engine/watchdog.py"], ["_engine/fourbox.py"]],
++}
++
++
++def env_for(home):
++    env = dict(os.environ)
++    env.update(HOME=str(home), USERPROFILE=str(home), PYTHONIOENCODING="utf-8",
++               GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
++               GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
++    return env
++
++
++def run(args, cwd, env, stdin=None, timeout=900):
++    p = subprocess.run(args, cwd=str(cwd), env=env, input=stdin, capture_output=True,
++                       timeout=timeout, creationflags=NO_WINDOW)
++    out = (p.stdout + p.stderr).decode("utf-8", "replace")
++    return p.returncode, out
++
++
++def snapshot(folder):
++    shot = {}
++    if folder.is_dir():
++        for p in folder.rglob("*.md"):
++            if ".git" in p.parts:
++                continue
++            shot[p] = p.read_bytes()
++    return shot
++
++
++def main():
++    repo = HERE.name
++    # fix-check.yml clones into a folder called "member"; name the layer from its remote.
++    if repo not in LAYERS:
++        try:
++            url = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=str(HERE),
++                                 capture_output=True, text=True, creationflags=NO_WINDOW).stdout.strip()
++            repo = url.rstrip("/").split("/")[-1].replace(".git", "")
++        except OSError:
++            pass
++    if repo not in COMMANDS:
++        print("REFUSED: %s is not a CRM layer this test covers" % repo)
++        return 2
++
++    work = Path(tempfile.mkdtemp(prefix="crm-row18-"))
++    home = work / "home"
++    home.mkdir()
++    env = env_for(home)
++    lines = []  # (where, text)
++    try:
++        # 1. the earlier layers
++        for earlier in LAYERS[:LAYERS.index(repo)]:
++            dest = work / earlier
++            rc, out = run(["git", "clone", "-q", GH + earlier, str(dest)], work, env)
++            if rc != 0:
++                print("SETUP FAILED: could not clone %s\n%s" % (earlier, out))
++                return 2
++            rc, out = run([sys.executable, "install.py"], dest, env, stdin=ENTER.encode())
++            if rc != 0:
++                print("SETUP FAILED: %s installer exit %d\n%s" % (earlier, rc, out[-3000:]))
++                return 2
++        crm = home / "CRM"
++        before = snapshot(crm)
++
++        # 2. this layer's installer
++        member = work / "under-test"
++        shutil.copytree(str(HERE), str(member), ignore=shutil.ignore_patterns(".git", "_mac_regress", "__pycache__"))
++        rc, out = run([sys.executable, "install.py"], member, env, stdin=ENTER.encode())
++        print("installer exit %d" % rc)
++        if rc != 0 or not (crm / "_layers" / "config.json").exists():
++            print("SETUP FAILED: the layer under test did not install\n%s" % out[-3000:])
++            return 2
++        lines += [("installer", l) for l in out.splitlines()]
++
++        # notes the installer wrote or changed
++        after = snapshot(crm)
++        for p, data in sorted(after.items()):
++            if before.get(p) != data:
++                rel = p.relative_to(home).as_posix()
++                lines += [("note ~/%s" % rel, l) for l in data.decode("utf-8", "replace").splitlines()]
++
++        # 3. the printed commands, and each program's usage
++        export = home / "exports" / "connections.csv"
++        export.parent.mkdir(parents=True, exist_ok=True)
++        export.write_text("First Name,Last Name,URL,Email Address,Company,Position,Connected On\n"
++                          "Sam,Testperson,https://www.linkedin.com/in/sam-testperson-000,,Made Up Ltd,Owner,"
++                          "01 Sep 2026\n", encoding="utf-8")
++        for cmd in COMMANDS[repo]:
++            args = [a.replace("{export}", str(export)) for a in cmd]
++            rc, out = run([sys.executable] + args, crm, env, timeout=300)
++            where = "python %s (exit %d)" % (" ".join(cmd), rc)
++            lines += [(where, l) for l in out.splitlines()]
++    finally:
++        shutil.rmtree(str(work), ignore_errors=True)
++
++    # The throwaway home folder's own path is the test's, not the repo's words: shown as ~.
++    lines = [(w, t.replace(str(home), "~")) for w, t in lines]
++    hits = []
++    windows_python3 = []
++    for where, text in lines:
++        # A file Claude reads and acts on (an agent file) is an instruction file: there the
++        # 8f rules allow "(on Windows: `...`)" beside the Mac command (plan 7c rule 5).
++        kind = "output"
++        if where.startswith("note"):
++            kind = "instruction" if "/_agents/" in where else "member"
++        for rule in CNW.scan_line(text, kind):
++            hits.append((where, rule, text.strip()))
++        # Instruction files are the same file on both systems and carry the Mac command with the
++        # Windows one in brackets (row 19), so only what the programs print or write for the
++        # member is held to "Windows still reads python".
++        if kind == "instruction":
++            continue
++        if re.search(r"(?:^|&&|;|\|)\s*python3\s", text.strip()) or \
++                re.search(r"(?<![\w/.\-])python3\s+[\w./~\-]*\.py\b", text):
++            windows_python3.append((where, text.strip()))
++
++    print("%d printed or written lines read" % len(lines))
++    if MAC:
++        for h in hits:
++            print("MAC FAULT | %s | %s | %s" % h)
++        print("RESULT %s: %d line(s) a Mac member cannot follow" % ("FAIL" if hits else "PASS", len(hits)))
++        return 1 if hits else 0
++
++    # Windows (and any other system): the member still reads `python`, never `python3`.
++    for w in windows_python3:
++        print("WINDOWS CHANGED | %s | %s" % w)
++    print("%d line(s) tell a Windows member to type python (unchanged, correct on Windows)"
++          % sum(1 for h in hits if h[1].startswith("command")))
++    bad = windows_python3
++    print("RESULT %s" % ("FAIL" if bad else "PASS"))
++    return 1 if bad else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/agents/TEMPLATE-agent.md b/agents/TEMPLATE-agent.md
+index f4706d2..e93f788 100644
+--- a/agents/TEMPLATE-agent.md
++++ b/agents/TEMPLATE-agent.md
+@@ -19,9 +19,11 @@ staging: _staging/weak/
+ 
+ # Name it after the job
+ 
+-Copy this file, fill it in, then run the checker over it:
++Copy this file, fill it in, then run the checker over it, from your CRM folder:
+ 
+-    python agent_check.py _agents/your-file.md
++    python3 _engine/agent_check.py _agents/your-file.md
++
++(on Windows: `python _engine/agent_check.py _agents/your-file.md`)
+ 
+ The checker will tell you which parts are missing. It never changes the file.
+ 
+diff --git a/engine/agent_check.py b/engine/agent_check.py
+index a61041f..93a237c 100644
+--- a/engine/agent_check.py
++++ b/engine/agent_check.py
+@@ -11,9 +11,9 @@ This script is the test. It reads a definition file and reports, rule by rule,
+ whether the definition is usable. It never changes the file. It never runs the
+ agent. It only reads what you wrote down and tells you what is missing.
+ 
+-    python agent_check.py agents/example-fit-scorer.md
+-    python agent_check.py agents/            (checks every .md in the folder)
+-    python agent_check.py agents/ --json
++    python _engine/agent_check.py _agents/fit-scorer.md
++    python _engine/agent_check.py _agents/            (checks every .md in the folder)
++    python _engine/agent_check.py _agents/ --json
+ 
+ The exit code is the number of failing rules, so another script can act on it.
+ 
+@@ -25,6 +25,38 @@ import re
+ import sys
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++
++def _typed(name):
++    """The program `name` (it sits beside this file) as the member types it from the folder
++    they are in: `_engine/<name>` from the CRM folder, `<name>` from inside `_engine`."""
++    import os
++    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
++    try:
++        typed = os.path.relpath(path)
++    except ValueError:                      # the member is on another drive
++        typed = path
++    if typed.startswith(".."):
++        typed = path
++    typed = typed.replace("\\", "/")
++    return '"%s"' % typed if " " in typed else typed
++
++
++def _agents_typed():
++    """The CRM's `_agents` folder as the member types it from the folder they are in:
++    `_agents` from the CRM folder, `../_agents` from inside `_engine`."""
++    import os
++    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_agents")
++    try:
++        typed = os.path.relpath(path)
++    except ValueError:                      # the member is on another drive
++        typed = path
++    typed = typed.replace("\\", "/")
++    return '"%s"' % typed if " " in typed else typed
++
+ # The keys a definition must carry in its front matter (the block between the two
+ # lines of three dashes at the top of the file).
+ REQUIRED_KEYS = ("agent", "job", "reads", "writes", "may-not-write",
+@@ -287,7 +319,9 @@ def main(argv):
+     args = [a for a in argv[1:] if not a.startswith("--")]
+     as_json = "--json" in argv
+     if not args:
+-        print(__doc__)
++        print(__doc__.replace("    python _engine/agent_check.py", "    python " + _typed("agent_check.py"))
++              .replace(" _agents/", " %s/" % _agents_typed())
++              .replace("    python ", "    %s " % PY))
+         return 2
+ 
+     files = []
+diff --git a/install.py b/install.py
+index a092add..7997d41 100644
+--- a/install.py
++++ b/install.py
+@@ -24,6 +24,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 5
+ LAYER_NAME = "Judgement"
+ NEEDS_LAYER = 4
+@@ -299,7 +303,7 @@ in `_agents/`; the permissions are the two lists at the top of it.
+ 
+ **Check a definition**
+ 
+-    python _engine/agent_check.py _agents/
++    {py} _engine/agent_check.py _agents/
+ 
+ It reports rule by rule and changes nothing.
+ 
+@@ -324,7 +328,7 @@ verdict points, and does it ever admit it does not know.
+ 
+ Nothing in this layer edits them. There is no code here that writes into your
+ people folder, which is a stronger guarantee than a rule saying it must not.
+-""".format(w=w)
++""".format(w=w, py=PY)
+ 
+ 
+ def layer_note(answers, cfg):
+@@ -430,7 +434,7 @@ def finish(home, answers, cfg):
+     say()
+     say("  Check the example assistant's definition. From inside %s:" % home)
+     say()
+-    say("      python _engine/agent_check.py _agents/")
++    say("      %s _engine/agent_check.py _agents/" % PY)
+     say()
+     say("  It reads the definition and reports rule by rule. It changes nothing.")
+     say()
