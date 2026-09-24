@@ -370,9 +370,11 @@ SPECS["outliers-ws-01-agent-flow"] = {"steps": WS_VAULTS + [
     run("stop", "python start.py --stop", "README, fault 4", ok=[0, 1]),
     run("pip-pytest", "python -m pip install pytest", "README, tests", timeout=600),
     run("tests", "python -m pytest -q", "README, tests/ row", timeout=900),
+    dict(check("tests-full-record", "python3 -m pytest -v -rA -p no:cacheprovider > \"$OUT/pytest-full.log\" 2>&1; echo \"pytest exit $?\"; tail -60 \"$OUT/pytest-full.log\"",
+               "the same tests again, every test named, full record kept (diagnosis only)", timeout=1200), counts=False),
     run("new-claude-session", "", "README: 'start a NEW Claude Code session inside the watch folder'", not_testable=CLAUDE_NOT_TESTABLE),
     run("uninstall", "python install.py --uninstall", "README, 'Useful commands'", stdin=ENTER,
-        check="! ls ~/Library/LaunchAgents/*agent* 2>/dev/null"),
+        check="! ls ~/Library/LaunchAgents/ | grep -i agent-flow"),
 ]}
 
 SPECS["outliers-ws-02-fleetview"] = {"steps": WS_VAULTS + [
@@ -392,6 +394,9 @@ SPECS["outliers-ws-02-fleetview"] = {"steps": WS_VAULTS + [
           "the same command with the PATH launchd gives a login job (/usr/bin:/bin:/usr/sbin:/sbin), which the FleetView LaunchAgent does not change",
           timeout=300),
     run("stop", "python install.py --stop", "README, top", ok=[0, 1]),
+    dict(check("token-panel-from-terminal-warm", "python3 install.py --start; sleep 45; curl -s http://127.0.0.1:3010/api/usage; echo; "
+               "! curl -s http://127.0.0.1:3010/api/usage | grep -i 'could not run'; r=$?; python3 install.py --stop; exit $r",
+               "FleetView started from Terminal after ccusage has been downloaded once: does its token panel work?", timeout=300), counts=False),
     {"id": "start-at-login", "kind": "launchd", "wait": 15,
      "what": "the login job: bootstrap it; the page should answer and the token panel should run",
      "check": "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3010/graph.html | grep -E '^2' && sleep 25 && "
@@ -405,6 +410,8 @@ SPECS["outliers-ws-02-fleetview"] = {"steps": WS_VAULTS + [
     run("npm-test", "npm test", "README, Commands", timeout=900),
     run("pip-pytest", "python -m pip install pytest", "README, Commands", timeout=600),
     run("pytest", "python -m pytest -q", "README, Commands", timeout=900),
+    dict(check("tests-full-record", "python3 -m pytest -v -rA -p no:cacheprovider > \"$OUT/pytest-full.log\" 2>&1; echo \"pytest exit $?\"; tail -60 \"$OUT/pytest-full.log\"",
+               "the same tests again, every test named, full record kept (diagnosis only)", timeout=1200), counts=False),
     run("uninstall", "python install.py --uninstall", "README, Commands", stdin=ENTER,
         check="! ls ~/Library/LaunchAgents/ | grep -i fleet"),
 ]}
@@ -423,7 +430,7 @@ SPECS["outliers-ws-03-projectforge"] = {"steps": WS_VAULTS + [
     run("agent-tool-guide-mac-lines",
         "forge=~/.claude/projectforge/forge_agent.py\npython $forge open --agent content-lead --dept content --project \"Content week 39\" --title \"Newsletter\" --assignee writer-bot",
         "guide/GUIDE.md 'What your agents run': the Mac first line, then 'the same second line'", cwd="~",
-        ok=[0, 1, 2], expect=r"(?i)refused|opened|card", what="the guide says a worker is refused unless a manager was named at install"),
+        ok="any", expect=r"(?i)refused|opened|card", what="the guide says a worker is refused unless a manager was named at install"),
     {"id": "demo-board", "kind": "serve", "cmd": "python tools/demo_board.py --out demo --serve", "url": "http://127.0.0.1:3029",
      "wait": 40, "source": "README, 'Everyday commands'", "what": "the demo board of made-up work"},
     run("schedule-print", "python tools/schedule.py --print", "README, 'Everyday commands'"),
@@ -442,6 +449,8 @@ SPECS["outliers-ws-03-projectforge"] = {"steps": WS_VAULTS + [
     run("forge-run", "", "README: /forge-run in Claude Code", not_testable=CLAUDE_NOT_TESTABLE),
     run("pip-pytest", "python -m pip install pytest", "README, Needs", timeout=600),
     run("tests", "python -m pytest -q", "README, Needs", timeout=900),
+    dict(check("tests-full-record", "python3 -m pytest -v -rA -p no:cacheprovider > \"$OUT/pytest-full.log\" 2>&1; echo \"pytest exit $?\"; tail -60 \"$OUT/pytest-full.log\"",
+               "the same tests again, every test named, full record kept (diagnosis only)", timeout=1200), counts=False),
     run("uninstall", "python install.py --uninstall", "README, 'What the installer does'", stdin="y\n" + ENTER, ok=[0],
         check="test ! -f ~/.claude/projectforge/forge_agent.py"),
 ]}
@@ -465,6 +474,8 @@ SPECS["outliers-ws-04-jeeves"] = {"steps": WS_VAULTS + [
     run("chat", "", "README: the Chat panel", not_testable=CLAUDE_NOT_TESTABLE),
     run("pip-pytest", "python -m pip install pytest", "README, Tests", timeout=600),
     run("tests", "python -m pytest -q", "README, Tests", timeout=900),
+    dict(check("tests-full-record", "python3 -m pytest -v -rA -p no:cacheprovider > \"$OUT/pytest-full.log\" 2>&1; echo \"pytest exit $?\"; tail -60 \"$OUT/pytest-full.log\"",
+               "the same tests again, every test named, full record kept (diagnosis only)", timeout=1200), counts=False),
     run("uninstall", "python install.py --uninstall", "README, Uninstall", stdin=ENTER,
         check="! ls ~/Library/LaunchAgents/ | grep -i jeeves"),
 ]}

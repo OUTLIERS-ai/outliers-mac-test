@@ -262,7 +262,10 @@ def wait_for_url(url, seconds):
 
 # ------------------------------------------------------------------ launchd
 def list_plists():
-    return set(glob.glob(str(HOME / "Library" / "LaunchAgents" / "*.plist")))
+    # Google Chrome (opened by the test tool for screenshots) writes its own updater agents;
+    # those are not the repo's and are never counted.
+    return set(p for p in glob.glob(str(HOME / "Library" / "LaunchAgents" / "*.plist"))
+               if not os.path.basename(p).startswith(("com.google.", "com.apple.")))
 
 
 def plist_label(p):
