@@ -102,9 +102,18 @@ index 1e2c256..fd0236a 100644
          say("You said the check should run on its own. It has no timetable of its own yet -",
              "that arrives in Layer 4, which is where things start running to a clock.", "")
 diff --git a/parts/02-standards/sb/doctor.py b/parts/02-standards/sb/doctor.py
-index 1818e26..5e07bd3 100644
+index 1818e26..08a9d5b 100644
 --- a/parts/02-standards/sb/doctor.py
 +++ b/parts/02-standards/sb/doctor.py
+@@ -29,7 +29,7 @@ import re
+ import subprocess
+ import sys
+ import tempfile
+-from datetime import date
++from datetime import date, datetime
+ from pathlib import Path
+ 
+ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 @@ -39,6 +39,10 @@ VAULT = HERE.parent
  SCHEMA_PATH = HERE / "_schema" / "note-types.json"
  EXPECT_PATH = HERE / "_schema" / "expectations.json"
@@ -116,12 +125,20 @@ index 1818e26..5e07bd3 100644
  
  # WHY 2: non-greedy to the first ']]'. A pattern that excluded ']' from the middle of a link is
  # blind to every note whose filename contains a square bracket.
-@@ -275,6 +279,32 @@ def apply_expectations(checks, expect):
+@@ -275,6 +279,42 @@ def apply_expectations(checks, expect):
      return checks
  
  
++def long_date(stamp):
++    try:
++        return datetime.strptime(stamp[:16], "%Y-%m-%dT%H:%M").strftime("%A %d %B %Y, %H:%M")
++    except ValueError:
++        return stamp
++
++
 +def morning_lines():
-+    """What Part 4's morning job last did. Nothing at all if Part 4 never ran it."""
++    """What Part 4's morning job last did. Nothing at all if Part 4 never ran it. A refusal of a
++    folder this second brain is no longer in (it was moved) is old news and is not shown."""
 +    last_written = last_run = None
 +    try:
 +        with open(str(MORNING_LOG), encoding="utf-8", errors="replace") as fh:
@@ -133,23 +150,25 @@ index 1818e26..5e07bd3 100644
 +                        last_written = parts
 +    except OSError:
 +        return []
++    here = os.path.normcase(os.path.abspath(str(VAULT)))
++    ours = bool(last_run) and os.path.normcase(os.path.abspath(last_run[2])) == here
 +    out = []
-+    if last_run and last_run[1] == "refused":
-+        out.append("  %s refused access to %s on %s. %s _engine/today.py says what to do."
++    if ours and last_run[1] == "refused":
++        out.append("  %s refused access to %s on %s. Run %s _engine/today.py for what to do."
 +                   % ("macOS" if sys.platform == "darwin" else "The computer",
-+                      last_run[2], last_run[0].replace("T", " "), PY))
-+    elif last_run and last_run[1] == "failed":
-+        out.append("  The morning job failed on %s. %s _engine/today.py says why."
-+                   % (last_run[0].replace("T", " "), PY))
++                      last_run[2], long_date(last_run[0]), PY))
++    elif ours and last_run[1] == "failed":
++        out.append("  The morning job failed on %s. Run %s _engine/today.py for what to do."
++                   % (long_date(last_run[0]), PY))
 +    out.append("  Morning list last written: %s"
-+               % (last_written[0].replace("T", " ") if last_written else "never"))
++               % (long_date(last_written[0]) if last_written else "never"))
 +    return out + [""]
 +
 +
  def report(checks, scan, links, expect):
      L = ["", "  YOUR SECOND BRAIN - CHECK", "  %s" % VAULT,
           "  %d notes, %d links" % (len(scan.files), links["total"]), ""]
-@@ -296,6 +326,7 @@ def report(checks, scan, links, expect):
+@@ -296,6 +336,7 @@ def report(checks, scan, links, expect):
      L.append("  %s" % ("SOMETHING GOT WORSE - the lines marked WORSE are the only ones to look at."
                         if worse else "Nothing got worse."))
      L.append("")
@@ -230,18 +249,24 @@ index d590193..828843c 100644
     A link copied from inside a playlist fetches that one video. Only when the person asks for a
     whole playlist or channel, add `--whole-playlist` before the link. It fetches up to 50 videos;
 diff --git a/parts/04-operations/install.py b/parts/04-operations/install.py
-index 3f9c925..8bbaefa 100644
+index 3f9c925..4b6d55c 100644
 --- a/parts/04-operations/install.py
 +++ b/parts/04-operations/install.py
-@@ -16,6 +16,7 @@ Needs: Python 3.8 or newer, and Layers 1 to 3 already installed.
+@@ -16,10 +16,12 @@ Needs: Python 3.8 or newer, and Layers 1 to 3 already installed.
  
  import json
  import os
 +import plistlib
++import re
  import shutil
  import subprocess
  import sys
-@@ -28,6 +29,16 @@ NEEDS_LAYER = 3
+-from datetime import date
++from datetime import date, datetime
+ from pathlib import Path
+ 
+ LAYER = 4
+@@ -28,6 +30,21 @@ NEEDS_LAYER = 3
  HERE = Path(__file__).resolve().parent
  POINTER = Path.home() / ".outliers-sb"
  NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -255,10 +280,15 @@ index 3f9c925..8bbaefa 100644
 +# On a Mac the job runs from outside the second brain, so that if macOS refuses it the second
 +# brain's folder, the job can still say so in the morning log instead of failing in silence.
 +MAC_JOB_DIR = Path.home() / "Library" / "Application Support" / "Outliers Second Brain"
++# The morning job's log, in the home folder (see sb/morning_job.py).
++MORNING_LOG = Path.home() / ".outliers-sb-morning.log"
++REMOVE_WIN = "schtasks /Delete /TN %s /F" % TASK
++REMOVE_MAC = ["launchctl unload ~/Library/LaunchAgents/%s.plist" % MAC_LABEL,
++              "rm ~/Library/LaunchAgents/%s.plist" % MAC_LABEL]
  
  
  def ask(q, default=""):
-@@ -48,12 +59,22 @@ def say(*lines):
+@@ -48,12 +65,22 @@ def say(*lines):
          print("  " + ln if ln else "")
  
  
@@ -282,13 +312,13 @@ index 3f9c925..8bbaefa 100644
          if (Path(c) / "_layers" / "config.json").exists():
              return Path(c)
      return None
-@@ -62,12 +83,13 @@ def find_vault():
+@@ -62,12 +89,13 @@ def find_vault():
  def install_silent_launcher(engine, when, warn_to):
      """A job that opens a window while you are working gets switched off within a week, and a job
      that is off is a job that is not running. So on Windows the timetable points at a launcher that
 -    runs the work with no window at all, rather than at Python directly."""
 +    runs the work with no window at all, rather than at Python directly. On a Mac the timetable is
-+    a LaunchAgent, which never opens a window."""
++    a LaunchAgent, which never opens a window. Returns (what to tell the member, whether it worked)."""
 +    if IS_MAC:
 +        return install_mac_job(when)
      if os.name != "nt":
@@ -297,11 +327,11 @@ index 3f9c925..8bbaefa 100644
 -                "     0 %s * * * cd %s && python _engine/today.py"
 -                % (when.split(":")[0], engine.parent))
 +        return ("Nothing was put on a timetable: this installer knows the Windows and Mac "
-+                "timetables only. Run '%s _engine/today.py' yourself." % PY)
++                "timetables only. Run '%s _engine/today.py' yourself." % PY, False)
      vbs = engine / "run-quiet.vbs"
      vbs.write_text(
          'Set sh = CreateObject("WScript.Shell")\n'
-@@ -75,17 +97,93 @@ def install_silent_launcher(engine, when, warn_to):
+@@ -75,17 +103,144 @@ def install_silent_launcher(engine, when, warn_to):
          'WScript.Quit sh.Run(cmd, 0, True)\n', encoding="utf-8")
      pyw = Path(sys.executable).with_name("pythonw.exe")
      runner = str(pyw if pyw.exists() else sys.executable)
@@ -316,12 +346,11 @@ index 3f9c925..8bbaefa 100644
              capture_output=True, text=True, check=True, creationflags=NO_WINDOW, timeout=60)
 -        return "The morning list is on a timetable for %s, and runs with no window." % when
 +        return ("The morning list is on a timetable for %s, and runs with no window.\n"
-+                "  To take it off the timetable later, type:  schtasks /Delete /TN %s /F"
-+                % (when, TASK))
++                "  To take it off the timetable later, type:  %s" % (when, REMOVE_WIN), True)
      except Exception as exc:
          return ("Could not put it on a timetable (%s). Everything else works - run "
 -                "'python _engine/today.py' yourself until this is sorted." % exc)
-+                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY))
++                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY), False)
 +
 +
 +def install_mac_job(when):
@@ -334,7 +363,7 @@ index 3f9c925..8bbaefa 100644
 +            raise ValueError(when)
 +    except ValueError:
 +        return ("'%s' is not a time like 07:00, so nothing was put on a timetable. Run this "
-+                "installer again with a time like 07:00." % when)
++                "installer again with a time like 07:00." % when, False)
 +    try:
 +        MAC_JOB_DIR.mkdir(parents=True, exist_ok=True)
 +        job = MAC_JOB_DIR / "morning_job.py"
@@ -357,50 +386,102 @@ index 3f9c925..8bbaefa 100644
 +        os.replace(str(tmp), str(MAC_PLIST))
 +    except OSError as exc:
 +        return ("Could not write the timetable entry (%s). Everything else works - run "
-+                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY))
-+    subprocess.run(["launchctl", "unload", str(MAC_PLIST)],
-+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
-+    done = subprocess.run(["launchctl", "load", "-w", str(MAC_PLIST)],
-+                          capture_output=True, text=True, timeout=60)
-+    if done.returncode != 0:
++                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY), False)
++    try:
++        subprocess.run(["launchctl", "unload", str(MAC_PLIST)],
++                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
++        done = subprocess.run(["launchctl", "load", "-w", str(MAC_PLIST)],
++                              capture_output=True, text=True, timeout=60)
++        # launchctl load can print an error and still end with 0, so ask launchd directly.
++        listed = subprocess.run(["launchctl", "list", MAC_LABEL],
++                                capture_output=True, text=True, timeout=60)
++    except (OSError, subprocess.SubprocessError) as exc:
++        return ("The timetable entry was written but macOS did not answer (%s). Everything else "
++                "works - run '%s _engine/today.py' yourself until this is sorted." % (exc, PY),
++                False)
++    if done.returncode != 0 or listed.returncode != 0:
 +        return ("The timetable entry was written but macOS did not accept it (%s). Everything "
 +                "else works - run '%s _engine/today.py' yourself until this is sorted."
-+                % ((done.stderr or done.stdout).strip()[:200] or "no reason given", PY))
++                % ((done.stderr or done.stdout or listed.stderr).strip()[:200]
++                   or "no reason given", PY), False)
 +    return ("The morning list is on a timetable for %s, and runs with no window.\n"
-+            "  To take it off the timetable later, type:\n"
-+            "     launchctl unload ~/Library/LaunchAgents/%s.plist\n"
-+            "     rm ~/Library/LaunchAgents/%s.plist" % (when, MAC_LABEL, MAC_LABEL))
++            "  To take it off the timetable later, type:\n     %s"
++            % (when, "\n     ".join(REMOVE_MAC)), True)
++
++
++def entry_already_there():
++    """Whether an earlier install left the morning list on this computer's timetable."""
++    if IS_MAC:
++        return MAC_PLIST.exists()
++    if os.name != "nt":
++        return False
++    try:
++        return subprocess.run(["schtasks", "/Query", "/TN", TASK], capture_output=True,
++                              creationflags=NO_WINDOW, timeout=60).returncode == 0
++    except Exception:
++        return False
++
++
++def log_installed(home):
++    """A line in the morning log saying a timetable entry was just added, so an old refusal or
++    failure is no longer reported as the latest news."""
++    try:
++        with open(str(MORNING_LOG), "a", encoding="utf-8", newline="\n") as fh:
++            fh.write("\t".join([datetime.now().isoformat(timespec="minutes"), "installed",
++                                str(home), "timetable entry added by Part 4"]) + "\n")
++    except OSError:
++        pass
 +
 +
 +def point_at(home):
-+    """If the second brain was found somewhere other than where Layer 1 recorded it (it was
-+    moved), record the new address, and change the line that tells your AI where it is."""
++    """On a Mac: if the second brain was found somewhere other than where Layer 1 recorded it (it
++    was moved out of Documents), record the new address and change the line in ~/.claude/CLAUDE.md
++    that tells your AI where it is. Returns a sentence for the member, or "" if nothing changed.
++    Windows is unchanged: nothing here runs there."""
++    if not IS_MAC:
++        return ""
 +    try:
 +        old = POINTER.read_text(encoding="utf-8").strip() if POINTER.is_file() else ""
-+    except OSError:
++    except (OSError, UnicodeError):
 +        old = ""
 +    if old and Path(old) == home:
-+        return False
-+    tmp = POINTER.with_name(POINTER.name + ".tmp")
-+    tmp.write_text(str(home), encoding="utf-8")
-+    os.replace(str(tmp), str(POINTER))
-+    if not old:
-+        return False
++        return ""
++    try:
++        tmp = POINTER.with_name(POINTER.name + ".tmp")
++        tmp.write_text(str(home), encoding="utf-8")
++        os.replace(str(tmp), str(POINTER))
++    except OSError as exc:
++        return "Could not record the second brain's new address in %s (%s)." % (POINTER, exc)
 +    manual = Path.home() / ".claude" / "CLAUDE.md"
 +    begin, end = "<!-- OUTLIERS-SECOND-BRAIN:BEGIN -->", "<!-- OUTLIERS-SECOND-BRAIN:END -->"
-+    if manual.exists():
-+        text = manual.read_text(encoding="utf-8")
++    told = False
++    try:
++        with open(str(manual), encoding="utf-8", newline="") as fh:
++            text = fh.read()
 +        if begin in text and end in text:
 +            i, j = text.index(begin), text.index(end) + len(end)
-+            text = text[:i] + text[i:j].replace(old, str(home)) + text[j:]
-+            tmp = manual.with_name(manual.name + ".tmp")
-+            tmp.write_text(text, encoding="utf-8")
-+            os.replace(str(tmp), str(manual))
-+    return True
++            section = text[i:j]
++            m = re.search(r"My second brain is at: (.+?)\r?\n", section)
++            was = m.group(1) if m else old
++            if was and was != str(home):
++                text = text[:i] + section.replace(was, str(home)) + text[j:]
++                tmp = manual.with_name(manual.name + ".tmp")
++                with open(str(tmp), "w", encoding="utf-8", newline="") as fh:
++                    fh.write(text)
++                os.replace(str(tmp), str(manual))
++                told = True
++    except (OSError, UnicodeError):
++        pass
++    if told:
++        return ("Your second brain is at a new address. Recorded it, and changed the line in "
++                "~/.claude/CLAUDE.md that tells your AI where it is.")
++    return ("Your second brain is at a new address, and it is recorded. The line in "
++            "~/.claude/CLAUDE.md that tells your AI where it is was not changed: run Part 1 "
++            "again and give it %s, or edit that line yourself." % home)
  
  
  def main():
-@@ -105,7 +203,7 @@ def main():
+@@ -105,7 +260,7 @@ def main():
              "This layer arranges things that already work, so there has to be something to",
              "arrange.", "",
              "   git clone https://github.com/OUTLIERS-ai/outliers-sb-03-capture",
@@ -409,7 +490,7 @@ index 3f9c925..8bbaefa 100644
              "Nothing has been changed.", "")
          return 1
  
-@@ -114,11 +212,16 @@ def main():
+@@ -114,11 +269,16 @@ def main():
      human_gate = yes("Your hand on anything that reaches a person?", True)
      warn_to = ask("Where should it tell you when something breaks? (a note name)",
                    "Areas/System warnings")
@@ -427,14 +508,16 @@ index 3f9c925..8bbaefa 100644
          shutil.copy2(HERE / "sb" / f, engine / f)
      say("Installed the record and the morning list into _engine/")
  
-@@ -147,9 +250,17 @@ def main():
+@@ -147,23 +307,42 @@ def main():
      say("Wrote Areas/The gate.md - %s" % ("your hand on everything that leaves."
                                            if human_gate else "no final human tap. Your decision."))
  
 -    if "--no-schedule" in sys.argv:
-+    if point_at(home):
-+        say("Your second brain is at a new address. Recorded it, and told your AI.")
++    moved = point_at(home)
++    if moved:
++        say(moved)
 +
++    on_timetable = False
 +    if no_schedule:
          say("Skipped the timetable because you asked (--no-schedule).",
 -            "Run 'python _engine/today.py' yourself, or run this installer again without the flag.")
@@ -445,13 +528,23 @@ index 3f9c925..8bbaefa 100644
 +            "Run '%s _engine/today.py' yourself, or run this installer again and answer yes."
 +            % PY)
      else:
-         say(install_silent_launcher(engine, when, warn_to))
+-        say(install_silent_launcher(engine, when, warn_to))
++        told, on_timetable = install_silent_launcher(engine, when, warn_to)
++        say(told)
++        if on_timetable:
++            log_installed(home)
++    if not schedule and entry_already_there():
++        say("An earlier install put the morning list on this computer's timetable, and it is "
++            "still there. To take it off, type:")
++        for line in (REMOVE_MAC if IS_MAC else [REMOVE_WIN]):
++            say("   " + line)
  
-@@ -158,12 +269,13 @@ def main():
+     cfg["layer"] = max(int(cfg.get("layer", 0)), LAYER)
+     cfg["layer_%d_installed" % LAYER] = date.today().isoformat()
      cfg["morning_list_at"] = when
      cfg["human_gate"] = bool(human_gate)
      cfg["warnings_go_to"] = warn_to
-+    cfg["morning_list_on_timetable"] = bool(schedule)
++    cfg["morning_list_on_timetable"] = bool(on_timetable)
      cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
  
      say("", "-" * 66, "", "From now on:", "",
@@ -559,7 +652,7 @@ index 0000000..a8ae61c
 +if __name__ == "__main__":
 +    sys.exit(main())
 diff --git a/parts/04-operations/sb/today.py b/parts/04-operations/sb/today.py
-index beeec54..c3cb336 100644
+index beeec54..7a17e74 100644
 --- a/parts/04-operations/sb/today.py
 +++ b/parts/04-operations/sb/today.py
 @@ -14,6 +14,7 @@ import json
@@ -591,7 +684,7 @@ index beeec54..c3cb336 100644
      try:
          d = json.loads(HEALTH.read_text(encoding="utf-8"))
      except Exception:
-@@ -95,36 +101,119 @@ def open_questions(files):
+@@ -95,36 +101,142 @@ def open_questions(files):
      return out
  
  
@@ -622,34 +715,57 @@ index beeec54..c3cb336 100644
 +        return stamp
 +
 +
++def same_folder(a, b):
++    try:
++        return os.path.normcase(os.path.abspath(str(a))) == os.path.normcase(os.path.abspath(str(b)))
++    except (TypeError, ValueError):
++        return False
++
++
 +def job_lines():
-+    """The morning job's news: a refusal or a failure first (a warning), then when the list was
-+    last written. Silent when there is no timetable and no log, as before."""
++    """The morning job's news: a refusal, a failure or a job that has stopped (warnings), then when
++    the list was last written. Silent when there is no timetable and no log, as before. A refusal
++    of a folder this second brain is no longer in (it was moved) is old news and is not shown."""
 +    last_written, last_run = job_record()
 +    warn, note = [], []
-+    if last_run and last_run[1] == "refused":
++    try:
++        cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
++    except Exception:
++        cfg = {}
++    on = bool(cfg.get("morning_list_on_timetable"))
++    if last_run and last_run[1] == "refused" and same_folder(last_run[2], VAULT):
 +        if sys.platform == "darwin":
++            new_home = Path.home() / "Second Brain"
 +            warn.append("macOS refused access to %s on %s, so the morning list was not written."
 +                        % (last_run[2], when_text(last_run[0])))
-+            warn.append("Fix: move the folder to %s, then run Part 4's installer again (%s "
-+                        "install.py in its folder). It finds the folder there and points the "
-+                        "morning list and your AI at it." % (Path.home() / "Second Brain", PY))
++            warn.append("Fix: in Finder, drag the folder %s into your home folder (the one with "
++                        "your name), so it becomes %s. Then install Part 4 again, the same way "
++                        "as the first time. It finds the folder there and points the morning "
++                        "list and your AI at it." % (last_run[2], new_home))
 +        else:
 +            warn.append("The computer refused access to %s on %s, so the morning list was not "
-+                        "written. Check the folder is still there and opens, then run '%s "
-+                        "_engine/today.py' yourself." % (last_run[2], when_text(last_run[0]), PY))
-+    elif last_run and last_run[1] == "failed":
-+        warn.append("The morning job failed on %s: %s" % (when_text(last_run[0]), last_run[3]))
++                        "written. Check the folder is still there and opens. This warning goes "
++                        "once a morning run works." % (last_run[2], when_text(last_run[0])))
++    elif last_run and last_run[1] == "failed" and same_folder(last_run[2], VAULT):
++        warn.append("The morning job failed on %s. Start your AI in your second brain and paste "
++                    "it this line: %s" % (when_text(last_run[0]), last_run[3]))
++    if on:
++        stamp = (last_written or [None])[0] or cfg.get("layer_4_installed", "")
++        try:
++            since = datetime.strptime(stamp[:16], "%Y-%m-%dT%H:%M") if "T" in stamp \
++                else datetime.strptime(stamp[:10], "%Y-%m-%d")
++        except (TypeError, ValueError):
++            since = None
++        if since and datetime.now() - since > timedelta(hours=26):
++            warn.append("The morning list has not been written since %s. The timetable may have "
++                        "stopped: install Part 4 again to put it back."
++                        % (when_text(last_written[0]) if last_written else
++                           "Part 4 was installed on %s" % stamp[:10]))
 +    if last_written:
 +        note.append("Morning list last written: %s (in _engine/reports/today.txt)."
 +                    % when_text(last_written[0]))
-+    else:
-+        try:
-+            on = json.loads(CONFIG.read_text(encoding="utf-8")).get("morning_list_on_timetable")
-+        except Exception:
-+            on = False
-+        if on or last_run:
-+            note.append("Morning list last written: never. The timetable has not written one yet.")
++    elif on or last_run:
++        note.append("Morning list last written: never. The timetable has not written one yet.")
 +    return warn, note
 +
 +

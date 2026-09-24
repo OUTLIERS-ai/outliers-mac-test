@@ -48,7 +48,9 @@ def part_dir():
 
 
 def throwaway_home(name):
-    home = Path(tempfile.mkdtemp(prefix="sbtest-%s-" % name))
+    # resolve(): on a Mac the temp folder is reached through a link (/var is /private/var), and
+    # Part 1 records the resolved address; comparing against the unresolved one would fail.
+    home = Path(tempfile.mkdtemp(prefix="sbtest-%s-" % name)).resolve()
     (home / "Documents").mkdir()
     return home
 

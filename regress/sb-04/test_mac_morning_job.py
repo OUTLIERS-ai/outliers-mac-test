@@ -78,6 +78,12 @@ T.check("\twritten\t" in seen, "launchd ran the job and it wrote the morning log
 T.check((vault / "_engine" / "reports" / "today.txt").exists(), "the list is at _engine/reports/today.txt")
 code, out = T.run(["python3", "_engine/today.py"], vault, home)
 T.check("Morning list last written:" in out and "never" not in out, "today.py says when the list was last written", out)
+cfg = __import__("json").loads((vault / "_layers" / "config.json").read_text(encoding="utf-8"))
+T.check(cfg.get("morning_list_on_timetable") is True, "the settings record that the list is on the timetable", cfg)
+
+# Installing again and answering no leaves the entry, and says so.
+code, again = T.run([py, "install.py"], part, home, stdin="07:00\n\n\nn\n")
+T.check("it is still there" in again and plist.exists(), "answering no later says the entry is still there", again[-800:])
 
 # The removal lines, exactly as printed.
 removal = [ln.strip() for ln in install_out.splitlines()

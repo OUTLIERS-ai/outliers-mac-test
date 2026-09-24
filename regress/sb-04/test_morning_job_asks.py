@@ -69,6 +69,19 @@ T.check(task_exists() == before and not plist_in(home).exists(), "with --no-sche
 T.check("--no-schedule" in out, "it says it skipped the timetable because of --no-schedule")
 T.cleanup(home)
 
+# 2b. On a Mac, an entry left by an earlier install: answering no leaves it, and says so, with the
+#     lines that take it off (never removed without asking). A file in the throwaway home only.
+if T.IS_MAC:
+    home = T.throwaway_home("sb04-earlier")
+    T.make_vault(home / "Second Brain", 3, pointer_home=home)
+    plist_in(home).parent.mkdir(parents=True)
+    plist_in(home).write_text("earlier install", encoding="utf-8")
+    code, out = T.run([py, "install.py"], part, home, stdin="\n\n\nn\n")
+    T.check("it is still there" in out and "launchctl unload ~/Library/LaunchAgents/ai.outliers.sb.morning.plist" in out,
+            "answering no with an earlier entry says it is still there and how to take it off", out[-1200:])
+    T.check(plist_in(home).read_text(encoding="utf-8") == "earlier install", "and leaves it as it was")
+    T.cleanup(home)
+
 # 3. Answer yes, on GitHub's throwaway Windows machine only (a real task, real home).
 if T.IS_WIN and T.ON_CI:
     home = Path.home()
@@ -90,6 +103,9 @@ if T.IS_WIN and T.ON_CI:
     T.check((vault / "_engine" / "reports" / "today.txt").exists(), "the morning list was written to _engine/reports/today.txt")
     code, out = T.run([py, "_engine/today.py"], vault, home)
     T.check("Morning list last written:" in out and "never" not in out, "today.py says when the list was last written", out)
+    code, out = T.run([py, "install.py"], part, home, stdin="\n\n\nn\n")
+    T.check("it is still there" in out and "schtasks /Delete /TN %s /F" % TASK in out and task_exists(),
+            "answering no with the task in place says it is still there and how to take it off", out[-1200:])
     subprocess.run("schtasks /Delete /TN %s /F" % TASK, shell=True, capture_output=True, creationflags=T.NO_WINDOW)
     T.check(not task_exists(), "the printed removal line takes the task away")
 elif T.IS_WIN:

@@ -6,6 +6,7 @@ the home folder, outside the second brain. When reading the second brain raises 
 ("Operation not permitted", what macOS gives a job refused the Documents folder), the log records
 "refused", and today.py prints "macOS refused access to <folder>" on a Mac (on Windows: "The
 computer refused access to <folder>"), plus the fix, and "Morning list last written: <date>".
+A member who never used the timetable sees nothing new.
 
     python test_refusal_is_reported.py <part folder>
 
@@ -23,18 +24,24 @@ part = T.part_dir()
 py = sys.executable
 
 # Runs a program with os.listdir refusing one folder the way macOS refuses a job: EPERM.
-REFUSE = r'''
-import os, runpy, sys
-real = os.listdir
-target = os.path.normcase(os.path.abspath(sys.argv[1]))
-def refuse(p="."):
-    if os.path.normcase(os.path.abspath(str(p))).startswith(target):
-        raise PermissionError(1, "Operation not permitted", str(p))
-    return real(p)
-os.listdir = refuse
-sys.argv = sys.argv[2:]
-runpy.run_path(sys.argv[0], run_name="__main__")
-'''
+REFUSE = "\n".join([
+    "import os, runpy, sys",
+    "real = os.listdir",
+    "target = os.path.normcase(os.path.abspath(sys.argv[1]))",
+    "def refuse(p='.'):",
+    "    if os.path.normcase(os.path.abspath(str(p))).startswith(target):",
+    "        raise PermissionError(1, 'Operation not permitted', str(p))",
+    "    return real(p)",
+    "os.listdir = refuse",
+    "sys.argv = sys.argv[2:]",
+    "runpy.run_path(sys.argv[0], run_name='__main__')",
+])
+
+
+def add(log, fields):
+    with open(str(log), "a", encoding="utf-8", newline="\n") as fh:
+        fh.write("\t".join(fields) + "\n")
+
 
 home = T.throwaway_home("sb04-refused")
 vault = T.make_vault(home / "Documents" / "Second Brain", 3, pointer_home=home)
@@ -42,6 +49,11 @@ log = home / ".outliers-sb-morning.log"
 T.run([py, "install.py", "--no-schedule"], part, home, stdin="\n\n\n")
 job = vault / "_engine" / "morning_job.py"
 T.check(job.exists(), "Part 4 installs the morning job, _engine/morning_job.py")
+
+# 0. No timetable and no log (a member who never used the timetable): nothing new is printed.
+code, out = T.run([py, "_engine/today.py"], vault, home)
+T.check(job.exists() and "Morning list" not in out and "refused" not in out,
+        "with no timetable and no log, today.py prints nothing about the morning job", out)
 
 # 1. A normal run.
 code, out = T.run([py, str(job)], home, home)
@@ -59,11 +71,24 @@ T.check(code != 0 and "\trefused\t" in last and str(vault) in last and "Operatio
 code, out = T.run([py, "_engine/today.py"], vault, home)
 if T.IS_MAC:
     T.check("macOS refused access to %s" % vault in out, "today.py says macOS refused access to the folder", out)
-    T.check("Fix: move the folder to %s" % (home / "Second Brain") in out, "and gives the fix: move it to ~/Second Brain", out)
+    T.check("so it becomes %s" % (home / "Second Brain") in out, "and gives the fix: move it to ~/Second Brain", out)
     T.check(not T.windows_hits(out), "nothing printed is a Windows command or word", T.windows_hits(out))
 else:
     T.check("The computer refused access to %s" % vault in out, "today.py says the computer refused access to the folder", out)
 T.check("Morning list last written:" in out, "and still says when the list was last written", out)
+
+# 2b. A failure comes with what to do; a refusal of a folder this second brain has since left
+#     (it was moved) is old news and is not shown.
+if job.exists():
+    add(log, ["2026-09-24T07:05", "failed", str(vault), "ModuleNotFoundError: No module named x"])
+code, out = T.run([py, "_engine/today.py"], vault, home)
+T.check("The morning job failed on Thursday 24 September 2026, 07:05. Start your AI in your second brain" in out,
+        "a failed run is reported with what to do", out)
+if job.exists():
+    add(log, ["2026-09-24T07:10", "refused", str(home / "Old" / "Place"), "[Errno 1] Operation not permitted"])
+code, out = T.run([py, "_engine/today.py"], vault, home)
+T.check(job.exists() and "refused access" not in out,
+        "a refusal of a folder this second brain is no longer in is not shown", out)
 
 # 3. On a Mac, a real refusal from the file system, not an injected one. The job file itself is
 #    inside the refused folder, so a copy is run from outside it, as the Mac timetable does
