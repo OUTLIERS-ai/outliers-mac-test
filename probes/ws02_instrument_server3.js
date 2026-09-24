@@ -25,7 +25,8 @@ swap("const child = spawn(process.execPath, [WATCHER], { env, windowsHide: true,
   "  const base = `http://127.0.0.1:${port}`;\n  await waitFor(base + '/api/meta');\n" +
   "  const info = async () => { let m = {}; try { m = await (await fetch(base + '/api/meta')).json(); } catch (e) { m = { error: String(e) }; }\n" +
   "    return 'PROBE port ' + port + '; answered by pid ' + m.pid + ' reading ' + m.logsFolder + '; this test\\'s FleetView pid ' + child.pid +\n" +
-  "      ' reading ' + projects + ', exit ' + exitCode + '; it said: ' + said.slice(0, 8000); };\n" +
+  "      ' reading ' + projects + ', exit ' + exitCode + '; it said: ' + said.slice(0, 2000) +\n" +
+  "      '; its record: ' + await fetch(base + '/api/probe').then((r) => r.text()).catch((e) => String(e)); };\n" +
   "  return { root, projects, port, base, cfgFile, info };");
 swap("  assert.equal(tokens, 100000, 'the whole file was read (' + (size / 1048576).toFixed(1) + ' MB)');",
   "  if (tokens !== 100000) console.log(await s.info());\n" +
@@ -44,7 +45,8 @@ function wswap(a, b) {
   ws = ws.replace(a, b);
 }
 wswap("function readNext() {\n  if (reading) return;",
-  "const T0 = Date.now();\nconst say = (s) => process.stderr.write('[+' + (Date.now() - T0) + 'ms] ' + s + '\\n');\n" +
+  "const T0 = Date.now();\nconst PROBE = [];\nconst say = (s) => { if (PROBE.length < 400) PROBE.push('+' + (Date.now() - T0) + 'ms ' + s); };\n" +
+  "app.get('/api/probe', (req, res) => res.json(PROBE));\n" +
   "function readNext() {\n  say('readNext reading=' + reading + ' line=' + readLine.length);\n  if (reading) return;");
 wswap("  const next = () => { reading = false; setImmediate(readNext); };",
   "  say('start ' + path.basename(f));\n  const next = () => { say('done ' + path.basename(f)); reading = false; setImmediate(readNext); };");
