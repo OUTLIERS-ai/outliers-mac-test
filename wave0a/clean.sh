@@ -33,6 +33,17 @@ for n in python python3 pip pip3 node npm npx brew; do
   printf '%-8s ' "$n"; login "$ME" "command -v $n || echo '(not found)'" | tail -1
 done
 
+say "M3 fallback: move the runner-only /etc/paths.d files aside, then PATH again"
+# Not on a stock Mac (recalled): 'homebrew' (GitHub's image adds Homebrew to every PATH) and
+# '10-pmk-global'. Kept: '10-cryptex' (macOS's own) and '100-rvictl' (installed with Xcode).
+sudo mkdir -p /tmp/paths.d-moved-aside
+for f in homebrew 10-pmk-global; do
+  if [ -e "/etc/paths.d/$f" ]; then sudo mv "/etc/paths.d/$f" /tmp/paths.d-moved-aside/; echo "moved aside: /etc/paths.d/$f"; fi
+done
+M3B="$(login "$ME" 'echo "$PATH"' | tail -1)"
+echo "$M3B"
+result "M3 path_after_fallback=$M3B"
+
 # ------------------------------------------------------------------ M2 before (Intel only)
 if [ "$ARCH" = "x86_64" ]; then
   say "M2 before: /usr/local/bin links, as GitHub gives the Intel Mac"
@@ -88,14 +99,19 @@ sudo -u "$STD" -H env -i HOME="/Users/$STD" USER="$STD" LOGNAME="$STD" SHELL=/bi
   "$PYAPP/Update Shell Profile.command" </dev/null 2>&1 | tail -6
 echo "--- the member's ~/.zprofile:"; sudo cat "/Users/$STD/.zprofile" 2>&1
 login "$STD" "$PYCHECK"
-login "$STD" 'python3 -m pip install requests'; RC2=$?
+echo "--- who may write python.org's add-on folder:"
+ls -ld "$FW/Versions/$PYMM/lib/python$PYMM/site-packages"
+# 'six' is a package the admin user never installed, so this is a real install, not
+# "Requirement already satisfied".
+login "$STD" 'python3 -m pip install six'; RC2=$?
 echo "pip exit $RC2"
-login "$STD" 'python3 -c "import requests; print(\"requests imported from \" + requests.__file__)"'
+login "$STD" 'python3 -c "import six; print(\"six imported from \" + six.__file__)"'
 PFX2="$(login "$STD" 'python3 -c "import sys; print(sys.prefix)"' | tail -1)"
 result "M1 user=standard prefix=$PFX2 pip_exit=$RC2"
 
 # ------------------------------------------------------------------ M5
 say "M5: a LaunchAgent reading ~/Documents and ~/Second Brain"
+echo "System Integrity Protection: $(csrutil status 2>&1)"
 PYBIN="$FW/Versions/$PYMM/bin/python$PYMM"
 DOCS="$HOME/Documents/probe"; SB="$HOME/Second Brain/probe"
 mkdir -p "$DOCS" "$SB"; echo "hello from Documents" > "$DOCS/note.md"; echo "hello from Second Brain" > "$SB/note.md"
