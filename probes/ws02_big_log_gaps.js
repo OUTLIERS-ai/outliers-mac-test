@@ -29,9 +29,13 @@ const t0 = Date.now();
 // the next step being queued is the piece's own work.
 const realSetImmediate = global.setImmediate;
 const pieces = [];
+const cpu = [];   // the CPU time the piece actually used (user + system), in ms
 global.setImmediate = (fn, ...a) => realSetImmediate(() => {
-  const s = process.hrtime.bigint();
-  try { return fn(...a); } finally { pieces.push(Number(process.hrtime.bigint() - s) / 1e6); }
+  const s = process.hrtime.bigint(), c = process.cpuUsage();
+  try { return fn(...a); } finally {
+    pieces.push(Number(process.hrtime.bigint() - s) / 1e6);
+    const d = process.cpuUsage(c); cpu.push((d.user + d.system) / 1000);
+  }
 }, ...a);
 let last = Date.now(), worst = 0, ticks = 0;
 const gaps = [];
@@ -48,6 +52,9 @@ store.processFileAsync(f, () => {
   console.log('RESULT slowest pieces ms: %s', sorted.slice(0, 5).map((x) => x.toFixed(1)).join(' '));
   console.log('RESULT median piece ms: %s', sorted[Math.floor(sorted.length / 2)].toFixed(1));
   console.log('RESULT piece ms in order: %s', pieces.map((x) => x.toFixed(0)).join(' '));
+  console.log('RESULT piece cpu ms in order: %s', cpu.map((x) => x.toFixed(0)).join(' '));
+  const w = pieces.indexOf(sorted[0]);
+  console.log('RESULT slowest piece: #%d wall %s ms, cpu %s ms', w + 1, pieces[w].toFixed(1), cpu[w].toFixed(1));
   for (const g of gaps) console.log('GAP at %d ms: %d ms, heap %d MB', g.at, g.gap, g.heapMB);
   console.log('RESULT tokensOut=%d', store.view(store.sessions.get('chunky')).tokensOut);
   fs.rmSync(dir, { recursive: true, force: true });
