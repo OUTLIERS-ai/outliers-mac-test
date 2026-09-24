@@ -1,0 +1,227 @@
+diff --git a/engine/timetable.py b/engine/timetable.py
+index 3ad600d..33d7b36 100644
+--- a/engine/timetable.py
++++ b/engine/timetable.py
+@@ -35,6 +35,10 @@ import sys
+ from datetime import datetime
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ HERE = Path(__file__).resolve().parent
+ sys.path.insert(0, str(HERE))
+ 
+@@ -84,7 +88,7 @@ def show_plan(rows, now):
+         say()
+         say("  Add one entry, running once a day, and watch it for a few days:")
+         say()
+-        say('      python timetable.py add "python gather.py collect" \\')
++        say('      %s timetable.py add "%s gather.py collect" \\' % (PY, PY))
+         say('          --at 09:30 --days mon,tue,wed,thu,fri --label "Collect the list"')
+         return
+     # The id is never shortened to fit. It is what you type to remove or switch
+@@ -152,7 +156,7 @@ def cmd_status():
+     if not state["number"]:
+         say()
+         say("  Nothing fires while it is not running. Start it with:")
+-        say("      python timetable.py start")
++        say("      %s timetable.py start" % PY)
+     say()
+     return 0
+ 
+@@ -164,7 +168,7 @@ def cmd_add(argv):
+     command = (loose[0] if loose else options.get("command", "")) or ""
+     if not str(command).strip():
+         say("  Tell me what to run, in quotes:")
+-        say('      python timetable.py add "python gather.py collect" --at 09:30 --days mon')
++        say('      %s timetable.py add "%s gather.py collect" --at 09:30 --days mon' % (PY, PY))
+         return 2
+     if "at" not in options:
+         say("  Tell me when, with --at 09:30")
+@@ -205,29 +209,29 @@ def cmd_add(argv):
+     if not daemon.running_number():
+         say()
+         say("  The background program is not running, so nothing fires yet:")
+-        say("      python timetable.py start")
++        say("      %s timetable.py start" % PY)
+     say()
+     return 0
+ 
+ 
+ def cmd_remove(argv):
+     if not argv:
+-        say("  Which one? Run: python timetable.py list")
++        say("  Which one? Run: %s timetable.py list" % PY)
+         return 2
+     if store.remove(argv[0]):
+         say("  Removed %r." % argv[0])
+         return 0
+-    say("  There is no entry called %r. Run: python timetable.py list" % argv[0])
++    say("  There is no entry called %r. Run: %s timetable.py list" % (argv[0], PY))
+     return 2
+ 
+ 
+ def cmd_switch(argv, on):
+     if not argv:
+-        say("  Which one? Run: python timetable.py list")
++        say("  Which one? Run: %s timetable.py list" % PY)
+         return 2
+     entry = store.set_enabled(argv[0], on)
+     if not entry:
+-        say("  There is no entry called %r. Run: python timetable.py list" % argv[0])
++        say("  There is no entry called %r. Run: %s timetable.py list" % (argv[0], PY))
+         return 2
+     say("  %r is now switched %s." % (argv[0], "on" if on else "off"))
+     if not on:
+@@ -297,7 +301,7 @@ def cmd_install_startup(argv):
+     say()
+     if not worked:
+         say("  Nothing is scheduled at login. Everything else still works: start it")
+-        say("  by hand with `python timetable.py start` whenever you want it going.")
++        say("  by hand with `%s timetable.py start` whenever you want it going." % PY)
+         say()
+         return 1
+     if machine.IS_WINDOWS:
+@@ -306,27 +310,26 @@ def cmd_install_startup(argv):
+         say("  difference between a timetable people keep and one they switch off.")
+     elif machine.IS_MAC:
+         say("  Nothing appears on screen on a Mac, because a Mac has no console")
+-        say("  window for a background program to be given. You are not missing")
+-        say("  anything a Windows member has.")
++        say("  window for a background program to be given.")
+     say()
+-    say("  To undo it:  python timetable.py install-startup --remove")
++    say("  To undo it:  %s timetable.py install-startup --remove" % PY)
+     say()
+     return 0
+ 
+ 
+ USAGE = """timetable - run any command on a schedule, without a window
+ 
+-  python timetable.py list
+-  python timetable.py add "<command>" --at 09:30 --days mon,tue,wed,thu,fri [--label "..."]
+-  python timetable.py remove <id>
+-  python timetable.py enable <id>
+-  python timetable.py disable <id>
+-  python timetable.py run                  the loop itself, in this window
+-  python timetable.py run --dry-run        what today holds, starting nothing
+-  python timetable.py start                the loop, in the background, no window
+-  python timetable.py stop
+-  python timetable.py status
+-  python timetable.py install-startup      start it every time you log in
++  %(py)s timetable.py list
++  %(py)s timetable.py add "<command>" --at 09:30 --days mon,tue,wed,thu,fri [--label "..."]
++  %(py)s timetable.py remove <id>
++  %(py)s timetable.py enable <id>
++  %(py)s timetable.py disable <id>
++  %(py)s timetable.py run                  the loop itself, in this window
++  %(py)s timetable.py run --dry-run        what today holds, starting nothing
++  %(py)s timetable.py start                the loop, in the background, no window
++  %(py)s timetable.py stop
++  %(py)s timetable.py status
++  %(py)s timetable.py install-startup      start it every time you log in
+ 
+   add also takes:
+     --minutes N     how long this one may take before it is ended. Default 45.
+@@ -334,7 +337,7 @@ USAGE = """timetable - run any command on a schedule, without a window
+     --shift N       how far its minute may move, either way. Default 4.
+ 
+ Run this from the _engine folder inside your CRM.
+-"""
++""" % {"py": PY}
+ 
+ 
+ def main(argv):
+diff --git a/install.py b/install.py
+index 17cda8b..b9fdcd4 100644
+--- a/install.py
++++ b/install.py
+@@ -26,6 +26,10 @@ import shutil
+ import sys
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 5
+ LAYER_NAME = "The Timetable"
+ SERIES = "Gather"
+@@ -199,12 +203,19 @@ def main():
+                     helptext="A short description, for you, when you read the list in "
+                              "three months.")
+ 
++    if sys.platform == "darwin":
++        at_login_help = ("It is a LaunchAgent: a small file in your ~/Library/LaunchAgents "
++                         "folder that tells your Mac to start the timetable when you log in. "
++                         "It does not ask for an administrator password, and it puts "
++                         "nothing on your screen.")
++    else:
++        at_login_help = ("On Windows this is a logon task pointed at the copy of "
++                         "Python that has no console window. On a Mac it is a "
++                         "LaunchAgent. Neither asks for an administrator "
++                         "password, and neither puts anything on your screen.")
+     at_login = ask_yes("Should it start every time you log in?",
+                        default="yes",
+-                       helptext="On Windows this is a logon task pointed at the copy of "
+-                                "Python that has no console window. On a Mac it is a "
+-                                "LaunchAgent. Neither asks for an administrator "
+-                                "password, and neither puts anything on your screen.")
++                       helptext=at_login_help)
+ 
+     written, kept = install_modules(engine_dir)
+     store, machine = load_installed(engine_dir)
+@@ -265,22 +276,22 @@ def main():
+         if not startup_worked:
+             say("  Everything else installed. Start it by hand when you want it going,")
+             say("  and set it to start at login later with:")
+-            say("      python timetable.py install-startup")
++            say("      %s timetable.py install-startup" % PY)
+ 
+     say()
+     say("  Now, in a terminal in that _engine folder:")
+     say()
+-    say("      python timetable.py run --dry-run")
++    say("      %s timetable.py run --dry-run" % PY)
+     say()
+     say("  That shows what today holds and starts nothing at all. Read it, then:")
+     say()
+-    say("      python timetable.py start")
++    say("      %s timetable.py start" % PY)
+     say()
+     say("  Nothing appears on screen when it starts, and nothing appears when an")
+     say("  entry fires. That is the whole design. Watch it through the log and")
+     say("  through:")
+     say()
+-    say("      python timetable.py status")
++    say("      %s timetable.py status" % PY)
+     say()
+     return 0
+ 
+diff --git a/tests/test_timetable.py b/tests/test_timetable.py
+index 6dec4b3..ed30b27 100644
+--- a/tests/test_timetable.py
++++ b/tests/test_timetable.py
+@@ -519,8 +519,7 @@ if machine.IS_WINDOWS:
+           str(rewritten))
+ else:
+     check("on a Mac there is no console window to suppress, so no flags are needed",
+-          machine.no_window() == {},
+-          "a Mac member is not missing anything a Windows member has")
++          machine.no_window() == {})
+     check("the background program is still detached from the window that started it",
+           machine.detached_no_window().get("start_new_session") is True)
+ 
+@@ -585,7 +584,9 @@ else:
+ shim = machine.write_hidden_shim(root / "_state" / "shim.vbs", 'C:\\x\\y.exe "a b"', str(root))
+ shim_text = shim.read_text(encoding="utf-8")
+ check("the hidden launcher asks for a hidden window and waits for the command",
+-      ", 0, True)" in shim_text, shim_text.strip().splitlines()[-2])
++      ", 0, True)" in shim_text,
++      # The launcher's own line names a made-up Windows program; on a Mac it is not printed.
++      shim_text.strip().splitlines()[-2] if machine.IS_WINDOWS else "")
+ check("and quote marks inside the command are doubled, as that launcher requires",
+       '""a b""' in shim_text)
+ 

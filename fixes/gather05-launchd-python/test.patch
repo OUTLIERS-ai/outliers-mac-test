@@ -1,0 +1,95 @@
+diff --git a/_mac_regress/mac_timetable_python.py b/_mac_regress/mac_timetable_python.py
+new file mode 100644
+index 0000000..e543612
+--- /dev/null
++++ b/_mac_regress/mac_timetable_python.py
+@@ -0,0 +1,89 @@
++"""
++Mac check for the timetable (gather-05): an entry that starts Python must run with the Python
++that runs the timetable, on a Mac as well as on Windows.
++
++When the timetable starts at log-in on a Mac, launchd gives it a short list of folders to find
++commands in. There a plain `python` does not exist, and `python3` is Apple's own older copy,
++without the add-ons (Playwright) the member installed. So an entry such as
++`python3 gather.py collect` would start the wrong Python, or none. The fix points a command that
++starts with a bare Python name at the Python running the timetable, the way Windows already
++points it at the copy with no window. A full path the member typed is left alone.
++
++It runs the check in a child Python told it is on a Mac, then in one told it is on Windows
++(where nothing may change).
++
++Run it from the repo root:   python3 _mac_regress/mac_timetable_python.py     (exit 0 = green)
++It starts nothing and changes nothing.
++"""
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++
++CHILD = r'''
++import sys, os, json, subprocess, pathlib
++sys.platform = sys.argv[1]
++sys.path.insert(0, os.path.join(sys.argv[2], "engine"))
++import timetable_platform as machine
++cases = [["python3", "gather.py", "collect"], ["python", "gather.py", "collect"],
++         ["/opt/somewhere/bin/python3", "run.py"], ["echo", "hello"], []]
++print(json.dumps({"exe": sys.executable,
++                  "out": [machine.windowless_command(c) for c in cases]}))
++'''
++
++failures = []
++
++
++def check(what, ok, detail=""):
++    print("%s  %s" % ("PASS" if ok else "FAIL", what))
++    if not ok:
++        failures.append(what)
++        if detail:
++            print("        " + detail)
++
++
++def ask(platform):
++    done = subprocess.run([sys.executable, "-c", CHILD, platform, str(ROOT)],
++                          capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
++                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    if done.returncode != 0:
++        print(done.stdout + done.stderr)
++        raise SystemExit(2)
++    return json.loads(done.stdout.strip().splitlines()[-1])
++
++
++def main():
++    mac = ask("darwin")
++    exe, out = mac["exe"], mac["out"]
++    print("=== told it is on a Mac ===")
++    check("`python3 gather.py collect` runs with the timetable's own Python",
++          out[0] == [exe, "gather.py", "collect"], str(out[0]))
++    check("`python gather.py collect` runs with the timetable's own Python",
++          out[1] == [exe, "gather.py", "collect"], str(out[1]))
++    check("a full path the member typed is left alone",
++          out[2] == ["/opt/somewhere/bin/python3", "run.py"], str(out[2]))
++    check("a command that is not Python is left alone", out[3] == ["echo", "hello"], str(out[3]))
++    check("an empty command stays empty", out[4] == [], str(out[4]))
++
++    win = ask("win32")
++    exe, out = win["exe"], win["out"]
++    print("=== told it is on Windows ===")
++    quiet = str(Path(exe).with_name("pythonw.exe"))
++    expect_py = [quiet if os.path.exists(quiet) else "python", "gather.py", "collect"]
++    check("Windows: `python gather.py collect` still goes to the copy with no window, as before",
++          out[1] == expect_py or out[1] == ["python", "gather.py", "collect"], str(out[1]))
++    check("Windows: a command that is not Python is left alone", out[3] == ["echo", "hello"], str(out[3]))
++
++    print()
++    if failures:
++        print("RED: %d check(s) failed" % len(failures))
++        return 1
++    print("GREEN: every check passed")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())

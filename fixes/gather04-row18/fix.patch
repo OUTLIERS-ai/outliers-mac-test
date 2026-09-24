@@ -1,0 +1,241 @@
+diff --git a/engine/facebook.py b/engine/facebook.py
+index a8df3b0..d54bce4 100644
+--- a/engine/facebook.py
++++ b/engine/facebook.py
+@@ -29,6 +29,10 @@ import sys
+ from datetime import datetime
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import crm_paths                                            # noqa: E402
+@@ -39,14 +43,14 @@ import facebook_limits as fbl                               # noqa: E402
+ 
+ USAGE = """facebook - Layer 4, the same shape pointed at Facebook
+ 
+-  python facebook.py login                          sign in by hand, once
+-  python facebook.py status                         what is set, what is allowed now
+-  python facebook.py probe [url]                    what a page is actually made of
+-  python facebook.py find-groups [--query "..."]    read the group search, write a list
+-  python facebook.py join [--commit]                ask to join the groups you picked
++  %(py)s facebook.py login                          sign in by hand, once
++  %(py)s facebook.py status                         what is set, what is allowed now
++  %(py)s facebook.py probe [url]                    what a page is actually made of
++  %(py)s facebook.py find-groups [--query "..."]    read the group search, write a list
++  %(py)s facebook.py join [--commit]                ask to join the groups you picked
+ 
+ Run this from the _engine folder inside your CRM.
+-"""
++""" % {"py": PY}
+ 
+ 
+ def _rule():
+@@ -84,7 +88,7 @@ def cmd_status():
+     except Exception:                                       # noqa: BLE001
+         saved = False
+     print("  signed in           %s"
+-          % ("yes" if saved else "not yet - run: python facebook.py login"))
++          % ("yes" if saved else "not yet - run: %s facebook.py login" % PY))
+ 
+     terms = fs.search_terms()
+     print("  search terms        %s"
+diff --git a/engine/facebook_browser.py b/engine/facebook_browser.py
+index ba1620c..e8b12bd 100644
+--- a/engine/facebook_browser.py
++++ b/engine/facebook_browser.py
+@@ -40,6 +40,17 @@ import sys
+ from contextlib import contextmanager
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The 2 lines that get Playwright. On a Mac they go through `python3 -m`, because pip can put
++# its own `pip` and `playwright` commands in a folder Terminal does not search.
++if sys.platform == "darwin":
++    PLAYWRIGHT_STEPS = ["python3 -m pip install playwright", "python3 -m playwright install chromium"]
++else:
++    PLAYWRIGHT_STEPS = ["pip install playwright", "playwright install chromium"]
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import facebook_settings as fs                              # noqa: E402
+@@ -83,9 +94,8 @@ def _playwright():
+     except ImportError:
+         raise SystemExit(
+             "Playwright is not installed yet. In this terminal, run:\n"
+-            "    pip install playwright\n"
+-            "    playwright install chromium\n"
+-            "then try again."
++            + "".join("    %s\n" % step for step in PLAYWRIGHT_STEPS)
++            + "then try again."
+         )
+     return sync_playwright
+ 
+@@ -187,7 +197,7 @@ def sign_in():
+         print("  Signing in needs you at the keyboard, so nothing has been opened.")
+         print("")
+         print("  Run this yourself in a terminal:")
+-        print("      python3 facebook.py login")
++        print("      %s facebook.py login" % PY)
+         print("")
+         print("  It will open a window and wait for you, with no time limit.")
+         print("")
+diff --git a/engine/facebook_find_groups.py b/engine/facebook_find_groups.py
+index 85a12d5..7ec97c6 100644
+--- a/engine/facebook_find_groups.py
++++ b/engine/facebook_find_groups.py
+@@ -34,6 +34,10 @@ from datetime import datetime, timezone
+ from pathlib import Path
+ from urllib.parse import quote
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import safe_write                                           # noqa: E402
+@@ -191,7 +195,7 @@ def _no_terms_message():
+     print("")
+     print("To try a single phrase without saving anything:")
+     print("")
+-    print("    python facebook.py find-groups --query \"UK bookkeepers\"")
++    print("    %s facebook.py find-groups --query \"UK bookkeepers\"" % PY)
+     print("")
+ 
+ 
+@@ -222,7 +226,7 @@ def find_groups(query=None, wait_sec=300):
+             page.goto(fb.HOME_URL, wait_until="domcontentloaded", timeout=60_000)
+             walk.pause(1500, 2800)
+             if not fb.looks_signed_in(page):
+-                print("Not signed in. Run: python facebook.py login")
++                print("Not signed in. Run: %s facebook.py login" % PY)
+                 return 3
+ 
+             for term in terms:
+diff --git a/engine/facebook_join_groups.py b/engine/facebook_join_groups.py
+index 57bc122..d0d7b04 100644
+--- a/engine/facebook_join_groups.py
++++ b/engine/facebook_join_groups.py
+@@ -35,6 +35,10 @@ import sys
+ from datetime import datetime, timezone
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import safe_write                                           # noqa: E402
+@@ -152,7 +156,7 @@ def _no_list_message():
+     print("")
+     print("Run this first, then read what it found:")
+     print("")
+-    print("    python facebook.py find-groups")
++    print("    %s facebook.py find-groups" % PY)
+     print("")
+     print("Then copy the groups you actually want into")
+     print("  %s" % list_path())
+@@ -209,7 +213,7 @@ def join(commit=False, most=3, wait_sec=300):
+             page.goto(fb.HOME_URL, wait_until="domcontentloaded", timeout=60_000)
+             walk.pause(1500, 2800)
+             if not fb.looks_signed_in(page):
+-                print("Not signed in. Run: python facebook.py login")
++                print("Not signed in. Run: %s facebook.py login" % PY)
+                 return 3
+ 
+             for group in waiting:
+@@ -258,7 +262,7 @@ def join(commit=False, most=3, wait_sec=300):
+                 if control is None:
+                     print("  no Join control found on %s" % name)
+                     print("    either the group is closed to new members, or Facebook has moved")
+-                    print("    something. To see which: python facebook.py probe %s" % group["url"])
++                    print("    something. To see which: %s facebook.py probe %s" % (PY, group["url"]))
+                     continue
+ 
+                 if not act:
+@@ -309,5 +313,5 @@ def join(commit=False, most=3, wait_sec=300):
+     else:
+         print("Plan only. Nothing was clicked. %d waiting, %d need you by hand."
+               % (left, manual))
+-        print("When the plan reads correctly: python facebook.py join --commit")
++        print("When the plan reads correctly: %s facebook.py join --commit" % PY)
+     return 0
+diff --git a/engine/facebook_probe.py b/engine/facebook_probe.py
+index 21fe6ed..b02aeb7 100644
+--- a/engine/facebook_probe.py
++++ b/engine/facebook_probe.py
+@@ -31,6 +31,10 @@ import sys
+ from datetime import datetime, timezone
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import safe_write                                           # noqa: E402
+@@ -110,7 +114,7 @@ def probe(url=None, wait_sec=120):
+             page.goto(fb.HOME_URL, wait_until="domcontentloaded", timeout=60_000)
+             walk.pause(1500, 2800)
+             if not fb.looks_signed_in(page):
+-                print("Not signed in. Run: python facebook.py login")
++                print("Not signed in. Run: %s facebook.py login" % PY)
+                 return 3
+ 
+             if url != fb.HOME_URL:
+diff --git a/install.py b/install.py
+index f66c89b..c603ff2 100644
+--- a/install.py
++++ b/install.py
+@@ -26,6 +26,17 @@ import shutil
+ import sys
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The 2 lines that get Playwright. On a Mac they go through `python3 -m`, because pip can put
++# its own `pip` and `playwright` commands in a folder Terminal does not search.
++if sys.platform == "darwin":
++    PLAYWRIGHT_STEPS = ["python3 -m pip install playwright", "python3 -m playwright install chromium"]
++else:
++    PLAYWRIGHT_STEPS = ["pip install playwright", "playwright install chromium"]
++
+ LAYER = 4
+ LAYER_NAME = "Facebook"
+ SERIES = "Gather"
+@@ -335,20 +346,20 @@ def main():
+         say("  ONE MORE STEP before you can sign in. The browser needs Playwright,")
+         say("  which is not installed yet. In this same terminal, run:")
+         say()
+-        say("      pip install playwright")
+-        say("      playwright install chromium")
++        for step in PLAYWRIGHT_STEPS:
++            say("      " + step)
+         say()
+         say("  The second line downloads the browser itself, so it takes a minute.")
+ 
+     say()
+     say("  Now, in a terminal in that _engine folder:")
+     say()
+-    say("      python facebook.py status")
++    say("      %s facebook.py status" % PY)
+     say()
+     say("  Everything will say blocked. That is correct - it is how you know the")
+     say("  doorman is standing there. Then sign in, once:")
+     say()
+-    say("      python facebook.py login")
++    say("      %s facebook.py login" % PY)
+     say()
+     return 0
+ 

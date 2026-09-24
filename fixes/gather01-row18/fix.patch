@@ -1,0 +1,129 @@
+diff --git a/engine/gather.py b/engine/gather.py
+index 754172e..017f283 100644
+--- a/engine/gather.py
++++ b/engine/gather.py
+@@ -23,6 +23,10 @@ import sys
+ from datetime import datetime
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import crm_paths                                            # noqa: E402
+@@ -52,7 +56,7 @@ def cmd_status():
+         saved, note = gather_browser.session_status()
+     except Exception:                                       # noqa: BLE001
+         note = "could not be read"
+-    print("  signed in           %s" % ("yes" if saved else "not yet - run: python gather.py login"))
++    print("  signed in           %s" % ("yes" if saved else "not yet - run: %s gather.py login" % PY))
+ 
+     print("")
+     print("THE TWO SWITCHES")
+@@ -96,11 +100,11 @@ def cmd_login(argv):
+ 
+ USAGE = """gather - Layer 1, the foundation
+ 
+-  python gather.py status            what is set, and what is allowed right now
+-  python gather.py login [site]      sign in by hand, once (default: linkedin)
++  %(py)s gather.py status            what is set, and what is allowed right now
++  %(py)s gather.py login [site]      sign in by hand, once (default: linkedin)
+ 
+ Run this from the _engine folder inside your CRM.
+-"""
++""" % {"py": PY}
+ 
+ 
+ def main(argv):
+diff --git a/engine/gather_browser.py b/engine/gather_browser.py
+index 932eb30..da9a5b1 100644
+--- a/engine/gather_browser.py
++++ b/engine/gather_browser.py
+@@ -34,6 +34,17 @@ import sys
+ from contextlib import contextmanager
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The 2 lines that get Playwright. On a Mac they go through `python3 -m`, because pip can put
++# its own `pip` and `playwright` commands in a folder Terminal does not search.
++if sys.platform == "darwin":
++    PLAYWRIGHT_STEPS = ["python3 -m pip install playwright", "python3 -m playwright install chromium"]
++else:
++    PLAYWRIGHT_STEPS = ["pip install playwright", "playwright install chromium"]
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import gather_settings as gs                                # noqa: E402
+@@ -60,9 +71,8 @@ def _playwright():
+     except ImportError:
+         raise SystemExit(
+             "Playwright is not installed yet. In this terminal, run:\n"
+-            "    pip install playwright\n"
+-            "    playwright install chromium\n"
+-            "then try again."
++            + "".join("    %s\n" % step for step in PLAYWRIGHT_STEPS)
++            + "then try again."
+         )
+     return sync_playwright
+ 
+@@ -136,7 +146,7 @@ def sign_in(site="linkedin"):
+         print("  Signing in needs you at the keyboard, so nothing has been opened.")
+         print("")
+         print("  Run this yourself in a terminal:")
+-        print("      python gather.py login")
++        print("      %s gather.py login" % PY)
+         print("")
+         print("  It will open a window and wait for you, with no time limit.")
+         print("")
+diff --git a/install.py b/install.py
+index a4b0546..a2daa62 100644
+--- a/install.py
++++ b/install.py
+@@ -22,6 +22,17 @@ import shutil
+ import sys
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`, so every
++# command printed below uses this name; Windows keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The 2 lines that get Playwright. On a Mac they go through `python3 -m`, because pip can put
++# its own `pip` and `playwright` commands in a folder Terminal does not search.
++if sys.platform == "darwin":
++    PLAYWRIGHT_STEPS = ["python3 -m pip install playwright", "python3 -m playwright install chromium"]
++else:
++    PLAYWRIGHT_STEPS = ["pip install playwright", "playwright install chromium"]
++
+ LAYER = 1
+ LAYER_NAME = "The Foundation"
+ SERIES = "Gather"
+@@ -278,20 +289,20 @@ def main():
+         say("  ONE MORE STEP before you can sign in. The browser needs Playwright,")
+         say("  which is not installed yet. In this same terminal, run:")
+         say()
+-        say("      pip install playwright")
+-        say("      playwright install chromium")
++        for step in PLAYWRIGHT_STEPS:
++            say("      " + step)
+         say()
+         say("  The second line downloads the browser itself, so it takes a minute.")
+ 
+     say()
+     say("  Now, in a terminal in that _engine folder:")
+     say()
+-    say("      python gather.py status")
++    say("      %s gather.py status" % PY)
+     say()
+     say("  Everything will say blocked. That is correct - it is how you know the")
+     say("  doorman is standing there. Then sign in, once:")
+     say()
+-    say("      python gather.py login")
++    say("      %s gather.py login" % PY)
+     say()
+     return 0
+ 

@@ -1,0 +1,218 @@
+diff --git a/engine/gather.py b/engine/gather.py
+index 5442da2..a71c075 100644
+--- a/engine/gather.py
++++ b/engine/gather.py
+@@ -37,6 +37,10 @@ import sys
+ from datetime import datetime
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import crm_paths                                            # noqa: E402
+@@ -68,7 +72,7 @@ def cmd_status():
+         saved, note = gather_browser.session_status()
+     except Exception:                                       # noqa: BLE001
+         note = "could not be read"
+-    print("  signed in           %s" % ("yes" if saved else "not yet - run: python gather.py login"))
++    print("  signed in           %s" % ("yes" if saved else "not yet - run: %s gather.py login" % PY))
+ 
+     print("")
+     print("THE TWO SWITCHES")
+@@ -131,13 +135,13 @@ def cmd_login(argv):
+ 
+ USAGE = """gather - Layer 2, going out and bringing people back
+ 
+-  python gather.py status              what is set, and what is allowed right now
+-  python gather.py login [site]        sign in by hand, once (default: linkedin)
++  %(py)s gather.py status              what is set, and what is allowed right now
++  %(py)s gather.py login [site]        sign in by hand, once (default: linkedin)
+ 
+-  python gather.py find <source> [--probe] [--commit]
+-  python gather.py undo     [--probe] [--commit]
+-  python gather.py ask      [--probe] [--commit]
+-  python gather.py accepted [--probe] [--commit] [--confirm]
++  %(py)s gather.py find <source> [--probe] [--commit]
++  %(py)s gather.py undo     [--probe] [--commit]
++  %(py)s gather.py ask      [--probe] [--commit]
++  %(py)s gather.py accepted [--probe] [--commit] [--confirm]
+ 
+   sources for find:
+     export <file.csv>      a file already on your machine, nothing goes outside
+@@ -151,7 +155,7 @@ USAGE = """gather - Layer 2, going out and bringing people back
+     --commit     do it, one action at a time, each one asked for first
+ 
+ Run this from the _engine folder inside your CRM.
+-"""
++""" % {"py": PY}
+ 
+ 
+ def main(argv):
+diff --git a/engine/gather_ask.py b/engine/gather_ask.py
+index bff2581..6eac8b6 100644
+--- a/engine/gather_ask.py
++++ b/engine/gather_ask.py
+@@ -53,6 +53,10 @@ import time
+ from datetime import date, datetime, timezone
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import gather_limits                                        # noqa: E402
+@@ -328,7 +332,7 @@ def run(argv):
+         print("  Nobody is waiting. Everybody your records know about is either")
+         print("  connected to you, already asked, or on hold. Bring some people")
+         print("  back first:")
+-        print("      python gather.py find connections --commit")
++        print("      %s gather.py find connections --commit" % PY)
+         print("")
+         return 0
+ 
+@@ -348,7 +352,7 @@ def run(argv):
+         print("")
+         print("  Nothing was opened and nothing was sent. To look at the first")
+         print("  person's page without touching anything:")
+-        print("      python gather.py ask --probe")
++        print("      %s gather.py ask --probe" % PY)
+         print("")
+         return 0
+ 
+diff --git a/engine/gather_find.py b/engine/gather_find.py
+index 6e0b7d6..694b166 100644
+--- a/engine/gather_find.py
++++ b/engine/gather_find.py
+@@ -56,6 +56,10 @@ from datetime import date, datetime, timezone
+ from pathlib import Path
+ from urllib.parse import quote_plus
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import crm_paths                                            # noqa: E402
+@@ -569,7 +573,7 @@ def from_search(page, terms, mode, tally, recorder):
+     if not terms:
+         print("")
+         print("  Give it something to search for:")
+-        print("      python gather.py find search \"operations manager manufacturing\"")
++        print("      %s gather.py find search \"operations manager manufacturing\"" % PY)
+         return 2
+ 
+     ok, why = allowance_check()
+@@ -804,7 +808,7 @@ def from_reactions(page, post_url, mode, tally, recorder):
+     if not post_url:
+         print("")
+         print("  Give it the address of a post:")
+-        print("      python gather.py find reactions https://www.linkedin.com/posts/...")
++        print("      %s gather.py find reactions https://www.linkedin.com/posts/..." % PY)
+         return 2
+ 
+     walk.open_page(page, str(post_url).split("?")[0])
+@@ -887,10 +891,10 @@ def run(argv):
+         print("")
+         print("  Which source? One of: %s" % ", ".join(SOURCES))
+         print("")
+-        print("      python gather.py find export <file.csv>")
+-        print("      python gather.py find connections")
+-        print("      python gather.py find search \"<terms>\"")
+-        print("      python gather.py find reactions <post-url>")
++        print("      %s gather.py find export <file.csv>" % PY)
++        print("      %s gather.py find connections" % PY)
++        print("      %s gather.py find search \"<terms>\"" % PY)
++        print("      %s gather.py find reactions <post-url>" % PY)
+         print("")
+         return 2
+ 
+diff --git a/engine/gather_job.py b/engine/gather_job.py
+index d339373..009fdfd 100644
+--- a/engine/gather_job.py
++++ b/engine/gather_job.py
+@@ -42,6 +42,10 @@ import sys
+ from contextlib import contextmanager
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ 
+ import gather_settings as gs                                # noqa: E402
+@@ -91,7 +95,7 @@ def doorman(action):
+         print("  Not now: %s." % why)
+         print("")
+         print("  Nothing was opened and nothing was written. Run")
+-        print("      python gather.py status")
++        print("      %s gather.py status" % PY)
+         print("  to see every limit and which one stopped this.")
+         print("")
+     return ok
+@@ -153,7 +157,7 @@ def one_window(site="linkedin"):
+         if not gb.looks_signed_in(page, site):
+             print("")
+             print("  I cannot see your account on that page. Sign in once:")
+-            print("      python gather.py login")
++            print("      %s gather.py login" % PY)
+             print("")
+             yield None
+         else:
+diff --git a/install.py b/install.py
+index 49d9204..46c1290 100644
+--- a/install.py
++++ b/install.py
+@@ -25,6 +25,17 @@ import sys
+ import tempfile
+ from pathlib import Path
+ 
++# What a member types to start Python. A Mac has `python3` and no plain `python`; Windows
++# keeps `python`, exactly as before.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The 2 lines that get Playwright. On a Mac they go through `python3 -m`, because pip can put
++# its own `pip` and `playwright` commands in a folder Terminal does not search.
++if sys.platform == "darwin":
++    PLAYWRIGHT_STEPS = ["python3 -m pip install playwright", "python3 -m playwright install chromium"]
++else:
++    PLAYWRIGHT_STEPS = ["pip install playwright", "playwright install chromium"]
++
+ LAYER = 2
+ LAYER_NAME = "Going out and bringing people back"
+ SERIES = "Gather"
+@@ -346,23 +357,23 @@ def main():
+         say("  ONE MORE STEP before any job can open a page. The browser needs")
+         say("  Playwright, which is not installed yet. In this same terminal, run:")
+         say()
+-        say("      pip install playwright")
+-        say("      playwright install chromium")
++        for step in PLAYWRIGHT_STEPS:
++            say("      " + step)
+         say()
+         say("  The second line downloads the browser itself, so it takes a minute.")
+ 
+     say()
+     say("  Now, in a terminal in that _engine folder:")
+     say()
+-    say("      python gather.py status")
++    say("      %s gather.py status" % PY)
+     say()
+     say("  Then the job that never leaves your machine:")
+     say()
+-    say("      python gather.py find export <file.csv> --commit")
++    say("      %s gather.py find export <file.csv> --commit" % PY)
+     say()
+     say("  Then look at a page without touching it:")
+     say()
+-    say("      python gather.py undo --probe")
++    say("      %s gather.py undo --probe" % PY)
+     say()
+     return 0
+ 

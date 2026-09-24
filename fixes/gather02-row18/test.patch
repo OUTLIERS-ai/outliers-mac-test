@@ -1,0 +1,294 @@
+diff --git a/_mac_regress/mac_printed_commands.py b/_mac_regress/mac_printed_commands.py
+new file mode 100644
+index 0000000..5d4fd73
+--- /dev/null
++++ b/_mac_regress/mac_printed_commands.py
+@@ -0,0 +1,288 @@
++"""
++Mac check for fault row 18 of the Mac build plan: what this layer prints must be typeable on a Mac.
++
++A Mac has `python3` and no plain `python`, and pip's own `pip` and `playwright` commands may sit
++in a folder Terminal does not search. So on a Mac every command the programs print must start
++with `python3`, and every Playwright line must go through `python3 -m`. On Windows nothing a
++member sees may change.
++
++It runs the installer twice in a throwaway folder, once told it is on a Mac and once told it is
++on Windows, with Playwright made to look missing, and reads what was printed:
++
++  1. Mac run: no line may tell the member to type `python` or `pip`, and no line may use a
++     Windows word (the rules of the plan's check_no_windows.py, copied below).
++  2. Windows run: the lines a Windows member has always seen are still printed, word for word.
++  3. Every file in engine/ and install.py: no printed text may spell out `python <file>.py`
++     directly; it must come from the 1 name that depends on the machine.
++
++Run it from the repo root:   python3 _mac_regress/mac_printed_commands.py      (exit 0 = green)
++It changes nothing outside a temporary folder, opens no browser and reaches no website.
++"""
++import ast
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++
++# ------------------------------------------------ the rules, copied from check_no_windows.py
++CMD_START = re.compile(r"(?:^|&&|;|\|)\s*(?:[$>]\s+)?(python|pip3?)(?=\s|$)")
++CMD_IN_TEXT = re.compile(r"(?<!-m )(?<![\w/.\-])(python|pip3?)(?=\s+(?:-m\b|-c\b|install\b|[\w./~\-]*\.py\b))")
++VENV_FORM = re.compile(r"source\s+\S*/bin/activate")
++WORDS = re.compile(r"\b(Windows key|Windows|PowerShell|Command Prompt|File Explorer|Task Scheduler|"
++                   r"Startup folder|schtasks|winget|AppData)\b", re.I)
++MARKS = [
++    ("drive path", re.compile(r"(?<![\w])[A-Za-z]:\\")),
++    ("%NAME%", re.compile(r"%[A-Za-z_][A-Za-z0-9_]*%")),
++    ("$env:", re.compile(r"\$env:")),
++    ("backslash relative path", re.compile(r"(?<![\w.\\])\.\.?\\")),
++    ("Windows file ending", re.compile(r"\.(exe|vbs|cmd|bat|ps1|reg)\b", re.I)),
++    ("pythonw", re.compile(r"\bpythonw\b")),
++]
++# A bare `playwright install` is refused too: for a standard Mac user pip puts that command in a
++# folder Terminal does not search (wave 0a M1), so a Mac line must be `python3 -m playwright`.
++BARE_PLAYWRIGHT = re.compile(r"(?:^|&&|;|\|)\s*playwright\s+install\b")
++
++
++def scan_line(line):
++    hits = []
++    m = CMD_START.search(line) or CMD_IN_TEXT.search(line)
++    if m and not VENV_FORM.search(line[:m.start(1)]):
++        hits.append("command `%s`" % m.group(1))
++    if BARE_PLAYWRIGHT.search(line):
++        hits.append("bare `playwright`")
++    for w in WORDS.findall(line):
++        hits.append("word `%s`" % w)
++    for name, rx in MARKS:
++        if rx.search(line):
++            hits.append(name)
++    return hits
++
++
++# ------------------------------------------------ what each layer is, and what it must print
++LAYERS = {
++    "outliers-gather-01-foundation": {
++        "fake_engine": ["limits.py"],
++        "answers": [""] * 12,
++        "browser": ("gather_browser", "sign_in", ("linkedin",)),
++        "windows_lines": ["      pip install playwright", "      playwright install chromium",
++                          "      python gather.py status", "      python gather.py login",
++                          "    pip install playwright", "    playwright install chromium"],
++        "mac_lines": ["      python3 -m pip install playwright",
++                      "      python3 -m playwright install chromium",
++                      "      python3 gather.py status", "      python3 gather.py login",
++                      "    python3 -m pip install playwright",
++                      "    python3 -m playwright install chromium"],
++    },
++    "outliers-gather-02-basics": {
++        "fake_engine": ["limits.py", "ledger.py", "identity.py", "collect.py", "gather_limits.py"],
++        "answers": [""] * 12,
++        "browser": None,
++        "windows_lines": ["      pip install playwright", "      playwright install chromium",
++                          "      python gather.py status",
++                          "      python gather.py find export <file.csv> --commit",
++                          "      python gather.py undo --probe"],
++        "mac_lines": ["      python3 -m pip install playwright",
++                      "      python3 -m playwright install chromium",
++                      "      python3 gather.py status",
++                      "      python3 gather.py find export <file.csv> --commit",
++                      "      python3 gather.py undo --probe"],
++    },
++    "outliers-gather-04-facebook": {
++        "fake_engine": ["limits.py"],
++        "answers": [""] * 20,
++        "browser": ("facebook_browser", "sign_in", ()),
++        "windows_lines": ["      pip install playwright", "      playwright install chromium",
++                          "      python facebook.py status", "      python facebook.py login",
++                          "    pip install playwright", "    playwright install chromium"],
++        "mac_lines": ["      python3 -m pip install playwright",
++                      "      python3 -m playwright install chromium",
++                      "      python3 facebook.py status", "      python3 facebook.py login",
++                      "    python3 -m pip install playwright",
++                      "    python3 -m playwright install chromium"],
++    },
++    "outliers-gather-05-timetable": {
++        "fake_engine": [],
++        # first command: none; start at log-in: no (nothing is scheduled on this machine)
++        "answers": ["", "no"] + [""] * 10,
++        "browser": None,
++        "windows_lines": ["      python timetable.py run --dry-run", "      python timetable.py start",
++                          "      python timetable.py status",
++                          "  On Windows this is a logon task pointed at the copy of Python that has no console window. On a Mac it is a LaunchAgent. Neither asks for an administrator password, and neither puts anything on your screen."],
++        "mac_lines": ["      python3 timetable.py run --dry-run", "      python3 timetable.py start",
++                      "      python3 timetable.py status"],
++    },
++}
++
++# Run inside a child Python: say which machine it is, make Playwright look missing, run the
++# installer, then ask the browser module for its "Playwright is missing" text and its
++# "nobody at the keyboard" text. Standard modules are imported first, while sys.platform is
++# still the real one, so only this layer's own code sees the machine it is told.
++BOOT = r'''
++import sys, os, io, json, re, shutil, subprocess, runpy, importlib, contextlib, datetime
++import pathlib, tempfile, time, random, hashlib, plistlib, textwrap, string, math, csv, glob
++sys.platform = sys.argv[1]
++sys.modules["playwright"] = None
++sys.modules["playwright.sync_api"] = None
++root = sys.argv[2]
++sys.argv = [os.path.join(root, "install.py")]
++try:
++    runpy.run_path(sys.argv[0], run_name="__main__")
++except SystemExit:
++    pass
++browser = os.environ.get("MAC_REGRESS_BROWSER")
++if browser:
++    mod_name, fn, args = json.loads(browser)
++    sys.path.insert(0, os.path.join(root, "engine"))
++    mod = importlib.import_module(mod_name)
++    try:
++        mod._playwright()
++    except SystemExit as err:
++        print(err)
++    getattr(mod, fn)(*args)
++sys.stdout.flush()
++'''
++
++
++def run_as(platform, layer, work):
++    home = work / ("home-" + platform)
++    crm = home / "CRM"
++    (crm / "_layers").mkdir(parents=True)
++    (crm / "_layers" / "config.json").write_text("{}", encoding="utf-8")
++    (crm / "_engine").mkdir()
++    for name in layer["fake_engine"]:
++        (crm / "_engine" / name).write_text("# stand-in for the test\n", encoding="utf-8")
++    env = dict(os.environ)
++    env.update({"HOME": str(home), "USERPROFILE": str(home), "OUTLIERS_CRM": str(crm),
++                "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"})
++    env.pop("MAC_REGRESS_BROWSER", None)
++    if layer["browser"]:
++        import json
++        env["MAC_REGRESS_BROWSER"] = json.dumps(list(layer["browser"]))
++    done = subprocess.run([sys.executable, "-c", BOOT, platform, str(ROOT)],
++                          input="\n".join(layer["answers"]) + "\n", capture_output=True,
++                          text=True, encoding="utf-8", errors="replace", env=env, cwd=str(work),
++                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    out = done.stdout + done.stderr
++    # The throwaway folder's own name is not something the layer chose to print; on Windows
++    # it starts with a drive letter. Put a placeholder in its place before the scan.
++    for form in sorted({str(work), os.path.realpath(str(work))}, key=len, reverse=True):
++        out = out.replace(form, "<tmp>")
++    return out
++
++
++def printed_literals(path):
++    """Every string in the file except docstrings and comments, with its line number."""
++    tree = ast.parse(path.read_text(encoding="utf-8"))
++    docs = set()
++    for node in ast.walk(tree):
++        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
++            body = node.body
++            if body and isinstance(body[0], ast.Expr) and isinstance(getattr(body[0], "value", None), ast.Constant) \
++                    and isinstance(body[0].value.value, str):
++                docs.add(id(body[0].value))
++    for node in ast.walk(tree):
++        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docs:
++            yield node.lineno, node.value
++
++
++def mac_only_literals(path):
++    """Strings inside a block that runs only on a Mac: `if IS_MAC:`, `elif machine.IS_MAC:`,
++    `if sys.platform == "darwin":`. A Mac member reads every one of them."""
++    tree = ast.parse(path.read_text(encoding="utf-8"))
++    for node in ast.walk(tree):
++        if isinstance(node, ast.If):
++            test = ast.dump(node.test)
++            if "IS_MAC" in test or "'darwin'" in test:
++                for sub in node.body:
++                    for inner in ast.walk(sub):
++                        if isinstance(inner, ast.Constant) and isinstance(inner.value, str):
++                            yield inner.lineno, inner.value
++
++
++SPELLED = re.compile(r"(?<![\w/.\-])python\s+[\w./<>\-]*\.py\b")
++
++failures = []
++
++
++def check(what, ok, detail=""):
++    print("%s  %s" % ("PASS" if ok else "FAIL", what))
++    if not ok:
++        failures.append(what)
++        if detail:
++            print("        " + detail.replace("\n", "\n        "))
++
++
++def main():
++    name = ROOT.name if ROOT.name in LAYERS else None
++    if name is None:
++        for candidate in LAYERS:
++            if (ROOT / ".git").exists() and candidate in (ROOT / ".git" / "config").read_text(errors="replace"):
++                name = candidate
++    if name is None:
++        print("Cannot tell which layer this is (folder %s)." % ROOT)
++        return 2
++    layer = LAYERS[name]
++    print("Layer: %s" % name)
++    work = Path(tempfile.mkdtemp(prefix="mac-regress-"))
++    try:
++        mac = run_as("darwin", layer, work)
++        win = run_as("win32", layer, work)
++    finally:
++        shutil.rmtree(work, ignore_errors=True)
++
++    print()
++    print("=== told it is on a Mac ===")
++    hits = [(line, scan_line(line)) for line in mac.splitlines()]
++    hits = [(l, h) for l, h in hits if h]
++    check("nothing printed tells a Mac member to type python or pip, or uses a Windows word",
++          not hits, "\n".join("%s  <- %s" % (l.strip(), ", ".join(h)) for l, h in hits))
++    lines = mac.splitlines()
++    for want in layer["mac_lines"]:
++        check("printed on a Mac: %s" % want.strip(), want in lines)
++
++    print()
++    print("=== told it is on Windows ===")
++    lines = win.splitlines()
++    for want in layer["windows_lines"]:
++        check("printed on Windows, as before: %s" % want.strip()[:90], want in lines)
++
++    print()
++    print("=== printed text in the code ===")
++    spelled = []
++    for path in sorted(list((ROOT / "engine").glob("*.py")) + [ROOT / "install.py"]):
++        for lineno, text in printed_literals(path):
++            for piece in text.splitlines():
++                if SPELLED.search(piece):
++                    spelled.append("%s:%d  %s" % (path.relative_to(ROOT).as_posix(), lineno, piece.strip()))
++    check("no printed text spells out `python <file>.py`; the command name depends on the machine",
++          not spelled, "\n".join(spelled))
++    mac_text = []
++    for path in sorted(list((ROOT / "engine").glob("*.py")) + [ROOT / "install.py"]):
++        for lineno, text in mac_only_literals(path):
++            for piece in text.splitlines():
++                found = scan_line(piece)
++                if found:
++                    mac_text.append("%s:%d  %s  <- %s" % (path.relative_to(ROOT).as_posix(), lineno,
++                                                          piece.strip(), ", ".join(found)))
++    check("text printed only on a Mac breaks none of the rules above", not mac_text,
++          "\n".join(mac_text))
++
++    print()
++    if failures:
++        print("RED: %d check(s) failed" % len(failures))
++        if os.environ.get("MAC_REGRESS_SHOW"):
++            print("---- Mac output ----\n" + mac + "\n---- Windows output ----\n" + win)
++        return 1
++    print("GREEN: every check passed")
++    if os.environ.get("MAC_REGRESS_SHOW"):
++        print("---- Mac output ----\n" + mac + "\n---- Windows output ----\n" + win)
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
