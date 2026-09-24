@@ -1,0 +1,150 @@
+diff --git a/install.py b/install.py
+index 1e2c256..e99ad9d 100644
+--- a/install.py
++++ b/install.py
+@@ -30,6 +30,19 @@ LAYER_NAME = "Standards"
+ NEEDS_LAYER = 1
+ HERE = Path(__file__).resolve().parent
+ POINTER = Path.home() / ".outliers-sb"
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows. Used only in
++# lines printed for the member to type; the programs themselves run with sys.executable.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The Mac copy of each part (its name ends in -mac) prints Mac commands, but it is not published
++# yet. Until it is, a Mac member is sent to the same repo as a Windows member, whose code also
++# runs on a Mac. The Mac build plan's wave 6 publishes the Mac copies and sets this 1 line to True.
++MAC_REPOS_PUBLISHED = False
++
++
++def repo(name):
++    """The name of the repo a member downloads the part `name` from, on this computer."""
++    return name + "-mac" if MAC_REPOS_PUBLISHED and sys.platform == "darwin" else name
+ 
+ 
+ def ask(question, default=""):
+@@ -55,13 +68,23 @@ def looks_installed(p):
+     return (Path(p) / "_layers" / "config.json").exists()
+ 
+ 
++def places_to_look():
++    """On a Mac a new second brain lives at ~/Second Brain (Part 1 puts it outside Documents), so
++    that is looked at first; one made earlier in Documents is still found. Windows is unchanged."""
++    places = [Path.cwd()]
++    if sys.platform == "darwin":
++        places.append(Path.home() / "Second Brain")
++    places.append(Path.home() / "Documents" / "Second Brain")
++    return places
++
++
+ def find_vault():
+     """Look where Layer 1 said it put things, then in the obvious places."""
+     if POINTER.exists():
+         p = POINTER.read_text(encoding="utf-8").strip()
+         if p and looks_installed(p):
+             return Path(p)
+-    for c in (Path.cwd(), Path.home() / "Documents" / "Second Brain"):
++    for c in places_to_look():
+         if looks_installed(c):
+             return Path(c)
+     return None
+@@ -75,9 +98,9 @@ def main():
+     if home is None:
+         say("I cannot find a second brain to install this into.", "",
+             "This layer sits on top of Layer %d. Install that first:" % NEEDS_LAYER,
+-            "   git clone https://github.com/OUTLIERS-ai/outliers-sb-01-memory",
+-            "   cd outliers-sb-01-memory",
+-            "   python install.py", "", "Nothing has been changed.", "")
++            "   git clone https://github.com/OUTLIERS-ai/%s" % repo("outliers-sb-01-memory"),
++            "   cd %s" % repo("outliers-sb-01-memory"),
++            "   %s install.py" % PY, "", "Nothing has been changed.", "")
+         return 1
+ 
+     cfg_path = home / "_layers" / "config.json"
+@@ -132,9 +155,9 @@ def main():
+ 
+     say("-" * 66, "")
+     say("From now on:", "",
+-        "   python _engine/doctor.py      see what changed",
+-        "   python _engine/repair.py      show what could be fixed automatically",
+-        "   python _engine/repair.py --apply    fix it", "")
++        "   %-30ssee what changed" % (PY + " _engine/doctor.py"),
++        "   %-30sshow what could be fixed automatically" % (PY + " _engine/repair.py"),
++        "   %s _engine/repair.py --apply    fix it" % PY, "")
+     if run_alone:
+         say("You said the check should run on its own. It has no timetable of its own yet -",
+             "that arrives in Layer 4, which is where things start running to a clock.", "")
+diff --git a/sb/doctor.py b/sb/doctor.py
+index 1818e26..08a9d5b 100644
+--- a/sb/doctor.py
++++ b/sb/doctor.py
+@@ -29,7 +29,7 @@ import re
+ import subprocess
+ import sys
+ import tempfile
+-from datetime import date
++from datetime import date, datetime
+ from pathlib import Path
+ 
+ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+@@ -39,6 +39,10 @@ VAULT = HERE.parent
+ SCHEMA_PATH = HERE / "_schema" / "note-types.json"
+ EXPECT_PATH = HERE / "_schema" / "expectations.json"
+ REPORT_DIR = HERE / "reports"   # beside the engine, not in a room Layer 1 never made
++# Part 4's morning job keeps its own log in your home folder, outside the second brain, so that a
++# refusal to read the second brain can still be recorded. Read here only if it exists.
++MORNING_LOG = Path.home() / ".outliers-sb-morning.log"
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ # WHY 2: non-greedy to the first ']]'. A pattern that excluded ']' from the middle of a link is
+ # blind to every note whose filename contains a square bracket.
+@@ -275,6 +279,42 @@ def apply_expectations(checks, expect):
+     return checks
+ 
+ 
++def long_date(stamp):
++    try:
++        return datetime.strptime(stamp[:16], "%Y-%m-%dT%H:%M").strftime("%A %d %B %Y, %H:%M")
++    except ValueError:
++        return stamp
++
++
++def morning_lines():
++    """What Part 4's morning job last did. Nothing at all if Part 4 never ran it. A refusal of a
++    folder this second brain is no longer in (it was moved) is old news and is not shown."""
++    last_written = last_run = None
++    try:
++        with open(str(MORNING_LOG), encoding="utf-8", errors="replace") as fh:
++            for line in fh:
++                parts = line.rstrip("\n").split("\t")
++                if len(parts) >= 3:
++                    last_run = parts
++                    if parts[1] == "written":
++                        last_written = parts
++    except OSError:
++        return []
++    here = os.path.normcase(os.path.abspath(str(VAULT)))
++    ours = bool(last_run) and os.path.normcase(os.path.abspath(last_run[2])) == here
++    out = []
++    if ours and last_run[1] == "refused":
++        out.append("  %s refused access to %s on %s. Run %s _engine/today.py for what to do."
++                   % ("macOS" if sys.platform == "darwin" else "The computer",
++                      last_run[2], long_date(last_run[0]), PY))
++    elif ours and last_run[1] == "failed":
++        out.append("  The morning job failed on %s. Run %s _engine/today.py for what to do."
++                   % (long_date(last_run[0]), PY))
++    out.append("  Morning list last written: %s"
++               % (long_date(last_written[0]) if last_written else "never"))
++    return out + [""]
++
++
+ def report(checks, scan, links, expect):
+     L = ["", "  YOUR SECOND BRAIN - CHECK", "  %s" % VAULT,
+          "  %d notes, %d links" % (len(scan.files), links["total"]), ""]
+@@ -296,6 +336,7 @@ def report(checks, scan, links, expect):
+     L.append("  %s" % ("SOMETHING GOT WORSE - the lines marked WORSE are the only ones to look at."
+                        if worse else "Nothing got worse."))
+     L.append("")
++    L.extend(morning_lines())
+     return "\n".join(L)
+ 
+ 

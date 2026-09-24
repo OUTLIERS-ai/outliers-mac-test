@@ -1,0 +1,1341 @@
+diff --git a/guide/Part-4-Operations.html b/guide/Part-4-Operations.html
+index a4d0253..e1f0b78 100644
+--- a/guide/Part-4-Operations.html
++++ b/guide/Part-4-Operations.html
+@@ -52,4 +52,4 @@
+   .tw { font-size:9.2px; letter-spacing:.05em; fill:#F3EEE3; }
+   .tsw{ font-size:8px;   letter-spacing:.05em; fill:#F3EEE3; }
+   .tsb{ font-size:8px;   letter-spacing:.12em; fill:#B08A3E; }
+-</style></head><body><div class="page cover"><div><svg width="132" height="132" viewBox="0 0 200 200" style="display:block;margin:0 auto"><circle cx="100" cy="100" r="90" fill="none" stroke="#14110C" stroke-width="3.15"/><circle cx="100" cy="100" r="50.4" fill="none" stroke="#14110C" stroke-width="18"/><circle cx="162.51" cy="35.26" r="10.35" fill="#6E1A18"/></svg><div class="word mono">Outliers</div><h1>It Still Needs You</h1><div class="sub">Part 4 of 4 &nbsp;&middot;&nbsp; Getting it to run on its own,<br>and to tell you when it stops.</div></div><div style="margin-bottom:15mm"><div class="mono" style="font-size:8.5pt;color:#B08A3E">Est. MMXXVI &nbsp;&middot;&nbsp; Outliers Accelerator</div></div></div><div class="page"><div class="label mono">Part 4 &middot; Operations</div><div class="pos"><svg viewBox="0 0 152 20" width="100%"><rect x="0" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="38" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="76" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="114" y="0" width="34" height="7" fill="#14110C" stroke="#14110C" stroke-width="0.4"/><text x="0" y="17" style="font-size:6px;letter-spacing:.14em;fill:#B08A3E">PART 4</text></svg></div><h2>Why do you still have to remember to use it?</h2><div class="deck">Everything in it works, and all of it works when you sit down and start it. Which means you have not built a system yet. You have built a tool, and you are still the one operating it.</div><h3>You will recognise some of this</h3><ul><li>You forget it exists for a week at a time.</li><li>You set something up to run by itself and have no idea whether it still does.</li><li>You cannot tell whether it did nothing because there was nothing to do, or because it broke a fortnight ago.</li><li>Something once opened a window in the middle of your afternoon, and you turned it off and never turned it back on.</li><li>You start each morning deciding what to look at, which is the job it was supposed to be doing for you.</li></ul><h3>Why it happens</h3><p>Nothing here runs unless you start it, and nothing tells you when it stops.</p><p>The second half is worse than it sounds. <b>A job that ran and produced nothing looks exactly like a job that had nothing to do.</b> Both are silent. So a thing can fail on a Tuesday and carry on reporting success for a month, and there is nobody sitting beside you to notice. Mine did precisely that: it ran sixty-four times, produced nothing every time, and said it had worked.</p><p>And the window that opened in the middle of your afternoon is not a small thing. A job that interrupts you gets switched off within a week, and a job that is off is a job that is not running.</p><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">2</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; What fixes it</div><h2>What fixes it</h2><div class="deck">A timetable, a gate, a record of what happened, and one short list each morning.</div><p><b>A timetable.</b> Things run at a set time rather than when you remember, and they run out of sight - no window, nothing taking your keyboard mid-sentence.</p><p><b>A gate.</b> Anything meant for another person is written, checked by something other than the thing that wrote it, and then waits in a list for you to read. It goes nowhere until you send it yourself.</p><p><b>A record.</b> A running list of what happened and when, added to and never rewritten. Your notes describe how things are; the record describes what occurred.</p><p><b>One list each morning</b>, ordered by what has changed, each line saying why it is there.</p><figure><svg viewBox="0 0 480 166" width="100%"><defs><marker id="a4" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#6E1A18"/></marker></defs><rect x="0" y="8" width="112" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Runs on a clock</text><text x="7" y="39" style="font-size:7.5px;fill:#6E1A18">out of sight</text><line x1="116" y1="28" x2="154" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="158" y="8" width="118" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="165" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Shared limits</text><text x="165" y="39" style="font-size:7.5px;fill:#6E1A18">one budget, not five</text><line x1="280" y1="28" x2="318" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="322" y="8" width="158" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="329" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Your hand on it</text><text x="329" y="39" style="font-size:7.5px;fill:#6E1A18">before anything leaves</text><line x1="56" y1="52" x2="56" y2="82" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="0" y="86" width="198" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">A record of what happened</text><line x1="202" y1="106" x2="240" y2="106" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="244" y="86" width="236" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="251" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">One list each morning</text><text x="251" y="117" style="font-size:7.5px;fill:#6E1A18">ordered by what changed</text><text x="0" y="152" style="font-size:7.5px;fill:#6E1A18">Nothing appears on your screen while you work. That is the difference between automation you keep and automation you disable.</text></svg><div class="cap">A clock, a gate, a record, and one list</div></figure><h3>Why this way and not another</h3><ul><li><b>It runs invisibly, and that is not cosmetic.</b> The most common reason automation stops working is that somebody turned it off because it was annoying them.</li><li><b>The gate is built into the machinery, not written into instructions.</b> Instructions are the first thing a busy system stops reading. The work stops at a queue and a person moves it.</li><li><b>Nothing marks its own homework.</b> Whatever wrote a thing does not get to approve it. A second pass by something else is the cheapest check there is and the one most often skipped, because the first pass sounded confident.</li><li><b>Silence is not evidence that things are fine.</b> So the last thing installed is not another feature - it is a comparison between what should be true and what is, which says so loudly when they differ.</li></ul><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">3</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Do this</div><h2>Do this</h2><div class="deck">Same window as last time, with Claude running in it.</div><h3>Two steps</h3><ol><li>Open your <b>Terminal</b> (Mac) or <b>PowerShell</b> (Windows), and type <b>claude</b> to start it, exactly as you did last time.</li><li>Drag this PDF onto it and write <em>do what this says</em>.</li></ol><p>If you would rather type than drag, paste this instead. It is a sentence, not a command - Claude reads it like anything else you say:</p><div class="cmd">Set up part four of my second brain from<br>github.com/OUTLIERS-ai/outliers-sb-04-operations</div><h3>What it asks you, and why</h3><table><tr><th style="width:52mm">Question</th><th>What it changes</th></tr><tr><td class="k">When do you want the morning list?</td><td>Sets the time it is ready. It is prepared quietly beforehand, not while you read it.</td></tr><tr><td class="k">Your hand on anything that reaches a person?</td><td>Yes is the default and the recommendation. No is possible, and is a decision worth making deliberately rather than by accepting a default.</td></tr><tr><td class="k">Where should it tell you when something breaks?</td><td>Somewhere you already look. A warning somewhere you do not look is not a warning.</td></tr></table><h3>What you end up with</h3><p>A timetable, a gate before anything leaves, a record that is added to and never rewritten, one list each morning, and a check that compares what should be true against what is.</p><div class="footer"><span class="mono">Part 4 &middot; Do this</span><span class="pgno">4</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; For Claude</div><h2>For Claude</h2><div class="deck">This page is addressed to the software, not to you. You do not need to read it, and nothing is lost if you do not.</div><div class="box"><span class="mono">Instructions to Claude - execute now, in order</span><p>The person who handed you this document wants Part 4 of the Outliers Second Brain installed. Do it now; do not wait for them to read anything.</p></div><h3>Steps</h3><ol><li>Download <b>github.com/OUTLIERS-ai/outliers-sb-04-operations</b> into a working folder. Use git if it is available; if not, fetch the zip from the same address and unpack it.</li><li>Run <b>install.py</b> inside it, with the owner able to see the questions. Ask them exactly as written and pass their answers through - do not answer on their behalf and do not skip a question because you can guess.</li><li>This part depends on Parts 1 to 3. If any is missing, install.py refuses - relay that plainly.</li><li>When it finishes, tell them in two or three plain sentences what now exists and what to try first. No jargon, and do not list files.</li></ol><p>If anything fails, say so plainly, quote what it said, and stop. Do not build a partial version and describe it as finished.</p><div class="footer"><span class="mono">Part 4 &middot; For Claude</span><span class="pgno">5</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Finishing</div><h2>What you will notice</h2><div class="deck">Read one list in the morning. Look at the warnings when they come.</div><p>The list is short on purpose and each line says why it is there. It is ordered by what has changed rather than by what you added first, because something that arrived this morning matters more than something that has been sitting in a queue for a fortnight.</p><p>The warnings are rarer and worth more. Each names something that should have been true, what was actually found, and where to look. <b>A warning you cannot act on is a fault in the warning</b>, not something to get used to.</p><h3>If you already have something like this</h3><p>If you already have things running on a schedule, here is the test: name which of them are supposed to be running right now. Most people cannot, because a job switched off deliberately and a job that broke look identical from outside. This writes down which are meant to be on, and then checks.</p><hr class="rule"><h3>What it still does not do</h3><p>Nothing further to install. What changes is that it starts telling you things, and what it tells you sends you back to the earlier parts: a rule that keeps misfiring gets rewritten, a source that never produces anything useful gets dropped.</p><p>The other thing that changes is what you can now build on top. Something that remembers, keeps itself honest, fills itself and runs without watching is solid enough for the next thing to stand on - and the first one worth standing there is the one that tracks your dealings with other people.</p><div class="box"><span class="mono">Next: Part 1 &middot; Memory</span><p>Back to the beginning with what you have learned. This is the last of the four, and not the end of the build: it is the point where the thing starts improving from what it reports rather than from the next instalment.</p></div><h3>Words used here</h3><table><tr><th style="width:44mm">Word</th><th>What it means</th></tr><tr><td class="k">The timetable</td><td>What makes your computer run something at a set time without being asked. Set it to run out of sight, or it interrupts you and gets switched off.</td></tr><tr><td class="k">The record</td><td>A list of what happened, only ever added to and never rewritten, so what it said last month still says the same thing today.</td></tr><tr><td class="k">The gate</td><td>The rule that anything meant for another person stops and waits for you. Built into how it works, not asked for in an instruction.</td></tr></table><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">6</span><span class="mono">Outliers</span></div></div></body></html>
+\ No newline at end of file
++</style></head><body><div class="page cover"><div><svg width="132" height="132" viewBox="0 0 200 200" style="display:block;margin:0 auto"><circle cx="100" cy="100" r="90" fill="none" stroke="#14110C" stroke-width="3.15"/><circle cx="100" cy="100" r="50.4" fill="none" stroke="#14110C" stroke-width="18"/><circle cx="162.51" cy="35.26" r="10.35" fill="#6E1A18"/></svg><div class="word mono">Outliers</div><h1>It Still Needs You</h1><div class="sub">Part 4 of 4 &nbsp;&middot;&nbsp; Getting it to run on its own,<br>and to tell you when it stops.</div></div><div style="margin-bottom:15mm"><div class="mono" style="font-size:8.5pt;color:#B08A3E">Est. MMXXVI &nbsp;&middot;&nbsp; Outliers Accelerator</div></div></div><div class="page"><div class="label mono">Part 4 &middot; Operations</div><div class="pos"><svg viewBox="0 0 152 20" width="100%"><rect x="0" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="38" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="76" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="114" y="0" width="34" height="7" fill="#14110C" stroke="#14110C" stroke-width="0.4"/><text x="0" y="17" style="font-size:6px;letter-spacing:.14em;fill:#B08A3E">PART 4</text></svg></div><h2>Why do you still have to remember to use it?</h2><div class="deck">Everything in it works, and all of it works when you sit down and start it. Which means you have not built a system yet. You have built a tool, and you are still the one operating it.</div><h3>You will recognise some of this</h3><ul><li>You forget it exists for a week at a time.</li><li>You set something up to run by itself and have no idea whether it still does.</li><li>You cannot tell whether it did nothing because there was nothing to do, or because it broke a fortnight ago.</li><li>Something once opened a window in the middle of your afternoon, and you turned it off and never turned it back on.</li><li>You start each morning deciding what to look at, which is the job it was supposed to be doing for you.</li></ul><h3>Why it happens</h3><p>Nothing here runs unless you start it, and nothing tells you when it stops.</p><p>The second half is worse than it sounds. <b>A job that ran and produced nothing looks exactly like a job that had nothing to do.</b> Both are silent. So a thing can fail on a Tuesday and carry on reporting success for a month, and there is nobody sitting beside you to notice. Mine did precisely that: it ran sixty-four times, produced nothing every time, and said it had worked.</p><p>And the window that opened in the middle of your afternoon is not a small thing. A job that interrupts you gets switched off within a week, and a job that is off is a job that is not running.</p><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">2</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; What fixes it</div><h2>What fixes it</h2><div class="deck">A timetable, a gate, a record of what happened, and one short list each morning.</div><p><b>A timetable.</b> Things run at a set time rather than when you remember, and they run out of sight - no window, nothing taking your keyboard mid-sentence.</p><p><b>A gate.</b> Anything meant for another person is written, checked by something other than the thing that wrote it, and then waits in a list for you to read. It goes nowhere until you send it yourself.</p><p><b>A record.</b> A running list of what happened and when, added to and never rewritten. Your notes describe how things are; the record describes what occurred.</p><p><b>One list each morning</b>, ordered by what has changed, each line saying why it is there.</p><figure><svg viewBox="0 0 480 166" width="100%"><defs><marker id="a4" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#6E1A18"/></marker></defs><rect x="0" y="8" width="112" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Runs on a clock</text><text x="7" y="39" style="font-size:7.5px;fill:#6E1A18">out of sight</text><line x1="116" y1="28" x2="154" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="158" y="8" width="118" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="165" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Shared limits</text><text x="165" y="39" style="font-size:7.5px;fill:#6E1A18">one budget, not five</text><line x1="280" y1="28" x2="318" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="322" y="8" width="158" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="329" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Your hand on it</text><text x="329" y="39" style="font-size:7.5px;fill:#6E1A18">before anything leaves</text><line x1="56" y1="52" x2="56" y2="82" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="0" y="86" width="198" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">A record of what happened</text><line x1="202" y1="106" x2="240" y2="106" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="244" y="86" width="236" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="251" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">One list each morning</text><text x="251" y="117" style="font-size:7.5px;fill:#6E1A18">ordered by what changed</text><text x="0" y="152" style="font-size:7.5px;fill:#6E1A18">Nothing appears on your screen while you work. That is the difference between automation you keep and automation you disable.</text></svg><div class="cap">A clock, a gate, a record, and one list</div></figure><h3>Why this way and not another</h3><ul><li><b>It runs invisibly, and that is not cosmetic.</b> The most common reason automation stops working is that somebody turned it off because it was annoying them.</li><li><b>The gate is built into the machinery, not written into instructions.</b> Instructions are the first thing a busy system stops reading. The work stops at a queue and a person moves it.</li><li><b>Nothing marks its own homework.</b> Whatever wrote a thing does not get to approve it. A second pass by something else is the cheapest check there is and the one most often skipped, because the first pass sounded confident.</li><li><b>Silence is not evidence that things are fine.</b> So the last thing installed is not another feature - it is a comparison between what should be true and what is, which says so loudly when they differ.</li></ul><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">3</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Do this</div><h2>Do this</h2><div class="deck">Same window as last time, with Claude running in it.</div><h3>Two steps</h3><ol><li>Open your <b>Terminal</b> (Mac) or <b>PowerShell</b> (Windows), and type <b>claude</b> to start it, exactly as you did last time.</li><li>Drag this PDF onto it and write <em>do what this says</em>.</li></ol><p>If you would rather type than drag, paste this instead. It is a sentence, not a command - Claude reads it like anything else you say:</p><div class="cmd">Set up part four of my second brain from<br>github.com/OUTLIERS-ai/outliers-sb-04-operations</div><h3>What it asks you, and why</h3><table><tr><th style="width:52mm">Question</th><th>What it changes</th></tr><tr><td class="k">When do you want the morning list?</td><td>Sets the time it is ready. It is prepared quietly beforehand, not while you read it.</td></tr><tr><td class="k">Your hand on anything that reaches a person?</td><td>Yes is the default and the recommendation. No is possible, and is a decision worth making deliberately rather than by accepting a default.</td></tr><tr><td class="k">Where should it tell you when something breaks?</td><td>Somewhere you already look. A warning somewhere you do not look is not a warning.</td></tr><tr><td class="k">Put the morning list on this computer's timetable?</td><td>Yes makes it run by itself at the time you gave, every day, with no window. No leaves it off, and you run it yourself when you want it.</td></tr></table><h3>What you end up with</h3><p>A timetable, a gate before anything leaves, a record that is added to and never rewritten, one list each morning, and a check that compares what should be true against what is.</p><div class="footer"><span class="mono">Part 4 &middot; Do this</span><span class="pgno">4</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; For Claude</div><h2>For Claude</h2><div class="deck">This page is addressed to the software, not to you. You do not need to read it, and nothing is lost if you do not.</div><div class="box"><span class="mono">Instructions to Claude - execute now, in order</span><p>The person who handed you this document wants Part 4 of the Outliers Second Brain installed. Do it now; do not wait for them to read anything.</p></div><h3>Steps</h3><ol><li>Download <b>github.com/OUTLIERS-ai/outliers-sb-04-operations</b> into a working folder. Use git if it is available; if not, fetch the zip from the same address and unpack it.</li><li>Run <b>install.py</b> inside it, with the owner able to see the questions. Ask them exactly as written and pass their answers through - do not answer on their behalf and do not skip a question because you can guess.</li><li>This part depends on Parts 1 to 3. If any is missing, install.py refuses - relay that plainly.</li><li>When it finishes, tell them in two or three plain sentences what now exists and what to try first. No jargon, and do not list files.</li></ol><p>If anything fails, say so plainly, quote what it said, and stop. Do not build a partial version and describe it as finished.</p><div class="footer"><span class="mono">Part 4 &middot; For Claude</span><span class="pgno">5</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Finishing</div><h2>What you will notice</h2><div class="deck">Read one list in the morning. Look at the warnings when they come.</div><p>The list is short on purpose and each line says why it is there. It is ordered by what has changed rather than by what you added first, because something that arrived this morning matters more than something that has been sitting in a queue for a fortnight.</p><p>The warnings are rarer and worth more. Each names something that should have been true, what was actually found, and where to look. <b>A warning you cannot act on is a fault in the warning</b>, not something to get used to.</p><h3>If you already have something like this</h3><p>If you already have things running on a schedule, here is the test: name which of them are supposed to be running right now. Most people cannot, because a job switched off deliberately and a job that broke look identical from outside. This writes down which are meant to be on, and then checks.</p><hr class="rule"><h3>What it still does not do</h3><p>Nothing further to install. What changes is that it starts telling you things, and what it tells you sends you back to the earlier parts: a rule that keeps misfiring gets rewritten, a source that never produces anything useful gets dropped.</p><p>The other thing that changes is what you can now build on top. Something that remembers, keeps itself honest, fills itself and runs without watching is solid enough for the next thing to stand on - and the first one worth standing there is the one that tracks your dealings with other people.</p><div class="box"><span class="mono">Next: Part 1 &middot; Memory</span><p>Back to the beginning with what you have learned. This is the last of the four, and not the end of the build: it is the point where the thing starts improving from what it reports rather than from the next instalment.</p></div><h3>Words used here</h3><table><tr><th style="width:44mm">Word</th><th>What it means</th></tr><tr><td class="k">The timetable</td><td>What makes your computer run something at a set time without being asked. Set it to run out of sight, or it interrupts you and gets switched off.</td></tr><tr><td class="k">The record</td><td>A list of what happened, only ever added to and never rewritten, so what it said last month still says the same thing today.</td></tr><tr><td class="k">The gate</td><td>The rule that anything meant for another person stops and waits for you. Built into how it works, not asked for in an instruction.</td></tr></table><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">6</span><span class="mono">Outliers</span></div></div></body></html>
+\ No newline at end of file
+diff --git a/guide/Part-4-Operations.pdf b/guide/Part-4-Operations.pdf
+index f82a370f2f36fb1f63d1e3b820051500bd2dd539..1751ced8a24ba1d4d56cf5964c624077a1cba620 100644
+GIT binary patch
+delta 23891
+zcmZsDcOaE*+`nUHXA`pbJm*-)p4l?8v$B%CLga|-%-h~%L`e4Dn~=RXStXPieusMB
+zx953&{Bf>x-QT?~?(@0NR3XNz3XJGAYA84F%`dH%nU$G~4G%w5kQ*vMD`#QN1LlXu
+zf@nZcfEGlK0fX>?1tBm%0z~yc>xw6!7ZPv*UIB4&T30t0OEY^c&$O>%bCDYYF8h}x
+zU%;4UY4tJ1$ml3;CqKwRt4Mu#(bgZPjA_f#i`UQ&&p=VKp|N`Mn#0a>dKM>LV{r<T
+zmqo&_rc19ITG6=ScRopI^OC1*Z_LrqT%EUq*o-q%u6Ge{{N>7(d99jJ`LhOE;Bfbu
+ztAj5sqKy|}Jn*y3;6r19I$A;#->Yvc7r}7v)7_sR7_rDAqXU>5OD}sQjC^<QUt+vg
+zcyZZd`|bNTlk43AiL1k-rRK|x!>h}N51H3zYiQgw;-W8oeEqOp%MXH{{tOxr3CqiZ
+zWz^AI#4G#79Wwb@G#Wb}^_+$Am`K1+N<-K9<9X6R+@U{WEowJ@#t$$3+78~&?<w?p
+z3^N)zL<=q`MAE!se)H3Dzge0i*n~!RM!a-X-1t6p^OO08<8BXeO%z+{eIi;ziRYJw
+zM|ui@33OPaOzQfqN%Oy)$pF!u&F!O(hKJ9ka8yus;a6864CmHx7s*$$2knILwT+`F
+z{C!Zg#AEU6F9GOxm7Ma9zet!YqWB46lQ#wK*>9vtZEvqrCP`%YptLrSjLww!AQ=f|
+zG?k3HuWTG)+PH-9a2*^4J~4g1?Z7wsQWo2Q7y2N>!AgizAp{JyG+tvumqRB_GokSN
+znAKOlijyaf=bh&QBB=Drd-8@0o_Ia%-GvEmXHE2zBX6~69XNLsH+T|G+LZO0I9%af
+zaH;~Jg7bZyHW{2URI}*}5(?!X@wvC08?8cQTLH;}1;)L0Y3GN)c<Bt&mUt<T{i7+O
+zDW-$~KZ1&<0Z{T7isUClxK~<T5UadeIv2c9*U51aqt_(&!s^J5qam7bND!m`#~Q8v
+z?&!@3<NQx|Q69t+yEmkN%=#X5!N_VAIw|G6{yHaB@JTBbjAGy1GqDwhMDQ%-xSfpZ
+z;V{7?!PyP**B&4*D$IvUl1dG=!R+lCIH*S&IgcWGV;TLwxh^(K#--B>S}SZY@QpKG
+zcEGxuMaj3X+L1d3U6yg*!-b_8g$Gs9hX_LLy=A3Hq%jx*bzbA8ay!f&%ETp;S!xyq
+zi{Z(a<m;5=W4D(YsA^6;BZ*IPd6bq+NYjMoLh9Ef7+bSUjknYE(Y4!a?ve+7Zq{yY
+zoLazi<w9%Pxcbn&m8Re^D-3jfIP*4Uah~#3`wK@&WM1}F7?{zu7cTv--ckWIlHB^M
+z*~7Q$6@^abemLPtY7mvXub)ifMqQLmk2dIc#B$zE_?{P-7i$pvjxS{$D~;IR*y0_M
+zft%rHXOTq7+E5L8>^t4Fi^$}6GLW2FnayYwO)JWbA4W=k7tMafE1PS<fvUtWPRNkf
+zet%W<N6aSg-C{WtcepuR0M+i@n>A!)*{=qrgsR-8RN%<M>D-ki-SF~o=lW1*HS*Pz
+zV3s!$0_&<{O$?}ziAgFwXO2?hR<g9h=zv%fnhGZEg%a^N<RT@92xo%V><>C*!0)8P
+zi(ZBusD_1hmAy7F=N}Dt7cUaovm_+vkRw<gi0krxE*9v@xQK_rp$f(o%6PKi=T5D!
+zP($*-CeE#^B*e+p`Bc3*2Jb^2U=^UPj7T3u(Q=<T;z$eec1Zg?z@!@TDI|QFMEZDt
+zyIP-e^F6u&uW~VccyDekW{%qKh*=9cYP8ljA-7$_T#%eF#d{;$=vMZJ+P+~>0$Oq_
+z<t9JV4uZAMnWd;t;f+xdB%P{po5^jRA5)~no}z=Ps{+P0kt#m66V^R`nS|CdJ?OCU
+z9MhnuqNuJQ6fMNx6tx=dXmwqqBFBY;iUQpTs*n1FFo#J*Qkjf`Zv|BMUQ;WXNax-a
+zv+{=@COG+n)uZ|4LjH`r54Jt8(@G;-F`H_glI{rP4+<f5cfz^&F}_Mjir-`Fmx{id
+za_5^fDsKdSq{kEzET?ND;9<a{R#xgMvdr1aK#%J=HHuVJWnFoz`YQt`;nZ3CgXE^~
+zarvFYP`@4Wub8fUS1$Pb#n11BnzhktIxr-CHfwyAl{`l-&D=X;!Taoy=g&mX!toMk
+z!EOu+6zf*z@}@#~OXNKl`3vm?|9)2rF0C(nk&~r6!7?Cn!SjOB{5Br}%wU_PM`5TX
+zoAv(Xnp=dN?3DyNkxq+#?hlu=J&MI70!iGwUh`^Sif=qjp4`f8jI2DAD;Q(OF6J0I
+zh<}VGkvP&MQ=HKPK~;f1>Jl4kRJa>a57i08D_5`ACDM<F6ThM7-Rma2OOl$_v&+-s
+zOBczLm9M~o*=X?Xp=}fXDWph2p>#Mji>^Xr@8d%{GoFfo?H%TydS<KdiCqj{Kj3iP
+zd?8dq`p7{nZS}2BaS`_6=+HN1nJERlIYougM4XFCLNdKmLTOORW7p7t#C{9yYR#Ps
+z)04?5BOUAELU<KRYhs^24Ud_yRfMVbaE?Q4-;aA(mP!MSFR>D6HQyK-l#&g4n``E#
+z3eJ~o{m@yY+-aus2rzd82^+51^fnouMSEM<)*P;!uBRWko$DNMUc5UAijw_aE&Na_
+zk)jbT@xypWy!V2+PoQD2y<T+pSH0yTBXY&vhL+a_KVHKhiGk16t-minOX#T>U5&wA
+zJ6fn6B*Ge8)Y;mm|G`KohSUZqd`Ch(!8xhN6XR{34?lVNxJg>3es9fqYE5=2u5PFG
+zRYy<!hdV}#?$tT#cG`v#0xzD_P0)#bEPGqhufMz#&28Y+xB6y1eWlfTt$vwnums=4
+zAdf-VFn>S*?xkVO@37~x%^6a$Ot#QCJNu5|TY0=U$A<@ZcnX%BY+rLz87mT{3o|}w
+zpjqE)a=zE_rOraO57%|bHs2`4`Hqagigj>H|Hl+*4kcj1fXA<fS3mBP^l|lz<3(CW
+z&<QWCAXvTM-Mp%zt?jKx3yWi0R|+<JW_R0Ji70X-G92&6qLXt~2kFVy*xTBoJ=o$-
+z=O&m(@iA8GyP(nO_p@J63fHkjURq;)ek5@JB_4XHvzAhRG~26c{r#c~KIwk1HS`Th
+znAN9LDiV7GpZw_J^-9+M=kJsF3;Au{6eSYFQXJSx=62PRH}otl#_|%RC*?lo3M~0q
+z0^@P|`KWLP6uu_DqdxSQvF;wgRHYk6ov)$#n0h(nv7wEUOR2y!gS(pcVc)b2R5_KN
+zT`Y>4ehH!<P$?YKuk|v=%9b1##$=@BH~bMZ!JtXV2y=RFe>yM|mknGPncXwVIR3F)
+zPd_d1`QF-^uJ~M$o@F#r9#4_iHkg5t;%zR!1tA|iG1jYK4f~0rt$VF=Q@jpzFpWsk
+zc!@oTib0Pjz~|SSf`f>6F?mc2(<GQ}n)ITsLYsq3bhX~yZX7C-jbBH_D<<$}*^;si
+z80z0L#@jhOC`aMT9LHHFuKUXW?iq0oW=-MPi^6v>#g0Mqg(9DBe>V4BGUZm=kBoYK
+z<xk{I;l4yvI>BU*c&h{V#(LdrTs~f5A?pZdLpts00{xlu=8N7IUQ-CY=R?w2lZ!se
+zVO+-=x6y_aY2&qLO+OnhVE50<Kwt153EPA?vl4xY<oVbZA8E+OG$Rm}H)@EkPwmxi
+zY=Xp?Eobkm<EZhLD$Dbyqma$IfVv|l$LOSL6#R~X?dJukPpctj=T|`z6kVHL4s8ka
+zKte&%NqNNq?KsMbBM99zazK|Ff1JN`>~y`yeH1Rg$CVQgOTM%BQul#nI;yWrEir5s
+zW)s#JJsO4Nn*`)qUyg};Yc+IRGd;gZr-&PdU7(NkuxKgB5f*+WT5^w#fO0h-zKf(~
+z?1z7TA>KNx?D}#7_*Oy5e;V0<y|^8+v1ufDp`sD`PPU&qTkPBCrMakP`M4ERb2eTK
+zp}1!lpF4GMisv;}caz5I+UNaSH^!19CMAd_CiUnvpX8}kZbCvWEN2o<*jTM23)gxr
+z1f;g~zJ4m1mmI{kfBxFELlWajhWpw~>61P9R*u57>vxgJeut;7g1SdsIk_b@U(SOs
+zj5R;{YT%PYmz;f){W!TSV-KqtN?bQ&nhEcpyjns(^0?E@Tw<Ds(e12GL=*bdLwX^S
+zF-@-YVgA^wI_yl>LS58U^T-Kg{Rj5V@kv9Gc_OuQXU#4JWTu^seMm<9NZZFUxsmcS
+z@CPA#r^VPkjpcV@J5^Gj%s+4QsF*utb1`2tycWr3mQDw^5WU1%rJ~$yGTEwNR2)^6
+zcEVnlW_wG0$D(_;J6bED_Hwxb#ngLYulJ0e{avMITigax$&l967g`}|FTT>a2&;uB
+z59|#Yj4(?L)EVULO&4_A$T2Nb`@SVv=)z~}R;GG(R+zL=SXhnTu|5>j3HFR1Z!VDX
+zP5u^-Qf_IVqCIRaW!2CbN-oTu|9(WV&aLx)-C;;~g-wQ`)sG+U!}m@oYYF+j`d+@o
+z7=EHFQST4|5GuFz5(-r9y{x2p-u{@S%S0%h#)vj%FQnepzK`H+FX_Ga?zPB^X=Y`(
+zp}qTa&|T}~mRX_bpZf5UMlvn=D}JR$?*lJX^t{NgL$C)nqGW<<?mX_|iW_9;9-0d2
+zd-18hUhZH)Y>0X=h9C@&499WhM4uUMFVhw(s~NO&nWh$ilNpDXlS9|_I->F#@6eq(
+zqxeb|oy4}#=L6?#&x=-enq@N&3Cm9St~18P{jbHnjgT{rCk|6X)P)ggZVG9+?InXF
+z@3EM%O`5rqDv!@ej5`NV!_n#AB;(bVekjq&EM#vUOlMcme@SBL>&KSn_e4<Zqq}E;
+z)N`tsqnPOSFCP|!kC@qy+S3|(<aES?fyl3m76QIZQg*i5*ixMgrMqgDr|iMC@Js(=
+z)t!XYxS+&``s>Y{_Iuw2K99y44pOnZ2PNX>t*fo%048%GwC<zsyN%t9uN0Lux(I$Y
+ztRMKMVl}AIaNZYmt=K*E)*%R)6o}pr;%dwwbejv{IP#gS@Q-HAn+Dsbru<0#sa@}^
+z)}wfF{k-3hxXz^TYQUxeWpRa97T#|+AS`9m`Nrx~F~({MM~nJK;=6=<;CbuI4ynAJ
+z7lSnNue;x9RR5f!4E)}~_?`E%pL{UXxbb_hwG)OuMtjOnm5*XCm)PrT-o0)S|H_S?
+zyfsxfVJqV5n42NUJi_7GV%C4mA1xBGkX}Ce$w2n<kb{GXq{khm^Lgp(k4q8wKIe5r
+zy9<kutLsw!#JXhi_H?pv`IEQ+_tmbv*^*+epqk(cDjw%9q+-cWls!AN!A}Y>b(J2>
+z4iOXw^;Wj}Haed?(BjII-TOJjElpPAGOD9pCs=jjqp~I&F^AQM97#+a?_QiyK{H_R
+zD6CSvF;2cXDP1kidA?OmZJO*D4isyt8Mky%%N^R=Z!^pDXKgIdTwkPSF1El=PQUWN
+zFE)dRmoE2t65*#;7w|@(Qzy2Jp$By<Yp1w7Q^Q>!NZydPDD=%Y)a=<4pE|B4`+yGi
+zgJW^2xYr%m2j-#4EiypEk<Jc(bwmHTXHl;zR>tsUI=|gX8p&`f{<#M{U;Pf_m6%F)
+z?b44RN|}4}bw?glqfRfXFF7{F(lV#PXgemqRK=Du%okh|Ch@)G#Xm|?!H)BnzTxm?
+zSUr0G$l4tCQcIezUls5Cm)nE)0V=^l3Nk7-FzT{zwaIEiiyRO8lUUVJZ3E$8ZE=9x
+z3Zr>uy#v!5(ADvUGurOL?IzoB^0*$5wlItioieIf(wnXI@&U{)>#<RyQW35J>|Ye$
+zR{wGipynH1v;QD5U6mG8PtG9nP^;NxGj{p|)pKFBuPO|8k1SE84I(^zE<;XI19E$=
+zhlrAyf=8R%IUve%nw8&>j<wcz-V|ElNV3j4_f6i78hcD8LFPyI3eL@JW*%7FPxCZc
+zv?X_LKvcD!kX)u;PXF85M?8fHAk)qCs*rZ;iC?FX6^%g~mAd>Z)~>E$iiNm$C`WB3
+z;GF8S&mlsVA~1CIiE&`gup;Rt-C-on{;q0odJuaQ7bYnxj_$mGBJ=cN0l3lp3(Z*T
+zuKJV!Lk%C6rB6-gTexc&jdw@Y`x5eyQYq;3{b}kLt~G}``r~sBm4$6&!v*NQ+9A`Y
+z*|y)RO_-Z0izdUyP;<@t8|vGfVfmxaebY7i3r51vpJC-`Q_hB^2w{))cHaE;<ua5c
+z|AYGF+biL<1Hqz)b9LP53;h@)fon5!&(4J=8Ek~5HM0)^C{G|@9jjBkI4wdmBht01
+z_o23{V}=j!tI&{mdKX2lbuAUltnL@HeOvc6Xi2~>zJgg}%>o6&%MWNYav}5b0d#dl
+zKw~u?;8jfvsE=ac@Iq;MX*IEUlxZQn0NrN}K&@N`0BU&<JOa1GY?(N>Yw##D?%%|M
+zfLfJ3&|6IpEL0I<LwNaa<RF9y0OwUMn25!#U?bp5jR;8SMiMR*DlU#?>0sgb<QWzO
+z0LRe*t&Qlw_i9`;*bOhB(g{O`fC1V%VnCpl8-Ujkpo77;R}$;w0QNd8Ah;G61O~Em
+zxPXy5oSPkdDB^C||H=ga_7V)aQHKl_1isY4fbY53#D);?tu?d|@E<b~q${;qq(Z-q
+z2J`-Th1|Rv0cH&%B!V|fEFN`hTFCA0O^CoicfB+wB2?g8M&M(^Ll6W2HF5%y0q7_Y
+zumHf{XpH-}n-IV(fD5>;#{`BONr10yw1871UTgyiP}YD8tT*1g#RrU<h+`XZ0D@#X
+zz%dN%K0?lK-3Ubx{+s1rK0*MgF76wp4a9hV`wkHRvKv|M{>6Fg0N~uL2oeMun;#;Q
+zfZOsA1Otp))Iq$!hZa7>&U%Y0(9nzvShUIlI4!t0vVquEQosnYM)_^*?fcRe9H6q5
+z4Z*S4N=`rvf!+#7yxzva2&il41X|u<kVBxisr+}?_<^VG!npsq21q3kBiu0aqXQ(G
+z@7%kUa}#1i2;ZM%@ZIL#2>A6|Ho)IO3P`r$0(u>?$Y3F0zk~CJllgDXKS}1hO|sEH
+zqNeeY7Wkfp#`0Hi4Iz+QYY}ezsfyng(n9zkKtmA>z?kO2gYeyE;EzWD_&qW3u7mz2
+zPlSJog7Do29@yx707!R`0rOq7Ky)`gK-+~400_IoyLfNc>xgTJ7{@l;VZL?s)_8=z
+zKX&lny8gG}Kz0H*KvRbeM0esN@>tt>p9S*ASjeqPM2Y;5kXu6$!ftb81YCC`%CZ|D
+z5oEe98i1x-kQ7l*{I?<cD>D5209`jX2r(GCh=AcP9H73N?xvdWL-=pwe>)lY|6PUr
+zH(ns~BPIlbOE?-E1#+|Q=D+C;{@;Z+)%#mLqW2LrSKYY4O$u(~_P6BUt#8-IdD9rk
+z0*D#ZMFbK6DEmYZMS8Oq1U~c$|IY;>AQ&MQA%yWS^9&&Zx2DoU1a3PO@%m@>(DvUH
+zymLPknI8<~_nQE=eYgPO0Q1dT;Q>k@e}EPdA_m~9j|<ou;6WCE0SEoWfKxv%ppCfH
+z+K55$m#u=g*#Wo*)qz<68wed_y^&KfXaXb;;2;Y^0lEO1|2Qakn=L?M@+KM#0Ouec
+zQ2FV03LrfD-cJJf4&nla!?%(7N6ZCp!}wRG1Od9DTSjC-p<6SR60iZYPxSvW^LI$o
+zht&}pz72DM6acCbR^aNB7P1f<5Hs=+7cBIbSRgBh4j38207yO~0)Zfcu>pafp~ynK
+zK>g>Zz}_$(kR5V!R!AVaKYBD6s87NM=*P?ufsG!O2D-;sZ%Dt7*&rsf!MN=$kqm%2
+zA&V$HwF%o>G8y1<g5`#cd6E&poVw`+5<q_(7pR-OJ%w;#|2MZ_LIC#&2k@|58X3w9
+zd`$c8G7N?&24X;U0uijKfAc_jd2e|Bs47NWr=G;X6S_^;@0kKa#CnPxVcU&7+exgO
+z#371{)DTPy5&Ba+LVx-R1_s)uDG=6YM{py2x>0*MiH!o~h5ogpHidm-UUm-8ACk=9
+z8#mKlwHx!MyP>?ls}aF?Gs9`2zmLd&bhl~1@9t*r!a_FW1)3HpG5>Tkq7y==@848p
+zA>u_4(Oruq2phma-?SU$A4`AN=3fG#h;v?VMikLM@iT28!3y13Nf1b=B54j8r1EDv
+z@cx<HynjZ{?-LerqWzhj|93#%7;W@FXDjrU{^sOHoTUQ5w|N@UKMcQ5D8v~0Eg1OP
+zLIWr*5E1;*^ZSHAOeJ2xYJo=dkL7&-Gqe6V`2JVh?ScGT+ixckY2pRUrpXW`?L19}
+z`M-S*94wFm_=^+-f86`sHM9^x7yw=rl=`g(Q6GOY@c+-q|Eawxh2LrgZdr{Ijj%wJ
+zK;<H-^lt@VL>mA2fLQ(Z5sFy-R>X%`{q~5T7W(Ip3IW9Gw!(}OA7X>Z0EQ(7M4`$r
+z$w>>bA-wu+5vzlvg(dIJ4_FX(v;FTA40@ZF8`DHZd6aD|ToLsJh5|!Nk8#1bBCvQA
+zWgod%CQ9OgXaU{jrbG@X2)lx2MS(4mi4R1QC<z6TCdOicY6)-6|GxnM1q&s%;UX@I
+z@_`6If{CxOL2ZflFc3D7Y)VyQhXd+Flu#lV4@AU%>)KzOkejgnu}Q_!!P@O9qMdko
+z`S`FBAL4+hQDIOaaAFi5h!5VLK!=I09~cti7n6?UzpPVL8j@FX{9xu|NC{<$-i7wr
+zZh>!(dP&Lnu#Szk%NO`ix}pNF1N`FpGIRf69_J+Er18tVhsgd#hQ}u8E)t_8jp<g>
+z<f@xswb~^y(gGS1b$WQavQbng2`CGW)H;yP@q%m2*i{0vwegOhaSFWV$BtY=(=mXA
+zDTP#bzVrPs&lLGSk~k{T&k1bDB#$G3D>lDDd{DXdiCb{Pl{nL9ke@J8R&GIoNLrcN
+z0WA_cir-*{TocD|Gs87<>j=u-7PFPuA*Tc8B~her0!YU*ax3x56nU%cNVTX)30*64
+z3;8|Ddq~9D)(4|Z1Kx0kBeVNRN=$3YiS9fL-rok%kzP<C&4TXmvPy#PEz=XIgOFRz
+zrg3qKQSn&S1Bir?)T<xkR=(z{>J=^DB*z7n#VKT4lSDms3H4yBChYAE>L7f5rabzl
+zae-!7BmN~;AH-(elY<|aA7;ItQcZju5D->U9_lBFH$L*{oO=h(W-8hJ%kKaw>&F&#
+z3$oD`84~d(D`^G!nmE!P<-rge7b&)0>mgd$X!nBr442=xMAC(xVy4&_AqGeK6UJ7;
+zctyz$Fj6lv_6RKswoogYoH_`|BK_q=!Y9p9DRn2I9rrtusFeo%6+MBC7{+=R?|a6<
+z!VylhAhQ|E!Cn}=7^Br|t02ZCvY8eILZANbM>=$`159BR$#(F06^_vqJf!8vq==01
+z^)-<J9+DAlX9fXdThm8tEDI;YJ&FMQ{GJROh2Yp}D9QtcD6xuYJS6QhRMHNYtw3JR
+zAmb!_v)*7OJ!I@`Y~&H#0aMsuVi~784w^bv2H09Z$XXTt>TCpaz!Z}+n28tvg_)>c
+zvl(8SQvmj3bx|Bj+wLo~M$NJ}2l-px32mC&OJ#iF#hOT@NvPOnbb477n;jD)C{1OL
+zcicN%LWfC4aE;WFmIp36ylT$o8yqTjjNFdxqt3owyQGSAG@i|v)PIs#fzO|Rej6iS
+zD1Wl^>EhT5o*X5sCVrN}TzIUop6mF)QCjos&<5+Y6>p6jf0cmtq1943s=fWo_)m{@
+zEum9~@g)=Sjdjm7gU(7t1_p~n20euKTMsPVc0YDlZoUofAC$*SNHz*4pwgkKraGo}
+z5N+K3juJe4KOyF40rk+)_%XF~g3Qytwp6^UP1<AXIC#%Q5#GF;AB0BFWmyp8dj|}^
+zQv8Q$q<%awQZ%Sh=>oIkV0=f!N@8opq1VVKKgsSGSG7u2L~>0<5N?5#eMe>3UWh(m
+z6J2UjNJi2S)e!q^YHFOj%n<ddeI@~w<W|B6Qch7mc2H3M@l*I(Bz3gT3~g=|YGx}n
+zwM~3BIy^f{6eU+X$i>w)k!P66-plcu%i(ssa9tg%AeoD~Af`F2KVEXc)fI!asEAES
+za?Mcs!RnJC5HCkt7)@*N_mXIoyJyI>E*U<ZalJiDjj31L0{9#4&*QL>1PH}iaVyL=
+zLKc*K$}y4Jm;Gl(uJabsQ2h><8K%)$%*X~CMd65>iV3odezL4+p!{D)ub&7?uD`5B
+zv1(^bq7M8V8e2(dhF(jHYHLnx{TP<$m41a;h4M8YUu*aCB>4z_ax^xOjWKkWJNG%Y
+zn<T$zpq^e7l7Sgl@oSoP<nIh*@!=0O!?zeWQIF_9L5JJYohbK^v!X_?K@vgfNW2Ws
+z#ZchGS+bQG{W)qe*k6>Vj83_Q!<%2V;aFu@Kxf1wS6RQk`1WGvy7)LNEk>~KA=@bN
+zWk2V}=i0$q?SuYPeM}f;&m+Bwf*q}wxuqIQ`5I4W`G##+p3<COonPJaVoJHTpOW3i
+zVn!$Wf^Wjo^7CiI{)hb!@B#O$%(~daCsV^d@G4iU;S|_gF=D&)#nJh3A^V-U_xE-#
+z-2q$MqWA19XYBnf3995K!b66ddz`()1Lbp&Gn@*r;#-|A4iXoN9tdCl-Svs@Rn(+y
+zi*zH;n@hPff1H)cl?BTq38N}c(~n1X6L3-!rdaaj^Vkt=8ok;Me{voKj+xa&w><Mo
+zfZtoBPb=Nzl2`ZEimtgMQgjwAS4%7QFebyMVLbH1ri_lQZ$_7<`Cei5op&9Y4CAF+
+z+aI>y4GqhnD9MqSOqBEv2Y>?0!#-$ket8w$#X~KrzoGCVtNd9vzB+9<%LkIO66Sd(
+zJ^?h_B2^t*1%Ijd%7j)O%(Th`OYv-qYJE8Rq1v&dL{3m0b)B=3kFKYcdh3e1udzhw
+z_Wly*Q<p%yW`ka1_r;`4-7&89g9(0VZj<!PsS(j%$c(%K{Epk##HizKCZ|q(j8p+-
+z0zV5R?_-8{JRwx~+@e4&RWikd>u_XS&JoZIej2X8da2s>bP3s2^`YNzG9}?VJctY2
+z<*DqH(u4D$2SEiM-*s||QX;39!tTEv5uA$6WEpwBJ<L2(eXqHj-qgEie(1gnzQ@VY
+z#DqqjDn3^8Gv$b7>>ke&3MZKDX^K;@pYSFTm=6t&rR9;rD#zP9xT;dvpWA*VWbrWx
+zs45f@X1#?9C_7C)BC6-)zoeefK<+c}fopwd^`y7P2;<CW5mQH{lMc@MfQ2<}JVvvZ
+z!jdGSV&tD^p276A9IH9nubobOnws8Vbwc`BABeA1w<EQGUx(~{C)sIe#v*~%vYjr6
+z3-M{*Gql-m-2}`uRj#tn+@GIXCNqVo@V;iY$c!+HF3{K=5dh5<?eyMd)_T9AG6|37
+zpKT6e)Oy3*&D{H-IFB@GfKP7eC_Y#2Bc{|$Ldv%t0@O%@xKILeLwh@6Hu~`CaI|h_
+zhMi){d+h?@l5-ZwmhX!IN!joR;Ybk)v`e3YPw$5>+u{%|h7>bh3RHeymu0aLv0@sN
+z|CzJ47S!|PA+k2V80+|EN{}1-PZnkP<%+`sNyk;TnR3e;$EVvY97i9~+73}q%T!Ij
+zUVX22p3V6s`e<P4`S&Wb#hmK#<KQUS^UY)YQ=dy^Tj3Yo0KX?(S7M2f6RMcYk1>^`
+z6QgUB4dPe%FgQ$^mF40mZ<vDa^Hf>c`}@0lt>u<4zGGr(Xj8{$zf!5pWAhwGhA#tI
+z#IFcxxAhc)i^r*a{9_eQ^WTd5iQB{_AZfN7-9g4=ru3)V5|x%S+o2;zOPAkb9b{=!
+z7#MyJKK_o|IW?(QAL5`B{Nh|h+QRykah4sjr3~`wfK=A$AxQS4v%mj-DRG<+(<|M(
+zo^r%PghD;KSPD^xN1UB>KRv#?9>I@Lhe%P0!e;51l?@_g>Bj;l$MUi1-nY(LVHKB%
+zvG%&kkiPmjfn8}2Idi*HY+pVyMZxSQX&XJbVRtnYO-pI4Zffr<<&etOYtC^etwbk9
+z#*V-sAf4Hkbx=7<+N7Y5{YT(yb#5;kCtrnf%PJ)IU!Je3<fkn5*5!uOTN2<N%9KDA
+zCf1yl3oy5X_7w909kY~LFQ!~zXBXz15`aw4&^mbI9sbiTJ4^%f$VX;j()FqS$oBgQ
+z;#gXCckdWZ=fBatbBO$k!8X>~5;PO_CIUM!r&GD<6Bt#>K?_?cm9{48uBDwnZ3U)M
+zYUT)iS@kD>Y3Y|ioMUdNDQEF;<XA@bl1@yl)Vq#H!GX<npU;$}%+`8vRTBs>vfq>(
+z*b(;=46WJug68sRLPh(ROsPK~9(fW{gqZnnv-;snU+N;irl>pfD(A>PAgpaMA(c3O
+z{jSmCpyLFwdpaMY)RT#nL=i)l`=Z@q%OW)^;)<*Cv!KkJ6XLUqv*ar{-Rr*ehya&k
+zsVxggj`^VR)3-fRBA56IX3$nu)A`+)@X@sE$i`p8x=PKC*Mj%H20uBsA6c#7jc>j)
+zw#CL9@dEd7TYvdUY@3=G7TS1FZ@~}!GA;a9>4qq3%+zT=KA7HnX<U>IY6hj9YCP@S
+zjvgGz%C?U=(bHOIs7GJjhOhUgUOU`xaa^j|pSx~}*nag3E{J>mfl?dah#{j!`6Myx
+zKuPr1-Qo+~7Rp3p-;<NC7soFznlB$ZZh@X&do-msJ64($7-b=)h_1M*@R%;sqF}Y|
+zDUTFtI%fzZcTpURMk0SPv|fC%cs7|lW*}pejcrqWZ+nfE{U9NZm<&F1hLhkL7w0+u
+z!iaF-V{s%$nENS?h`0wE?uQ09(kk^&386kueY^}G2S1yd5WD1Vk??ZXF)(=k+`xcz
+z?BeWs{>f3x2#Se{%)(>@_SnG78C?64^dhcZ!N(>rkHg$e{R_-z^&KEdIpYu<2zIhz
+zD+q1*M{*Xoa(wXNA>k+Zm77<&gj|LK)9Km<q~$Rl2^l;0qiA?#-jIGC8J1DVNK&q#
+z)^qUyS5IZ7#@_HB4Ch^P&x27asH&fc7>Maxk1#)9Hnbkp@8T@8-uY}omXpb3J@;kx
+zlOg_9+_uUnGn3Ah^!vH6{Kce@4B>Ajqt7Z;o)L6AgpX>;UO&DJgny`3Pu}dFPVatJ
+zr3i#&=Jbbmhk9h4<*k!xrN;<Tbnc-tjK^jwR-(UrR;q)|UT++{mcVw;rzp>~SRom5
+zdVd83;~}nBX+HgMkH;<WZtzzh^gNA#p0E66jc9z&%Ia~^&z<+R$E=!v>c$Dwt}ULD
+z@r25E$!(GE5Jr~i#laa|%RSY9$@=L2va#7F9gkwypqz~_p=}9&7Vb0T(_0+q*86Ib
+zJU(dMAhpgQLnD)YxM)i2SxZp6FAY;-NF8nHC9;cg$mshsgGy=LUiQ8W1rsd`kLmQd
+z#Wn5&S;gTp@1HNC4Bu;L`Je}HE;Po^#QEo1O~0-=;qtk<=SB@TU>hP3{3*)U!#{R*
+z-q3Pwo`uq250TNarciSgw9a+H!!Nm;NsvkANbtexOCQDhgS>ZlVHSQ_To45wYn^tX
+zT9Ixe<7ZVBo%?y^m->fs!a5PLoC5Lfh40h{H8?eRU5eFdUDH*ECeH5icZOGw!>o@v
+z?QIIHE8Rli?Jtkv5-o(E-}l%<O^3`TJm(i<vBD;pD1?F+%)WT3#<rzwb)}_Wms4qY
+zes>I6=~wnyO^K~8CDylM>W&vkHZv|ul5Ut(<8#S;$$FK3hd=oqDf^i6KqreOoU&0e
+zJFet(vVPWR5RWLQ^D>-_UXA<MmAt_|%{k7;JT|SX`1O-oI1jTTOVK3pR9)?3+oJx>
+zO6}>*>4fR$v)^i*UF<5HDclR=K4+?QoyEIM?yo(d=)MES>4WT>d?by@XYO<I8uON)
+zUeFCoF4to9!f&>|HlGUtX@WIMnmCt6O$$Q9`xBwhgWut<W|QDP(8rtkC6JtL(`BjO
+z)#+`e*SN>U1}7$or~OG^L1;HZ4w%N4q<9Lj&tyUbY{8$OHj{>aPs^q0I_mwj$?p_<
+zlD~I{Za2bn?kY2)JjDKjX5U(XLJ{sW^H@GC%_GVTRN2#g4{G?>kCuue_k+2PKeazt
+z{D*ppIk8SlAmmJo314;Uj98bIty_6jkiOfEyyD`689elz{n2D--~5uqub!`h;P=6v
+z1`&>n*Pb*LDc@y>Yk#z@2C`~%8w)0w$<NH*xzo>(32{`+Se+%;-Bzm*q^s)HVI4lO
+z)=KuJj9;J9aA{GAycB;y{29^4m3eu+Ub9{)-;)lFtVrsmt2y@ELsWAGr{&$4O5N|_
+z%}~EcXNF^blIa$2tmC@NZ=h5@6I3U)gP{*24vf8Ug45O}&peUzJj=sBL*6;(OW>)u
+zD>I7MAb9*@R;;vJzOSPSJ(4HiCMrO=aPRy{3t>x)iLr@ztruD-F`{*+u{JTXP*GIg
+zC@P>;&DI*|7=P%f^<{k=@dodZ2bW-@s7gjWQyTuP?1A|!v=N}?`s=`O(_v<dcgiC7
+zaY#+5cNgxKgBxy2sE$@a7qDvn?#{$pLO!`)Ri{O@57S-=<h)lGnPqT@>@Jr&j~aZY
+z?nmhmqLH)`wDaSaLAUmYoM>dNI31l#2Ai(ssR4f9%;z||gn3J<<h(CyLSKszF6Hip
+zj`@6omvSEHJvAb<|Ky~8JnFn#Q#$vJI#_)i`_j&hd|ueQHHt9W*vIgfoeTC)^Nj%f
+zC6B1R*e1Kk1zMUz$+yJ@&wusq(r~<moIzb*>!WD%el1tAtGX)M*^#Yj@wBmgsbkOO
+zq5ZO3w}H&Qu!65h%i~dD{=UEg<vh{0Qn_iJ8{AHz2OUL`hZ-&E7c49|ug`@z>h9>t
+zGLyHwNZD8KK`6&S3Qq1tM??N_(v0bZ0ki_xuCr~p_X$l489HCoDVr`_Aas&|D`*cP
+zHvD{A4#UGv1Sh=hAeOuQ5i^HRR@!`VY^f7(Tw)=L$<{r%xZq8RyUmW5Ezo#WDwb-K
+z0$=z18dGy%lAON$Iw5;6w9x(Cv$4@1?7@Ip)uWeqYK12@!GeC1>Mvkk=fa%yg6%cj
+zZ0V3(b0fk})<RUFi=FQjuvq0m+}!;?YH`sA&1R>ZKHb+{n^+8e|3!`1<Z3mml{8Us
+z9L=%5XJQ`euv!!ei92hvm#}7ek-WY>;R<I_`M{~9_&&M9?D)gA9=p64)`8{jCv28#
+z9g@6U-63O%-E9x-^;OKn)Wf)5+Dn28LQZwEHFfjigo2AtE^l+x#Dq6o@#TwOe~=}Q
+zAtbdePU<jj>e)FaykGpWS9O6?v{f|v4eP<)pflTimq+wU`tWqWGtgPX7I!Gqh~EG|
+zvgi&XIjvchgBj2<(0SBQF&VkUCZ&DpmW6)n-A{%i{?SIE2G?uFO`KKBYReptW;^wt
+z+VronEOkU4_IE}pKi+CabIIn26Qb{bHXi$;nacOAxEcel5Y;!th*;_@W*~UB9}|GV
+z_BvK~En?-EYmk&dTH#l~sqR7LX}$$~d9Z(FOXRfv^t0pAIfnN7v%bc?Vra?&J=c|j
+z4{l!e!6TjVSdjYqll6VbU~z!6`ZCmujWGHhJ&_uV1E-NgwC&|R_92>wT|=6&Gun^e
+zvAWSUWp}2srY8j@o5EbKoT4eqqmXuEe+0?;M>P(X+zT`~Qi^3hIBe^WVHMzl-%}Z-
+z__-R4-K8D$*qhvO@x^k19pZEJJXpR?(FE)JR7fJRH+Eq)CQ0Z$E^`EEXKlXAL?vcz
+z9Sd&Ml^3;Msjfwys3iTI9cF*l7$8CC`kfP&)jJR)#VixHs2rSAQ$1_E<)IOsu{-=W
+zXejF7N+|5;!a|o-!%*0+E`Og79%`qlsK(I67qoO8+xbo+gHQi(?jTlMnG`Z*AspLj
+zO(0F7Y+k4g31mH}{j|N6C4%2{$_O3KdZ?N&E@!(?b^b%h{E_(3U|YwkmhPq<YgAFX
+z9+fqHtdbR>c73@WA!ZoE7aK}(JO~1no%E*rW8aoKggrjc;>c2uPNv5Key1kaP+Jwr
+zzT5)ne^#yOJpD|&Tnc~`e#&xtY>Ry!H~+oPP4-w7b&C%2T7QZ=)xD%oSEzgE8e@R8
+zKKG||NUby*2fg+kyo&8OVh$=sV`4H(gC-`~)$s_4c|L2+CS4WZuXQL7>4ReP;uFf|
+z8fw-T-3F>rLgYoIj}jj@!LctJ!Blo-S}k}Io(0n@Y&FbT$W#7kbCXw29v%MQe6l1d
+z&rq7eVHj9t?Zru*u|&kG-JPV&Vy54!r2VB;tG44IF6AvgtsEt_i2G0@zC=ZF*SKGB
+zLW>`em6ZGOcSuo%0_+DlCb~KfGmXdHg}NX2@Eybs5>C@j+lCkO;9FvQ);)7o1(BDh
+zuj7T?8$36+X99R$GW!Z`pOY2l*JSkeS6hPo3uBH>9ejK&sOdijhQ1xQhYWd^h;O}(
+zGasjGewG$Ja7dBdCAaKMsTb)g8$kRSr`da{m2%a)_b5@M#yX`@O9gG<InAY_tM`W8
+z!NiHii|t77^-K<9Pxy~Sd7@A`weYlp%*6Fn6zrhqTw}2-3S)e1#5Pt%pSt_}t@1v8
+z${oZ!jcYnU>JDQg(+WDFp_^O_B`m&v4&|2D4qYbv@M^*)7DticO(;7zy>>i(FbYe;
+zBm0GkDav;Z`vBlf6`R~0U)JzpF|Ok3>dTVMjDkKaeldW95DxcUjrn4aV?Gd@UMJ-F
+z{8Hdy9Y5Yi9T}JOU_~ZF#G%KqW!GumcV`7uqQ@j_y0%JB%~lOnnfs@i*Z4ZhBflZB
+zZO686>%M(68f=`{ssA>WF@ewQU~Btfr^(yB6SbyS7>>T*(&f@uQ~3eI2Fv&giK`=h
+zix-#Md`E0_1Wl&!`SR734Mvwud30wQSG>KBn6Z!)zQPA3P1=cl2D5MOlBu&#`$cKJ
+zaSF-6cK8&1u+>a*m}Ko9+@Tza(GisQ*~@K<N{*st6~kl6m&4VZy}e=M1h3ik@^Sc(
+zVX0CI{HKZY&@z0uRCQyI`;C!K^2f#?_Akn-F$D3s-)iN&;G`|IzRwI$$q_fk-LS<`
+zVZ8UBnFW4em(aHoc=+_=W{T55u546$Tu=!RTLOq?C{9|ua7pjeUggMES{<0vi|ewI
+zZWLZ5j9Q!V)G=8|=&PIk!5%`9Fa}e8%f+Q_qMn(tG5ItmdwknXnBPFA@VxTezx!?T
+z@@LQS0>xyA0bJT$)}FV1#-=aW%RG}XYL1o-93<^#V}16fGk0K{cj2(-9AB;YsRwaQ
+zoS3-RHJx)$W`@_7#rOM-y8&Oqr9od7aTAAX9gJLiQol;D&KW1{7N<=LwN1?n-RDUe
+zsb6j@fHI3{ReF9>?OD<nH}9HF+Z+m@TUjJ>#yr)0vIQ?H%-$7N_6f;TD{infUy7(H
+zX3#N<!Wj)1gne(10KYHGBNp6PVNQoG@3;qunQG}F>&Pi$y+g*t@{-KvMSt09G%4)t
+zv2K>@!55M7iv(&u7SdMR*LR})lX|<%oheR8t-L|m>FV1{Vx?x#e&f%`c(=q?($ua7
+z{=}mv>hIwmOU>bR`cZeAf-iq1#V$leEwvc>IH@Lwu7&dFxuVBoi}|b}H|W*m_jDTE
+ziMEbt#`J7E@9J#pKi?;z*<-#criCahbk5@{mC0O;*dXbt5@nJqXp<v92o$?Jl}dZE
+zg4#Zp95=SZMi$&J`avlW<*T5XQgGqZR)(N}pkGt)cr;Xu7ZQ(jXJ(CcVMfIbo+^Es
+zab~#95qnvwIK*=M7R3Co@)dzpN?Gy#j?LY4aE909R#GVY6i;<b*sp>doTj#U+<OWQ
+zKFA~YlJimP`g7m%foOhcJ|6s3G@MpSZpHkK<E}zC)!S5h6JFVE>bCfe)z3o5CoOCX
+z;*pD?@C;g?*T3S&4j_gJb_-$wG>xpr^CqX`ALU2RC==#JpkVP3^pJ=Q%ONQ&PgCtT
+zIvisby}0X6YT}<r%Um-gQ>2O1IpSUk$%V<zZrvq-jwLZDUw?zjI|&BqC?rxLMR(9y
+z25=5ID|`@~mWbMUO4nqjC-1$5670VrWqWn#3m>mZ(w`7Gld}3*>>R9--8I)XPgnR=
+zGwIzY;bMXLI$!6>FAcof24YS~B`U5@_LSU7E>+SpQsb!>y2jZRrGLs0gxElQ_zl6Z
+zcg^?KY|p5l*ye73rJ!$et?W|FC3?8_2FJzB2RUWsfINb!G+(hhKW&p)RnzHSfrr|`
+zm`~zMb`S<gEisTC#0<}2%1ehOn4d@Dg<HVU*;va8g3=}-R*|oyp;mmuDp}FZ;RepT
+z)B{^HsN>@9^{D!=y`Jag`w}Iy7p>X(<|rcfrRz+NE!MCHIx(hBpETQ%?-8cTiwLco
+zv~(t<$1oU{xpf3xc=YgfsGp(|cYKlo`&A3nk*MZ3N|yRpm%)$yWU{dt*&cza=*4<n
+zy50(0$BS^1qKvj&tS5bzgKju-7zcNpU5yo8M)`!BmJ#s)<TN6rZ@7x|f@-j6T5=xD
+z=0w<<ZP*Lr)to)*2S3Zz#gpT(>WIluL>5QM{e?G@FUOHMWK#a*0C|V#ApRkD$bNRQ
+zG7TNWi?xwDvP`(h`D~y0mo5p~jr}FbzExUvQ$nq+xdY7QY*V2g0S<$5Z51hCf>=Ru
+z1nmdrakZzVar7GPvP{#d(kp<9Pv;Ek(?B6B5^47H?hbW5M^*OoH>`06Gbay=zRmm`
+zH(V`La2Jzf+HbvhzVtC%-&U45qPPkWu-k6PF2TA8g$=>K{n{J1UOjug<ZhL$Z>WOt
+zvnD%ztF>RMW=HoSE>-0Ndy?T+7Fwdx(1Y}%1U;QzZN5!6P?P`Ksy?@CWqf*R?H>J|
+zfxac*Zp*ifGw&~V-#9H(bjJ#acNy)~g-Lg(doHCnJO>L>1ampARLx&vkfcvpgm9fa
+z>LN7EfUXO`a|-dN=8&Y!*F_zAdgv$*Up~Mcds5X?mCKmdS78&M{%l|!$NpYCA-gEz
+zCXHtfiG0nGf58a9+cB8@$4Ab}&Rzaaz7?lw^FEdV=W#BQD~f>yBAV&CmHh(WAL>Di
+zT7u42bM1;N+EXQ-`??nbdAp6Z#v7^8ChsV9Ywag9;K8;6CGnR9r7qHD@%${_muU+p
+zq@^ut4;ml1tmBXO{J4xpo{;hOe-@^jSGiO9AOZ87SSDy6_Ogwd$a`KF2Plz}8+HhK
+z+8({-<k_T&RK7FfYUfo}ukjpyeN0o9x)C*GQ=;118{*nYX0o3_&yo6KAxw8fty%V`
+zwKlRx2RuRUwXo{C=%x2BzV+4|a(7Z!z<8o_cCI{LIBT?aT~f)Boduuu#aeAALC=Tq
+z(Irc3=C5}lyQ%q)aHwbZy1F{_i#o@gMvLwjy*8i9=(#_uyl){PR%&5gHI)3o(TayE
+zeC@7g?hCQO(hSuIY?|7i6VL^L*zi&qeY4x8za9L?+E=LO=)MT|;$o6^QjV;bgJjGJ
+zJ<Z7dMluNPSYmFLYUe_Ekza}>GG8hI66pgUu=ZB_XaD#`$s%v2MZJFM{$%2w88*!x
+z6@9qvwZZdOA3m9?s5zvKcASz`1t$geVQRs3=f7N*n554Jo)9j1{c2%WDNXj=iFbR_
+zZv%lJ(GfT*O$Ts`^>Ju|<ix{%1y-%RRF`FsXRE{p2E(h+_U!7V<s;FGMYBvXU&-Y4
+z>qSs)6ZPZ{NwLS<#SLcn8^#fokS&4Dn$;Y6C#Q~iue#_$7tgganpcmBUxu+g9@qWl
+z!$l|BKX=NUz8Ec9b8nyWt_geQ<2CP<4LW8xUf5pu>xG!^{++^A#A2(0#Z#_`m_4#t
+zkym4tP4X@cMJ~&7({i9o<^nbAqjj`Hk{M$y(Gm*blPwfs9qN&?Fu$}sl)*b<IC*59
+zRwD{J51a=hScM3?af8e<*W~Im7<V6Ab$lIgu(+4LU<OAKvF}f_vhodU_U<YXWHf+_
+zOyky=cr!pte4ITDQCuhDBJ~HQ!)@ABA6*-}riGTh&8&7DKxXh#ipl#acG$yU)6d#?
+z!7?``w-WY-3&oG#F^nA%S7|zn3!Hw@+55}dGJ^yR98{JTpZy1;lOxQmspKmA2qiXH
+z4-yz(P!m^+P$g56IkZISuf3zrjLm>MI23&|%QuF)3Xhp7F1t=mkc{ufTON^lfSb_b
+z4eM4>yjP2<V+jm4#Xsi#C@R!4_J)WlRn+Afin_med-~-p4_1z>ZHDW@Tr@JQF;dLi
+z#ZLDo3Wj01d}O)Fr@E{G<TI)lJE38b%$8581e-sK2++d$xOpHnu|5zvV3G=tFxsYd
+z&mV}#+nx5Rd~~H3=n=&V&q9v7oW3Woq_3@X1wDBiMK;`=X60z^z^hI?MDvTNF!Xz(
+zEj_^bIVHqv4sT<39=d9xs;Kz(p|4JCu-1lOma^z;V>#8k_+c!ob*Sns=XTi~A9HJa
+z!9OT@OLtq(CAAm!F7}D8tDV>2Vg2Wuc_q7xCa8C+<*)pVWo@!hXOPMyn+fG*Bq%w!
+z*`?|xvekdCo8HZ<nw&%p;IAr?os8I$AAj~t)HE8Gmh+QR<xX+Lqs8U-<EIOfZS}og
+zqEY&Ho;%5e@fd&M?PM5S=lN7@o$JV388ljx!Q;l{GEJEWezi)-dlnPi1h0LUc9^iH
+z7wV1*PHfcP`>^l3m-psC%f<C2tiG|_8V4=jtF)iW{$zY-R^&bMtD=-ioqOxOTr}|g
+z(nBZnh>4w{frkTJH4?u35{n|@(D&nCtIzZEA43Fnb!)11bOnig>*=@0F$Nt%X;fZ~
+z>2E=3@pq&%?aAsqW)_F5mElV?s}k9eO+i9ZG>uZRBu9A7`&VZXPm!_iG3<ZVI>_d5
+z=~uIV%)+t%`EzYgK^P@NL8Hsl;xvc>H23pP*AZDTnF+Kd^&J0T0h=a-Oyh9r>b1qz
+zCo<!+uEIn$9MOxV)t<y5U%$9aBs8p#q1>&(erVY9ly3`KiSs#&98BQP=q(@7J^Cqd
+zen;-Ej+`UGYc={@X@y9FSjs*}+BA~S=U2sue?b|veWO?``<?cNFUdHyx3IiQQc&N-
+z;;hTR>FTl&i8ud{IAJ4-E&@lg=T4g<$xncI>oBQb>$yhTo^P8=q?{8S<JNmmF#qT~
+z<$w8dmFJsDOxB9dx495&+D~Ff-IPZp)^IxRhQMF)Pp&D;3QBx$FkrvGRUr}60z`9z
+zml`9w1vveMzJ@{||BIEni@>VasPTa+kg*XkVnYPpof{0{PrMQUL69L(Aj*^(4&_Hc
+z!T;~O8jNC9!viF7g7%L%HmC3R``8#tz1HFIoW`I0ieGlm$c)-D?f$Qma77z4eD;Sb
+z%=@Wt6vB(kn!c=#MYv;T)HK;s4X!Orv^tLbOkn$z+I)=P?jiPwh{z@;eqhgx)lQ^b
+zX!Eg;)YR}ImyheSZc00N@~IPU?c#GESJeS7qK%g+zGg_fbry>4luwftmWsBU?)hPJ
+z&XM5iEnQf8s1E3MpFluUy<y|y<|s#xCYIUfK;e0DkQL{QFJA4f0@qjXqx&7~FSTGQ
+zf|yZx;}9vVXk@uKLOEHOMp&+z!pf@<h|J)lf}e4}I1h;3HOA@SOgVVx(v>XzAwvqx
+zCW>zf*!W|?6a>dmx}VT@vwLh~s87#UzHa~Er+CK9aA>9gE7al(T9$5$_Lq0b1AFGi
+zDXdvPWC-h3lkLYp&-Qy!dStTS=UVr30akXOhltzF$kK7eYboE^;Qizme7W<A)&I-k
+zEut@RObF!0@*BNxgvIm7QQN`B9D%c=g+gwzi+>~8_-Y(rpbu;y{+s*~|3=Fxn1kvF
+zf1|DcCQWR`1(DsL<q#FXUn6P(f}sGBrYtpS)*uvQ=38{#zqH-L1pgKxRMTYx@(=>S
+z{?cZh1F9jsg%SQm3FZB}-e8G(Z$S;nQ1DH4)rjPRRzNJ!TWI4y6+&<EhJTBJ)X3z6
+zPVteU(7!cSgF1<zx9GvYY5D$A35C{J)qs>iApTpG)3u-y5chAi{J&J*!Xy7rjHipG
+z6&5co6e^HdQ4iupfkAi^H|s&lQi8m^Fa+(*53K_&*6l(F488&D{$mdY<rnzZ9+(%#
+z%O{lR(g0#a1w(kji75?;*z*bUCr&niR8a&4z=_O_h--WZ{CA=nVg*M$m4b-<KjcEd
+zh;LT;*B+uCZeW}Lq~jC3dC1}4dpG#ff9~;v1rRy^#~u^`M8B~ehS>dIC;5e-H>lTt
+z5b_J~L;oENC=@Crkl5dZa0DU<1}Bm>ftcVz|BeMO6bk15k6r}O6_L(=sDL6+s{i&4
+zq2dNk`Y*cMhdTbbCm?u(S?1-1|K$f1$}jkz07Cg-h?e>%Gs2Dk8Yl?+uVTTQ7X25m
+z0N>y85c+v}p?thI561k95P>oM_Z}aZ|34n{@!r6^|H;eu->gIVAUDnPPda`+WEd>b
+zp#{Xk_8;T<_->y3_$NJ|Afif}5#;cH6)?gDnBd=j-S8o*;=lg$3H>)t{9xFB+~WUl
+zfkXKbz46;5`2Q9kl%MYgr~OYm`62%`h9CN0e-QcpZ%hPk2FJhT3Eey=^4A_BZHQtK
+z{7--c{y(M54+H<#I~eRg$ra%JPYXf?5WVmZ#R$Cu5U2qBKbr#otsnvDfBQp#kN>}l
+z5nt8xFL`{B|4&s3z;2!*x{U(e{|q>&fY8k&Du0FM|Fv=Ux^fgj6xODf&>0B?IQH~R
+zRsTGIog#2R?0~=s$&%%WWFKQ<9)N%cAi%Pa5E9}_L_7^&&)wabuCp6irRnMF`a7rU
+zx(5x*RNMN;@29U`msyQjl1s1^(=t%DYX#xWOI?5dczSlOS50n;6kj9&DV(ZY>sQ>u
+zYfHah6J)ht*BWJ&FIjCe;(y<`HQA(2CBD$8nsV+|^dNQn|Mg+x?LyZs>t$o9re&xu
+zRRX4FO~dMn6}1$xOwBFE#!}mImXp+aG0nj;4V;K31UbZYd=gADsiiCjX?6vHL;kmA
+z7V|gPC~v0e)rz7;%MwSpE~N11n7?U(Mn7L4KM|iLDsPF}5R74yFoDUYjl=D(=3mI9
+zTp0B+8WJd|5}!6@v91xG(P%8bTK5*)M!}7qv8iR*IB_-Nc(@*)mgpLe!cE2px<ocN
+zNtU$a7<ZOTXojUG3B>2+>?~TR+OP5S-{Ewv-)<RY_0Gl=u~=Gco(CN7FEK7CUf#FI
+zC$Ou&gGGsgv#XotBG_(onZ$MYWH5iHH3t03>9~F)=EwSSI_TCN*(JCR7F<#uH}3m#
+zu{7e7EilJuYG{wRgj9<q!<H;ricI}Z>APCye67y5lzzFf|8~DGipXYjFd-+g?e5sP
+z)?BUCH5~UivzX<h5LwX_v#hBIZi%(vG-7JoPkcKtWp4Vi=il+fp46W{2`oSk1oX^t
+zUOWioUJmDZFR<%>f1V!B{qEzaN2VG@nKxm724|Ak&37^mJBc13)|2c2(w1pR;>Owf
+zWwfAR6?n2-`bFgNIoO8E(#WvCV+kJbSD(Y;Md5)@Vu~_kzbIYGvi|xP2&0KtuGRk#
+z>Qp^>ZJkCvyP7nrV#u1L^?`w3_{Gt<5DeYKM?}~*DGFH-45>)9X|1kxY<M?>flP?j
+z5C@e_{Wjw0gr+@`wLr62;ZqitWgy`B&I|YWzqJ3>>{gO)3EEuE-;}8O1gMJArQhZ4
+zzXQTFrQp_@R3FD!F_E1%CT_yUf>_jw&{1K3pIi`zwoMp6&q<+os7kaTGJ!TvNyveN
+zcI{a(O|Nk4<KHBPP=2SQi&e*yONH@dlGMyV!ofK=UAPz$e({6>hs1E0NB{;FH)$JD
+zMM|af^#j?2sgKIi=+zfJXy@%CB|T1VsOPiNC$KE9Z~nn(!t$NZ5Qx#{ELF!T2(c0Z
+zRgwx0rHE(`7rZ#;Xf#^hSoK&eWy~2_O9U}tl5l2DBt~O?J*@4engM|%D}98_@93N)
+zF&#c4o?h~_e)EWN1wR1~!B6O)FcoGS{eusqAB|8G*_{l7e>^$xXx#2`SzLvad!O{g
+z=h#D)X_}rM8i_3;eUag)QwYUdB<p(m4WnsPG5C=EArBE=>8WIl=QLkpGzz<}y*5Ti
+zqva+z>`XSqki}&@*M~&1aV6NIaRKGwxsGpMlhAdBty<u!^-q(GVN$cmGE6@zotsI7
+z!=RFM_)u4Yl){5C>`Md8f-;OlB&TayB<z@_UlCx(H$ZuWe$Lr2LX3sR+$n@pVu}@g
+zjEsJIR1jI5`uza>(k6reVOKua5Edt@NiaXpG5pw{`|$qF+aJGw-#>Bi`t48roo2}o
+fFTQ>E?gO7t@b#B}PhWgy40j)%KY#i4tB3yqw>a7e
+
+delta 23127
+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
+
+diff --git a/install.py b/install.py
+index 3f9c925..52da846 100644
+--- a/install.py
++++ b/install.py
+@@ -16,10 +16,12 @@ Needs: Python 3.8 or newer, and Layers 1 to 3 already installed.
+ 
+ import json
+ import os
++import plistlib
++import re
+ import shutil
+ import subprocess
+ import sys
+-from datetime import date
++from datetime import date, datetime
+ from pathlib import Path
+ 
+ LAYER = 4
+@@ -28,6 +30,31 @@ NEEDS_LAYER = 3
+ HERE = Path(__file__).resolve().parent
+ POINTER = Path.home() / ".outliers-sb"
+ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows. Used only in
++# lines printed for the member to type; the programs themselves run with sys.executable.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# The Mac copy of each part (its name ends in -mac) prints Mac commands, but it is not published
++# yet. Until it is, a Mac member is sent to the same repo as a Windows member, whose code also
++# runs on a Mac. The Mac build plan's wave 6 publishes the Mac copies and sets this 1 line to True.
++MAC_REPOS_PUBLISHED = False
++
++
++def repo(name):
++    """The name of the repo a member downloads the part `name` from, on this computer."""
++    return name + "-mac" if MAC_REPOS_PUBLISHED and sys.platform == "darwin" else name
++IS_MAC = sys.platform == "darwin"
++TASK = "OutliersSecondBrain-Morning"
++MAC_LABEL = "ai.outliers.sb.morning"
++MAC_PLIST = Path.home() / "Library" / "LaunchAgents" / (MAC_LABEL + ".plist")
++# On a Mac the job runs from outside the second brain, so that if macOS refuses it the second
++# brain's folder, the job can still say so in the morning log instead of failing in silence.
++MAC_JOB_DIR = Path.home() / "Library" / "Application Support" / "Outliers Second Brain"
++# The morning job's log, in the home folder (see sb/morning_job.py).
++MORNING_LOG = Path.home() / ".outliers-sb-morning.log"
++REMOVE_WIN = "schtasks /Delete /TN %s /F" % TASK
++REMOVE_MAC = ["launchctl unload ~/Library/LaunchAgents/%s.plist" % MAC_LABEL,
++              "rm ~/Library/LaunchAgents/%s.plist" % MAC_LABEL]
+ 
+ 
+ def ask(q, default=""):
+@@ -48,12 +75,22 @@ def say(*lines):
+         print("  " + ln if ln else "")
+ 
+ 
++def places_to_look():
++    """On a Mac a new second brain lives at ~/Second Brain (Part 1 puts it outside Documents), so
++    that is looked at first; one made earlier in Documents is still found. Windows is unchanged."""
++    places = [Path.cwd()]
++    if IS_MAC:
++        places.append(Path.home() / "Second Brain")
++    places.append(Path.home() / "Documents" / "Second Brain")
++    return places
++
++
+ def find_vault():
+     if POINTER.exists():
+         p = POINTER.read_text(encoding="utf-8").strip()
+         if p and (Path(p) / "_layers" / "config.json").exists():
+             return Path(p)
+-    for c in (Path.cwd(), Path.home() / "Documents" / "Second Brain"):
++    for c in places_to_look():
+         if (Path(c) / "_layers" / "config.json").exists():
+             return Path(c)
+     return None
+@@ -62,12 +99,13 @@ def find_vault():
+ def install_silent_launcher(engine, when, warn_to):
+     """A job that opens a window while you are working gets switched off within a week, and a job
+     that is off is a job that is not running. So on Windows the timetable points at a launcher that
+-    runs the work with no window at all, rather than at Python directly."""
++    runs the work with no window at all, rather than at Python directly. On a Mac the timetable is
++    a LaunchAgent, which never opens a window. Returns (what to tell the member, whether it worked)."""
++    if IS_MAC:
++        return install_mac_job(when)
+     if os.name != "nt":
+-        return ("This machine is not Windows, so nothing was put on a timetable. To run the "
+-                "morning list on a clock, add this to your crontab:\n"
+-                "     0 %s * * * cd %s && python _engine/today.py"
+-                % (when.split(":")[0], engine.parent))
++        return ("Nothing was put on a timetable: this installer knows the Windows and Mac "
++                "timetables only. Run '%s _engine/today.py' yourself." % PY, False)
+     vbs = engine / "run-quiet.vbs"
+     vbs.write_text(
+         'Set sh = CreateObject("WScript.Shell")\n'
+@@ -75,17 +113,144 @@ def install_silent_launcher(engine, when, warn_to):
+         'WScript.Quit sh.Run(cmd, 0, True)\n', encoding="utf-8")
+     pyw = Path(sys.executable).with_name("pythonw.exe")
+     runner = str(pyw if pyw.exists() else sys.executable)
+-    task = "OutliersSecondBrain-Morning"
+     try:
+         subprocess.run(
+-            ["schtasks", "/Create", "/F", "/SC", "DAILY", "/ST", when, "/TN", task,
++            ["schtasks", "/Create", "/F", "/SC", "DAILY", "/ST", when, "/TN", TASK,
+              "/TR", 'wscript.exe //B //Nologo "%s" "%s" "%s"'
+-                    % (vbs, runner, engine / "today.py")],
++                    % (vbs, runner, engine / "morning_job.py")],
+             capture_output=True, text=True, check=True, creationflags=NO_WINDOW, timeout=60)
+-        return "The morning list is on a timetable for %s, and runs with no window." % when
++        return ("The morning list is on a timetable for %s, and runs with no window.\n"
++                "  To take it off the timetable later, type:  %s" % (when, REMOVE_WIN), True)
+     except Exception as exc:
+         return ("Could not put it on a timetable (%s). Everything else works - run "
+-                "'python _engine/today.py' yourself until this is sorted." % exc)
++                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY), False)
++
++
++def install_mac_job(when):
++    """The Mac timetable: a LaunchAgent that runs the morning job at the same time each day.
++    Written the way outliers-gather-05-timetable writes its own, then loaded straight away so it
++    runs tomorrow without waiting for you to log out and in."""
++    try:
++        hour, minute = [int(x) for x in when.split(":")[:2]]
++        if not (0 <= hour <= 23 and 0 <= minute <= 59):
++            raise ValueError(when)
++    except ValueError:
++        return ("'%s' is not a time like 07:00, so nothing was put on a timetable. Run this "
++                "installer again with a time like 07:00." % when, False)
++    try:
++        MAC_JOB_DIR.mkdir(parents=True, exist_ok=True)
++        job = MAC_JOB_DIR / "morning_job.py"
++        tmp = job.with_name(job.name + ".tmp")
++        shutil.copy2(str(HERE / "sb" / "morning_job.py"), str(tmp))
++        os.replace(str(tmp), str(job))
++        plan = {
++            "Label": MAC_LABEL,
++            "ProgramArguments": [sys.executable, str(job)],
++            "StartCalendarInterval": {"Hour": hour, "Minute": minute},
++            # Home, not the second brain: a job refused its folder must still be able to start.
++            "WorkingDirectory": str(Path.home()),
++            "StandardOutPath": str(MAC_JOB_DIR / "morning-job-output.log"),
++            "StandardErrorPath": str(MAC_JOB_DIR / "morning-job-output.log"),
++        }
++        MAC_PLIST.parent.mkdir(parents=True, exist_ok=True)
++        tmp = MAC_PLIST.with_name(MAC_PLIST.name + ".tmp")
++        with open(str(tmp), "wb") as fh:
++            plistlib.dump(plan, fh)
++        os.replace(str(tmp), str(MAC_PLIST))
++    except OSError as exc:
++        return ("Could not write the timetable entry (%s). Everything else works - run "
++                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY), False)
++    try:
++        subprocess.run(["launchctl", "unload", str(MAC_PLIST)],
++                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
++        done = subprocess.run(["launchctl", "load", "-w", str(MAC_PLIST)],
++                              capture_output=True, text=True, timeout=60)
++        # launchctl load can print an error and still end with 0, so ask launchd directly.
++        listed = subprocess.run(["launchctl", "list", MAC_LABEL],
++                                capture_output=True, text=True, timeout=60)
++    except (OSError, subprocess.SubprocessError) as exc:
++        return ("The timetable entry was written but macOS did not answer (%s). Everything else "
++                "works - run '%s _engine/today.py' yourself until this is sorted." % (exc, PY),
++                False)
++    if done.returncode != 0 or listed.returncode != 0:
++        return ("The timetable entry was written but macOS did not accept it (%s). Everything "
++                "else works - run '%s _engine/today.py' yourself until this is sorted."
++                % ((done.stderr or done.stdout or listed.stderr).strip()[:200]
++                   or "no reason given", PY), False)
++    return ("The morning list is on a timetable for %s, and runs with no window.\n"
++            "  To take it off the timetable later, type:\n     %s"
++            % (when, "\n     ".join(REMOVE_MAC)), True)
++
++
++def entry_already_there():
++    """Whether an earlier install left the morning list on this computer's timetable."""
++    if IS_MAC:
++        return MAC_PLIST.exists()
++    if os.name != "nt":
++        return False
++    try:
++        return subprocess.run(["schtasks", "/Query", "/TN", TASK], capture_output=True,
++                              creationflags=NO_WINDOW, timeout=60).returncode == 0
++    except Exception:
++        return False
++
++
++def log_installed(home):
++    """A line in the morning log saying a timetable entry was just added, so an old refusal or
++    failure is no longer reported as the latest news."""
++    try:
++        with open(str(MORNING_LOG), "a", encoding="utf-8", newline="\n") as fh:
++            fh.write("\t".join([datetime.now().isoformat(timespec="minutes"), "installed",
++                                str(home), "timetable entry added by Part 4"]) + "\n")
++    except OSError:
++        pass
++
++
++def point_at(home):
++    """On a Mac: if the second brain was found somewhere other than where Layer 1 recorded it (it
++    was moved out of Documents), record the new address and change the line in ~/.claude/CLAUDE.md
++    that tells your AI where it is. Returns a sentence for the member, or "" if nothing changed.
++    Windows is unchanged: nothing here runs there."""
++    if not IS_MAC:
++        return ""
++    try:
++        old = POINTER.read_text(encoding="utf-8").strip() if POINTER.is_file() else ""
++    except (OSError, UnicodeError):
++        old = ""
++    if old and Path(old) == home:
++        return ""
++    try:
++        tmp = POINTER.with_name(POINTER.name + ".tmp")
++        tmp.write_text(str(home), encoding="utf-8")
++        os.replace(str(tmp), str(POINTER))
++    except OSError as exc:
++        return "Could not record the second brain's new address in %s (%s)." % (POINTER, exc)
++    manual = Path.home() / ".claude" / "CLAUDE.md"
++    begin, end = "<!-- OUTLIERS-SECOND-BRAIN:BEGIN -->", "<!-- OUTLIERS-SECOND-BRAIN:END -->"
++    told = False
++    try:
++        with open(str(manual), encoding="utf-8", newline="") as fh:
++            text = fh.read()
++        if begin in text and end in text:
++            i, j = text.index(begin), text.index(end) + len(end)
++            section = text[i:j]
++            m = re.search(r"My second brain is at: (.+?)\r?\n", section)
++            was = m.group(1) if m else old
++            if was and was != str(home):
++                text = text[:i] + section.replace(was, str(home)) + text[j:]
++                tmp = manual.with_name(manual.name + ".tmp")
++                with open(str(tmp), "w", encoding="utf-8", newline="") as fh:
++                    fh.write(text)
++                os.replace(str(tmp), str(manual))
++                told = True
++    except (OSError, UnicodeError):
++        pass
++    if told:
++        return ("Your second brain is at a new address. Recorded it, and changed the line in "
++                "~/.claude/CLAUDE.md that tells your AI where it is.")
++    return ("Your second brain is at a new address, and it is recorded. The line in "
++            "~/.claude/CLAUDE.md that tells your AI where it is was not changed: run Part 1 "
++            "again and give it %s, or edit that line yourself." % home)
+ 
+ 
+ def main():
+@@ -104,8 +269,8 @@ def main():
+         say("Found %s, but Layer %d is not installed there." % (home, NEEDS_LAYER), "",
+             "This layer arranges things that already work, so there has to be something to",
+             "arrange.", "",
+-            "   git clone https://github.com/OUTLIERS-ai/outliers-sb-03-capture",
+-            "   cd outliers-sb-03-capture", "   python install.py", "",
++            "   git clone https://github.com/OUTLIERS-ai/%s" % repo("outliers-sb-03-capture"),
++            "   cd %s" % repo("outliers-sb-03-capture"), "   %s install.py" % PY, "",
+             "Nothing has been changed.", "")
+         return 1
+ 
+@@ -114,11 +279,16 @@ def main():
+     human_gate = yes("Your hand on anything that reaches a person?", True)
+     warn_to = ask("Where should it tell you when something breaks? (a note name)",
+                   "Areas/System warnings")
++    no_schedule = "--no-schedule" in sys.argv
++    schedule = False
++    if not no_schedule:
++        schedule = yes("Put the morning list on this computer's timetable, so it runs by itself "
++                       "at %s each day?" % when, True)
+ 
+     say("", "-" * 66, "")
+     engine = home / "_engine"
+     engine.mkdir(exist_ok=True)
+-    for f in ("today.py", "ledger.py"):
++    for f in ("today.py", "ledger.py", "morning_job.py"):
+         shutil.copy2(HERE / "sb" / f, engine / f)
+     say("Installed the record and the morning list into _engine/")
+ 
+@@ -147,23 +317,42 @@ def main():
+     say("Wrote Areas/The gate.md - %s" % ("your hand on everything that leaves."
+                                           if human_gate else "no final human tap. Your decision."))
+ 
+-    if "--no-schedule" in sys.argv:
++    moved = point_at(home)
++    if moved:
++        say(moved)
++
++    on_timetable = False
++    if no_schedule:
+         say("Skipped the timetable because you asked (--no-schedule).",
+-            "Run 'python _engine/today.py' yourself, or run this installer again without the flag.")
++            "Run '%s _engine/today.py' yourself, or run this installer again without the flag."
++            % PY)
++    elif not schedule:
++        say("Nothing was put on a timetable, because you said no.",
++            "Run '%s _engine/today.py' yourself, or run this installer again and answer yes."
++            % PY)
+     else:
+-        say(install_silent_launcher(engine, when, warn_to))
++        told, on_timetable = install_silent_launcher(engine, when, warn_to)
++        say(told)
++        if on_timetable:
++            log_installed(home)
++    if not schedule and entry_already_there():
++        say("An earlier install put the morning list on this computer's timetable, and it is "
++            "still there. To take it off, type:")
++        for line in (REMOVE_MAC if IS_MAC else [REMOVE_WIN]):
++            say("   " + line)
+ 
+     cfg["layer"] = max(int(cfg.get("layer", 0)), LAYER)
+     cfg["layer_%d_installed" % LAYER] = date.today().isoformat()
+     cfg["morning_list_at"] = when
+     cfg["human_gate"] = bool(human_gate)
+     cfg["warnings_go_to"] = warn_to
++    cfg["morning_list_on_timetable"] = bool(on_timetable)
+     cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+ 
+     say("", "-" * 66, "", "From now on:", "",
+-        "   python _engine/today.py       the morning list, on demand",
+-        "   python _engine/doctor.py      the check from Layer 2",
+-        "   python _engine/ledger.py      what has happened, most recent first", "")
++        "   %-30sthe morning list, on demand" % (PY + " _engine/today.py"),
++        "   %-30sthe check from Layer 2" % (PY + " _engine/doctor.py"),
++        "   %-30swhat has happened, most recent first" % (PY + " _engine/ledger.py"), "")
+     say("Your system is now built. What changes from here is that it starts telling you things,",
+         "and what it tells you goes back down the ladder: a rule that keeps misfiring gets",
+         "rewritten in Layer 2, a source that never produces anything useful gets dropped in",
+diff --git a/sb/ledger.py b/sb/ledger.py
+index ce780fb..40e2bfe 100644
+--- a/sb/ledger.py
++++ b/sb/ledger.py
+@@ -24,6 +24,8 @@ from pathlib import Path
+ HERE = Path(__file__).resolve().parent
+ VAULT = HERE.parent
+ LEDGER = VAULT / "_engine" / "events.jsonl"
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ 
+ def add(what, kind="note", source="hand"):
+@@ -59,7 +61,7 @@ def main(argv):
+     if argv and argv[0] == "add":
+         what = argv[1] if len(argv) > 1 else ""
+         if not what:
+-            print("  Nothing to write down. Try: python ledger.py add \"what happened\"")
++            print("  Nothing to write down. Try: %s ledger.py add \"what happened\"" % PY)
+             return 1
+         kind = "note"
+         if "--kind" in argv:
+@@ -73,7 +75,7 @@ def main(argv):
+     rows = read(20)
+     if not rows:
+         print("\n  Nothing has been written down yet.")
+-        print("  Try: python ledger.py add \"finished the pricing page\"\n")
++        print("  Try: %s ledger.py add \"finished the pricing page\"\n" % PY)
+         return 0
+     print("\n  WHAT HAS HAPPENED  (most recent last)\n")
+     for r in rows:
+diff --git a/sb/morning_job.py b/sb/morning_job.py
+new file mode 100644
+index 0000000..a8ae61c
+--- /dev/null
++++ b/sb/morning_job.py
+@@ -0,0 +1,57 @@
++# -*- coding: utf-8 -*-
++"""morning_job.py - what the timetable runs each morning.
++
++It writes the morning list to _engine/reports/today.txt in your second brain, then adds one line
++to the morning log, ~/.outliers-sb-morning.log, saying what happened. The log lives in your home
++folder, outside the second brain, on purpose: if the computer ever refuses this job access to the
++second brain's folder, the log is still written, and today.py tells you the next time you run it.
++
++A job that fails with nobody watching looks exactly like a job that had nothing to do. This is the
++difference.
++"""
++
++import importlib.util
++import os
++import sys
++from datetime import datetime
++from pathlib import Path
++
++POINTER = Path.home() / ".outliers-sb"
++LOG = Path.home() / ".outliers-sb-morning.log"
++
++
++def log(status, folder, detail=""):
++    """One line per run, added to the end, never rewritten: when, what happened, which folder."""
++    line = "\t".join([datetime.now().isoformat(timespec="minutes"), status, str(folder),
++                      " ".join(str(detail).split())])
++    with open(str(LOG), "a", encoding="utf-8", newline="\n") as fh:
++        fh.write(line + "\n")
++
++
++def main():
++    try:
++        vault = Path(POINTER.read_text(encoding="utf-8").strip())
++    except OSError as exc:
++        log("failed", POINTER, "cannot read where the second brain is: %s" % exc)
++        return 1
++    engine = vault / "_engine"
++    try:
++        # Touch the folder first. If the computer refuses this job the folder, this is where it
++        # shows: macOS says "Operation not permitted".
++        os.listdir(str(engine))
++        spec = importlib.util.spec_from_file_location("sb_today", str(engine / "today.py"))
++        today = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(today)
++        written = today.write_list()
++    except PermissionError as exc:
++        log("refused", vault, exc)
++        return 1
++    except Exception as exc:
++        log("failed", vault, "%s: %s" % (type(exc).__name__, exc))
++        return 1
++    log("written", vault, written)
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/sb/today.py b/sb/today.py
+index beeec54..57ea168 100644
+--- a/sb/today.py
++++ b/sb/today.py
+@@ -14,6 +14,7 @@ import json
+ import os
+ import re
+ import sys
++import tempfile
+ from datetime import datetime, timedelta
+ from pathlib import Path
+ 
+@@ -23,6 +24,11 @@ SCHEMA = HERE / "_schema" / "note-types.json"
+ HEALTH = HERE / "reports" / "latest.json"
+ LEDGER = HERE / "events.jsonl"
+ CONFIG = VAULT / "_layers" / "config.json"
++WRITTEN = HERE / "reports" / "today.txt"
++# The morning job's own record, outside the second brain (see morning_job.py).
++JOB_LOG = Path.home() / ".outliers-sb-morning.log"
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ MAX_LINES = 12
+ 
+@@ -64,7 +70,7 @@ def recently_changed(files, days=3):
+ def warnings():
+     """What the check said last time it ran. A warning nobody surfaces is not a warning."""
+     if not HEALTH.exists():
+-        return ["The check has not run yet - python _engine/doctor.py"]
++        return ["The check has not run yet - %s _engine/doctor.py" % PY]
+     try:
+         d = json.loads(HEALTH.read_text(encoding="utf-8"))
+     except Exception:
+@@ -95,36 +101,156 @@ def open_questions(files):
+     return out
+ 
+ 
+-def main():
++def job_record():
++    """What the morning job last did, from its log: (last written, last run, last time Part 4
++    added the timetable entry). Each is a tuple (when, status, folder, detail) or None."""
++    last_written = last_run = last_installed = None
++    try:
++        with open(str(JOB_LOG), encoding="utf-8", errors="replace") as fh:
++            for line in fh:
++                parts = line.rstrip("\n").split("\t")
++                if len(parts) < 3:
++                    continue
++                row = (parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else "")
++                if row[1] == "installed":
++                    last_installed = row
++                last_run = row
++                if row[1] == "written":
++                    last_written = row
++    except OSError:
++        pass
++    return last_written, last_run, last_installed
++
++
++def parse_stamp(stamp):
++    for fmt, n in (("%Y-%m-%dT%H:%M", 16), ("%Y-%m-%d", 10)):
++        try:
++            return datetime.strptime(str(stamp)[:n], fmt)
++        except ValueError:
++            pass
++    return None
++
++
++def when_text(stamp):
++    try:
++        return datetime.strptime(stamp[:16], "%Y-%m-%dT%H:%M").strftime("%A %d %B %Y, %H:%M")
++    except ValueError:
++        return stamp
++
++
++def same_folder(a, b):
++    try:
++        return os.path.normcase(os.path.abspath(str(a))) == os.path.normcase(os.path.abspath(str(b)))
++    except (TypeError, ValueError):
++        return False
++
++
++def job_lines():
++    """The morning job's news: a refusal, a failure or a job that has stopped (warnings), then when
++    the list was last written. Silent when there is no timetable and no log, as before. A refusal
++    of a folder this second brain is no longer in (it was moved) is old news and is not shown."""
++    last_written, last_run, last_installed = job_record()
++    warn, note = [], []
++    try:
++        cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
++    except Exception:
++        cfg = {}
++    on = bool(cfg.get("morning_list_on_timetable"))
++    if last_run and last_run[1] == "refused" and same_folder(last_run[2], VAULT):
++        if sys.platform == "darwin":
++            new_home = Path.home() / "Second Brain"
++            warn.append("macOS refused access to %s on %s, so the morning list was not written."
++                        % (last_run[2], when_text(last_run[0])))
++            warn.append("Fix: in Finder, drag the folder %s into your home folder (the one with "
++                        "your name), so it becomes %s. Then install Part 4 again, the same way "
++                        "as the first time. It finds the folder there and points the morning "
++                        "list and your AI at it." % (last_run[2], new_home))
++        else:
++            warn.append("The computer refused access to %s on %s, so the morning list was not "
++                        "written. Check the folder is still there and opens. This warning goes "
++                        "once a morning run works." % (last_run[2], when_text(last_run[0])))
++    elif last_run and last_run[1] == "failed" and same_folder(last_run[2], VAULT):
++        warn.append("The morning job failed on %s. Start your AI in your second brain and paste "
++                    "it this line: %s" % (when_text(last_run[0]), last_run[3]))
++    if on:
++        # Counted from the later of: the last list written, and the last time Part 4 added the
++        # timetable entry, so installing again (what this warning advises) starts the clock again.
++        since, written = None, False
++        for row, is_written in ((last_written, True), (last_installed, False)):
++            t = parse_stamp(row[0]) if row else None
++            if t and (since is None or t > since):
++                since, written = t, is_written
++        if since is None:
++            since = parse_stamp(cfg.get("layer_4_installed", ""))
++        if since and datetime.now() - since > timedelta(hours=26):
++            warn.append("The morning list has not been written since %s. The timetable may have "
++                        "stopped: install Part 4 again to put it back."
++                        % (when_text(last_written[0]) if written else
++                           "the timetable entry was added on %s" % since.strftime("%A %d %B %Y")))
++    if last_written:
++        note.append("Morning list last written: %s (in _engine/reports/today.txt)."
++                    % when_text(last_written[0]))
++    elif on or last_run:
++        note.append("Morning list last written: never. The timetable has not written one yet.")
++    return warn, note
++
++
++def lines(for_file=False):
+     files = scoped()
+-    print("")
+-    print("  TODAY  -  %s" % datetime.now().strftime("%A %d %B %Y"))
+-    print("")
++    out = ["", "  TODAY  -  %s" % datetime.now().strftime("%A %d %B %Y"), ""]
+ 
+-    warns = warnings()
++    job_warn, job_note = ([], []) if for_file else job_lines()
++    warns = job_warn + warnings()
+     if warns:
+-        print("  Worth knowing")
+-        for w in warns[:4]:
+-            print("    - %s" % w)
+-        print("")
++        out.append("  Worth knowing")
++        for w in warns[:4 + len(job_warn)]:
++            out.append("    - %s" % w)
++        out.append("")
+ 
+     changed = recently_changed(files)
+     if changed:
+-        print("  Moved in the last few days")
++        out.append("  Moved in the last few days")
+         for m, p in changed[:6]:
+-            print("    - %-11s %s" % (m.strftime("%a %H:%M"), p.relative_to(VAULT)))
+-        print("")
++            out.append("    - %-11s %s" % (m.strftime("%a %H:%M"), p.relative_to(VAULT)))
++        out.append("")
+ 
+     todo = open_questions(files)
+     if todo:
+-        print("  Left unfinished")
++        out.append("  Left unfinished")
+         for p, t in todo[:MAX_LINES - len(warns) - min(len(changed), 6)][:5]:
+-            print("    - %-46s %s" % (t[:46], p.name))
+-        print("")
++            out.append("    - %-46s %s" % (t[:46], p.name))
++        out.append("")
+ 
+     if not (warns or changed or todo):
+-        print("  Nothing has moved and nothing is owed. That is a real answer, not an empty one.")
+-        print("")
++        out.append("  Nothing has moved and nothing is owed. That is a real answer, not an "
++                   "empty one.")
++        out.append("")
++    if job_note:
++        for n in job_note:
++            out.append("  %s" % n)
++        out.append("")
++    return out
++
++
++def write_list():
++    """The morning job's half: the same list, written to _engine/reports/today.txt through a
++    temporary file, so a crash never leaves half a list. Returns where it went."""
++    WRITTEN.parent.mkdir(parents=True, exist_ok=True)
++    fd, tmp = tempfile.mkstemp(dir=str(WRITTEN.parent), suffix=".tmp")
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
++            fh.write("\n".join(lines(for_file=True)) + "\n")
++        os.replace(tmp, str(WRITTEN))
++    except Exception:
++        if os.path.exists(tmp):
++            os.unlink(tmp)
++        raise
++    return WRITTEN
++
++
++def main():
++    for line in lines():
++        print(line)
+     return 0
+ 
+ 

@@ -1,0 +1,1024 @@
+diff --git a/install.py b/install.py
+index aba75e8..a16a9fe 100644
+--- a/install.py
++++ b/install.py
+@@ -51,6 +51,8 @@ DEFAULT_PORT = 4040
+ # so a member knows exactly what they are running. Checked live on 2026-09-22.
+ MODELS = {"best": "claude-opus-5-5", "deep": "claude-sonnet-5", "fast": "claude-haiku-4-5"}
+ PLIST_NAME = "ai.outliers.jeeves.plist"
++# The command a member types to run Python: a Mac has python3 and no plain python.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ 
+ def too_old(info):
+@@ -101,9 +103,12 @@ def pointer(name):
+ 
+ 
+ def guess_brain():
+-    return pointer(".outliers-sb") or next(
+-        (str(p) for p in (home() / "Documents" / "Second Brain", home() / "Second Brain")
+-         if p.is_dir()), "")
++    # A Mac looks outside Documents first: macOS may refuse a program that starts by itself
++    # access to ~/Documents, so the Mac guides put the Second Brain at ~/Second Brain.
++    places = (home() / "Documents" / "Second Brain", home() / "Second Brain")
++    if sys.platform == "darwin":
++        places = places[::-1]
++    return pointer(".outliers-sb") or next((str(p) for p in places if p.is_dir()), "")
+ 
+ 
+ def guess_crm():
+@@ -231,8 +236,8 @@ def belongs_here(path):
+ 
+ def not_ours(target):
+     return ("Another Jeeves folder already starts by itself when the computer starts (%s)."
+-            % target + "\n  Left as it is. To move it to this folder, run  python install.py"
+-            " --uninstall  in that folder first.")
++            % target + "\n  Left as it is. To move it to this folder, run  %s install.py" % PY
++            + " --uninstall  in that folder first.")
+ 
+ 
+ def install_launcher():
+@@ -326,7 +331,7 @@ def copy_to(dest, port=None):
+         except ValueError:
+             old = {}
+     if not old.get("second_brain"):
+-        say("Install this Jeeves first (python install.py), then make the copy.",
++        say("Install this Jeeves first (%s install.py), then make the copy." % PY,
+             "Nothing has been changed.", "")
+         return 1
+     if dest == HERE or HERE in dest.parents:
+@@ -354,7 +359,7 @@ def copy_to(dest, port=None):
+     if os.name == "nt":
+         atomic_write(dest / "Start Jeeves (hidden).vbs", vbs_text(dest, dest / "config.json"))
+         say("Its own Start Jeeves (hidden).vbs starts the copy, not this one.")
+-    say("", "Start the copy:", "", "    cd %s" % dest, "    python start.py", "",
++    say("", "Start the copy:", "", "    cd %s" % dest, "    %s start.py" % PY, "",
+         "It opens http://127.0.0.1:%d/ . Ctrl+C in that terminal stops it." % port, "")
+     return 0
+ 
+@@ -391,6 +396,18 @@ def main(argv=None):
+             "Nothing has been changed.", "")
+         return 1
+     claude = shutil.which("claude")
++    if not claude and os.name != "nt":
++        # Claude Code's own Mac installer puts claude in ~/.local/bin and may leave that
++        # folder off the PATH a Mac's Terminal uses (seen on GitHub's Intel test Mac,
++        # 2026-09-24): it is installed, just not found by name.
++        for c in (home() / ".local" / "bin" / "claude", home() / ".claude" / "local" / "claude"):
++            if c.is_file() and os.access(str(c), os.X_OK):
++                claude = str(c)
++                say("Found Claude Code at %s. That folder is not on this Terminal's PATH, so" % c,
++                    "typing  claude  may say \"command not found\"; Jeeves finds it anyway. To fix",
++                    "it for typing too:  echo 'export PATH=\"%s:$PATH\"' >> ~/.zshrc" % c.parent,
++                    "then open a new Terminal window.", "")
++                break
+     if not claude and not a.skip_claude_check:
+         say("Claude Code is not installed, or not on your PATH.", "",
+             "Jeeves has no brain of its own: every answer comes from your Claude Code.",
+@@ -471,7 +488,7 @@ def main(argv=None):
+         # 4041 was being told to try the port that had just refused them.
+         spare = next((p for p in range(port + 1, port + 60) if port_free(p)), port + 1)
+         say("  Port %d is busy right now. Jeeves will say so when it starts; pick another "
+-            "with python install.py --port %d" % (port, spare))
++            "with %s install.py --port %d" % (port, PY, spare))
+ 
+     # 4. One config file. Keep anything you added by hand.
+     cfg = dict(old)
+@@ -483,11 +500,13 @@ def main(argv=None):
+     cfg.setdefault("permission_mode", "dontAsk")
+     cfg.setdefault("allow_actions", False)
+     cfg.setdefault("claude_command", "claude")
++    # The download addresses come from 1 setting in jeeves/config.py (MAC_REPOS_PUBLISHED).
++    from jeeves.config import app_repo
+     cfg.setdefault("apps", {
+         "projectforge": {"url": "http://127.0.0.1:3020",
+-                         "repo": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge"},
++                         "repo": app_repo("outliers-ws-03-projectforge")},
+         "fleetview": {"url": "http://127.0.0.1:3010",
+-                      "repo": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview"}})
++                      "repo": app_repo("outliers-ws-02-fleetview")}})
+     say("")
+     if cfg == old:
+         say("config.json already says exactly this. Nothing changed.")
+@@ -511,11 +530,11 @@ def main(argv=None):
+         say(install_launcher())
+     else:
+         say("Jeeves will not start by itself when the computer starts. "
+-            "Start it yourself with:  python start.py")
++            "Start it yourself with:  %s start.py" % PY)
+ 
+     say("", "-" * 66,
+         "Done. Start it now:", "",
+-        "    python start.py", "",
++        "    %s start.py" % PY, "",
+         "Your browser opens http://127.0.0.1:%d/ . You should see the orb top left," % port,
+         "Chat on the left, Today in the middle and Across everything on the right.",
+         "On a laptop: Chat on the left and a stack of tabs on the right.",
+diff --git a/jeeves/config.py b/jeeves/config.py
+index cc9d250..209b2f7 100644
+--- a/jeeves/config.py
++++ b/jeeves/config.py
+@@ -8,8 +8,26 @@ whole program somewhere else by setting JEEVES_CONFIG to another file.
+ 
+ import json
+ import os
++import sys
+ from pathlib import Path
+ 
++# The command a member types to run Python. A Mac has python3 and no python, so a
++# printed "python start.py" fails there with "command not found".
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# Where the Work board and FleetView are downloaded from. The Mac copy of each (its name
++# ends in -mac) prints Mac commands, but it is not published yet. Until it is, a Mac member
++# is sent to the same repo as a Windows member, whose code also runs on a Mac. The Mac build
++# plan's wave 6 publishes the Mac copies and sets this 1 line to True; nothing else changes.
++MAC_REPOS_PUBLISHED = False
++
++
++def app_repo(name, mac=None):
++    """The address to download the app `name` from, on this computer (or on a Mac if mac=True)."""
++    mac = sys.platform == "darwin" if mac is None else mac
++    return "https://github.com/OUTLIERS-ai/" + name + ("-mac" if mac and MAC_REPOS_PUBLISHED else "")
++
++
+ ROOT = Path(__file__).resolve().parent.parent
+ 
+ DEFAULTS = {
+@@ -32,10 +50,8 @@ DEFAULTS = {
+     "inbox_file": "",
+     "daily_note_folders": ["Daily", "Daily Notes", "Journal", "Diary", "Calendar"],
+     "apps": {
+-        "projectforge": {"url": "http://127.0.0.1:3020",
+-                         "repo": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge"},
+-        "fleetview": {"url": "http://127.0.0.1:3010",
+-                      "repo": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview"},
++        "projectforge": {"url": "http://127.0.0.1:3020", "repo": app_repo("outliers-ws-03-projectforge")},
++        "fleetview": {"url": "http://127.0.0.1:3010", "repo": app_repo("outliers-ws-02-fleetview")},
+     },
+     "ccusage": "auto",
+     "orb": {"inner": "At your service", "outer": "Your second brain is listening"},
+@@ -98,8 +114,8 @@ def problem(path=None):
+         if line:
+             where = "\n  Look at line %d:  %s" % (line, text.splitlines()[line - 1].strip()[:90])
+         return ("%s could not be read: %s%s\n"
+-                "  Fix that line, or run  python install.py  to write a fresh one."
+-                % (p, exc.msg if hasattr(exc, "msg") else exc, where))
++                "  Fix that line, or run  %s install.py  to write a fresh one."
++                % (p, exc.msg if hasattr(exc, "msg") else exc, where, PY))
+     if not isinstance(data, dict):
+         return "%s could not be read: it must start with { and end with }." % p
+     return None
+diff --git a/jeeves/proc.py b/jeeves/proc.py
+index a1a3e8c..307dba2 100644
+--- a/jeeves/proc.py
++++ b/jeeves/proc.py
+@@ -32,15 +32,51 @@ def kill_tree(pid):
+         r = subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True,
+                            creationflags=NO_WINDOW)
+         return r.returncode == 0
++    # The whole process group, but never the caller's own: a Jeeves started by a script
++    # or a check (not typed in Terminal) shares its caller's group, and ending that group
++    # ended the caller as well (GitHub's test Macs, 2026-09-24: the test run itself was
++    # ended). Then the program and its children are ended one by one instead.
+     try:
+-        os.killpg(os.getpgid(pid), signal.SIGKILL)
+-        return True
++        group = os.getpgid(pid)
+     except (OSError, AttributeError):
++        group = None
++    if group is not None and group != os.getpgrp():
+         try:
+-            os.kill(pid, signal.SIGKILL)
++            os.killpg(group, signal.SIGKILL)
+             return True
+         except OSError:
+-            return False
++            pass
++    sent = False
++    for p in _descendants(pid) + [pid]:
++        if p == os.getpid():
++            continue
++        try:
++            os.kill(p, signal.SIGKILL)
++            sent = True
++        except OSError:
++            pass
++    return sent
++
++
++def _descendants(pid):
++    """Every program started by this one, and by those, and so on (Mac and Linux)."""
++    try:
++        out = subprocess.run(["ps", "-A", "-o", "pid=,ppid="], capture_output=True, text=True,
++                             timeout=10, creationflags=NO_WINDOW).stdout or ""
++    except (OSError, subprocess.TimeoutExpired):
++        return []
++    children = {}
++    for line in out.splitlines():
++        parts = line.split()
++        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
++            children.setdefault(int(parts[1]), []).append(int(parts[0]))
++    found, todo = [], [int(pid)]
++    while todo:
++        for kid in children.get(todo.pop(), []):
++            if kid not in found:
++                found.append(kid)
++                todo.append(kid)
++    return found
+ 
+ 
+ def alive(pid):
+diff --git a/jeeves/server.py b/jeeves/server.py
+index f850991..c206781 100644
+--- a/jeeves/server.py
++++ b/jeeves/server.py
+@@ -31,6 +31,7 @@ import json
+ import mimetypes
+ import os
+ import socket
++import socketserver
+ import sys
+ import threading
+ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+@@ -192,6 +193,8 @@ def public_config(cfg):
+         "read_only": chat.read_only(cfg),
+         "chat_updated": chat.last_updated("main"),
+         "chat_timeout_seconds": cfg.get("chat_timeout_seconds"),
++        # the command this computer runs Python with, for commands the page prints
++        "python": "python3" if sys.platform == "darwin" else "python",
+     }
+ 
+ 
+@@ -208,7 +211,15 @@ class JeevesServer(ThreadingHTTPServer):
+     def server_bind(self):
+         if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+-        super().server_bind()
++        # http.server's own server_bind also asks for this address's name
++        # (socket.getfqdn), only to fill in server_name, which nothing here uses.
++        # On GitHub's test Macs that look-up took 35 seconds on every start
++        # (measured 2026-09-24), so the page answered 35 seconds late and the
++        # checks that wait 15 or 20 seconds for it failed. The name is now the
++        # address as given, with no look-up.
++        socketserver.TCPServer.server_bind(self)
++        host, port = self.server_address[:2]
++        self.server_name, self.server_port = str(host), port
+ 
+ 
+ def make_server(port=None, config_file=None, verbose=False):
+diff --git a/jeeves/static/app.js b/jeeves/static/app.js
+index 0547c83..2b17dfd 100644
+--- a/jeeves/static/app.js
++++ b/jeeves/static/app.js
+@@ -281,7 +281,9 @@ function mountChat(el) {
+ // A folder that is not there is never reported as a quiet day. The Today panel used
+ // to say "Nothing has moved and nothing is left open" while the Vaults panel 300 px
+ // below it said the folder did not exist, and the loudest of the two was the wrong one.
+-function missingFolder(path, setting) {
++function missingFolder(path, setting, refused) {
++  // macOS refused Jeeves the folder: say so, never that it is missing (the server's words).
++  if (refused) return `<div class="empty gone">${esc(refused)}</div>`;
+   return `<div class="empty gone">Your ${setting === 'crm_vault' ? 'CRM' : 'second brain'} folder is not there:
+     <code class="sel">${esc(path || '(not set)')}</code><br>
+     Nothing can be read from it, so no count below is a real answer. Check
+@@ -295,14 +297,14 @@ async function renderToday(body) {
+   if (d.crm) {
+     h += `<div class="card"><h3>From your CRM${d.crm.built ? ' · built ' + esc(d.crm.built) : ''}</h3>`;
+     h += d.crm.found ? md(d.crm.text)
+-      : (d.crm.exists === false ? missingFolder(d.crm.vault, 'crm_vault')
++      : (d.crm.exists === false ? missingFolder(d.crm.vault, 'crm_vault', d.crm.refused)
+         : `<div class="empty">${esc(d.crm.hint)}</div>`);
+     h += '</div>';
+   } else h += '<div class="empty">No CRM folder is set in config.json, so there is no ranked list of people here.</div>';
+   const b = d.brain;
+   if (b) {
+     h += '<div class="card"><h3>From your second brain</h3>';
+-    if (b.found === false) return void (body.innerHTML = h + missingFolder(b.path, 'second_brain') + '</div>');
++    if (b.found === false) return void (body.innerHTML = h + missingFolder(b.path, 'second_brain', b.refused) + '</div>');
+     if (b.daily) h += `<div class="dim">${esc(b.daily.path)}</div>` + md(b.daily.text);
+     if (b.moved.length) h += '<div class="muted" style="margin-top:6px">Moved in the last 3 days</div><ul class="links">' + b.moved.map(m => `<li><span class="dim">${esc(m.when)}</span> <span class="wl" data-note="${esc(m.path)}">${noteName(m.path)}</span> <span class="dim">${noteDir(m.path)}</span></li>`).join('') + '</ul>';
+     if (b.open.length) h += '<div class="muted" style="margin-top:6px">Left unfinished</div><ul>' + b.open.map(o => `<li>☐ ${inline(o.text)} <span class="dim">·</span> <span class="wl" data-note="${esc(o.path)}">${noteName(o.path)}</span></li>`).join('') + '</ul>';
+@@ -352,7 +354,7 @@ async function mountVault(el) {
+     tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === key));
+     const t = await api('/api/vault/tree?v=' + encodeURIComponent(key));
+     VB.files = t.files || [];
+-    if (t.exists === false) list.innerHTML = '<div class="empty" style="margin:8px">That folder does not exist. Check the path in config.json.</div>'; else draw();
++    if (t.exists === false) list.innerHTML = t.refused ? `<div class="empty" style="margin:8px">${esc(t.refused)}</div>` : '<div class="empty" style="margin:8px">That folder does not exist. Check the path in config.json.</div>'; else draw();
+   };
+   const search = async (text) => {
+     q.value = text;
+@@ -489,8 +491,8 @@ async function renderOverview(body) {
+   jobs.push(safe('/api/today').then(td => {
+     let h;
+     if (!td.crm) h = '<div class="muted">No CRM folder is set in config.json.</div>';
+-    else if (td.crm.exists === false) h = missingFolder(td.crm.vault, 'crm_vault');
+-    else if (!td.crm.found) h = '<div class="muted">Your CRM has no <code>Today.md</code> yet. Build it in your CRM folder with <code>python _engine/today.py --write</code>.</div>';
++    else if (td.crm.exists === false) h = missingFolder(td.crm.vault, 'crm_vault', td.crm.refused);
++    else if (!td.crm.found) h = '<div class="muted">Your CRM has no <code>Today.md</code> yet. Build it in your CRM folder with <code>' + esc(CFG.python || 'python') + ' _engine/today.py --write</code>.</div>';
+     else {
+       const rows = crmPeople(td.crm.text);
+       if (rows.length) h = '<ul>' + rows.slice(0, 4).map(r => `<li><span class="wl" data-vault="crm" data-note="${esc(r.who)}">${esc(r.who)}</span> <span class="muted">· ${inline(r.why)}</span></li>`).join('') + '</ul>' + (rows.length > 4 ? `<button class="cardlink small" data-open="today">and ${rows.length - 4} more in Today ›</button>` : '');
+@@ -499,7 +501,7 @@ async function renderOverview(body) {
+     }
+     fill('people', h);
+     fill('brain', !td.brain ? '<div class="muted">No second brain is set in config.json.</div>'
+-      : td.brain.found === false ? missingFolder(td.brain.path, 'second_brain')
++      : td.brain.found === false ? missingFolder(td.brain.path, 'second_brain', td.brain.refused)
+         : `<div class="kv"><span class="muted">Notes moved (3 days)</span><b>${td.brain.moved.length}</b><span class="muted">Left unfinished</span><b>${td.brain.open.length}</b><span class="muted">Daily note today</span><b>${td.brain.daily ? 'yes' : 'no'}</b></div>`);
+   }));
+   jobs.push(safe('/api/inbox').then(ib => {
+diff --git a/jeeves/vaults.py b/jeeves/vaults.py
+index 3905cd7..6088a6a 100644
+--- a/jeeves/vaults.py
++++ b/jeeves/vaults.py
+@@ -6,7 +6,9 @@ checked to be inside the vault it names, so a crafted address such as
+ `../../secret.txt` is refused rather than served.
+ """
+ 
++import os
+ import re
++import sys
+ from datetime import datetime, timedelta
+ from pathlib import Path
+ 
+@@ -18,6 +20,26 @@ MAX_FILES = 4000
+ MAX_BYTES = 400_000
+ 
+ 
++def refused(root):
++    """macOS's refusal of a folder, in words, or "" (Mac only).
++
++    A program that starts by itself on a Mac (Jeeves' start-up file) may be refused the
++    Documents folder with "Operation not permitted". Python then reads the folder as not
++    there, so the page said the vault was missing when it was where it should be."""
++    if sys.platform != "darwin":
++        return ""
++    try:
++        os.listdir(root)
++    except PermissionError:
++        return ("macOS refused access to %s. Jeeves cannot read it, so nothing below is a real "
++                "answer. A program that starts by itself may be refused the Documents folder: move "
++                "the folder out of Documents, for example to %s, and put its new place in "
++                "config.json." % (root, Path.home() / Path(root).name))
++    except OSError:
++        return ""
++    return ""
++
++
+ def _vault_map(cfg):
+     return {k: (label, p) for k, label, p in C.vaults(cfg)}
+ 
+@@ -25,7 +47,9 @@ def _vault_map(cfg):
+ def listing(cfg):
+     out = []
+     for key, label, p in C.vaults(cfg):
+-        out.append({"key": key, "label": label, "path": str(p), "exists": p.is_dir()})
++        no = refused(p)
++        out.append({"key": key, "label": label, "path": str(p), "exists": False if no else p.is_dir(),
++                    "refused": no})
+     return out
+ 
+ 
+@@ -46,8 +70,9 @@ def tree(cfg, key):
+     if key not in vm:
+         return {"error": "unknown vault"}
+     label, root = vm[key]
+-    if not root.is_dir():
+-        return {"key": key, "label": label, "exists": False, "files": []}
++    no = refused(root)
++    if no or not root.is_dir():
++        return {"key": key, "label": label, "exists": False, "files": [], "refused": no}
+     files = []
+     for p, rel in _md_files(root):
+         try:
+@@ -201,7 +226,10 @@ def today(cfg, now=None):
+     if "crm" in vm:
+         root = vm["crm"][1]
+         page = root / "Today.md"
+-        if page.is_file():
++        no = refused(root)
++        if no:
++            out["crm"] = {"found": False, "exists": False, "vault": str(root), "refused": no, "hint": no}
++        elif page.is_file():
+             out["crm"] = {"found": True, "exists": True, "vault": str(root), "path": "Today.md",
+                           "text": page.read_text(encoding="utf-8", errors="replace")[:MAX_BYTES],
+                           "built": datetime.fromtimestamp(page.stat().st_mtime).strftime("%a %d %b %H:%M")}
+@@ -211,12 +239,15 @@ def today(cfg, now=None):
+                                   "in config.json." % root}
+         else:
+             out["crm"] = {"found": False, "exists": True, "vault": str(root),
+-                          "hint": "No Today.md yet. In your CRM folder run: python _engine/today.py --write"}
++                          "hint": "No Today.md yet. In your CRM folder run: %s _engine/today.py --write"
++                                  % ("python3" if sys.platform == "darwin" else "python")}
+ 
+     if "brain" in vm:
+         root = vm["brain"][1]
+-        b = {"found": root.is_dir(), "path": str(root), "daily": None, "moved": [], "open": []}
+-        if root.is_dir():
++        no = refused(root)
++        b = {"found": False if no else root.is_dir(), "path": str(root), "daily": None, "moved": [],
++             "open": [], "refused": no}
++        if b["found"]:
+             dn = _daily_note(cfg, root, now)
+             if dn:
+                 b["daily"] = {"path": dn.relative_to(root).as_posix(),
+diff --git a/start.py b/start.py
+index 18e3914..f0c8d80 100644
+--- a/start.py
++++ b/start.py
+@@ -123,7 +123,7 @@ def main(argv=None):
+         print("  " + broken)
+         return 1
+     if not cfg.get("second_brain"):
+-        print("  No config.json yet. Run:  python install.py")
++        print("  No config.json yet. Run:  %s install.py" % C.PY)
+         return 1
+     try:
+         srv = make_server(a.port, cfg_file)
+@@ -134,7 +134,7 @@ def main(argv=None):
+             url = "http://127.0.0.1:%d/" % int(port)
+             print("  Jeeves is already running at %s (process %d). Not starting a second copy."
+                   % (url, h["pid"]))
+-            print("  To stop it:  python start.py --stop")
++            print("  To stop it:  %s start.py --stop" % C.PY)
+             if not a.no_open:
+                 try:
+                     webbrowser.open(url)
+@@ -142,7 +142,7 @@ def main(argv=None):
+                     pass
+             return 0
+         print("  Could not listen on port %s: %s" % (port, exc))
+-        print("  Another program is using it. Try:  python start.py --port %d" % free_port(port))
++        print("  Another program is using it. Try:  %s start.py --port %d" % (C.PY, free_port(port)))
+         return 1
+     port = srv.server_address[1]
+     C.atomic_write(pid_file(), "%d %d\n" % (os.getpid(), port))
+diff --git a/tests/mac/mac_app_links.py b/tests/mac/mac_app_links.py
+new file mode 100644
+index 0000000..d1dd6e4
+--- /dev/null
++++ b/tests/mac/mac_app_links.py
+@@ -0,0 +1,41 @@
++# -*- coding: utf-8 -*-
++"""Mac only (wave 0b fault, build plan V3 row list): Jeeves' Work board and FleetView links must
++lead a Mac member to the Mac repos.
++
++The panels for the Work board (ProjectForge) and FleetView link to the repo to download when the
++app is not running. They named the Windows repos, whose guides print Windows commands. On a Mac
++they name the Mac copy of each (its name ends in -mac) once those copies are published; until then
++(jeeves/config.py MAC_REPOS_PUBLISHED = False, see tests/mac/mac_repo_setting.py) they name the
++repos that exist, whose code also runs on a Mac.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_app_links.py
++"""
++import importlib
++import json
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac repo links")
++
++def want():
++    from jeeves import config as C
++    end = "-mac" if C.MAC_REPOS_PUBLISHED else ""
++    return {"projectforge": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge" + end,
++            "fleetview": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview" + end}
++
++
++def test_the_installer_writes_the_mac_links(world, tmp_path, monkeypatch):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    apps = json.loads(cfg.read_text(encoding="utf-8"))["apps"]
++    assert {k: v["repo"] for k, v in apps.items()} == want()
++
++
++def test_the_built_in_settings_name_the_mac_links():
++    from jeeves import config as C
++    assert {k: v["repo"] for k, v in C.DEFAULTS["apps"].items()} == want()
+diff --git a/tests/mac/mac_finds_claude_in_local_bin.py b/tests/mac/mac_finds_claude_in_local_bin.py
+new file mode 100644
+index 0000000..7d3a679
+--- /dev/null
++++ b/tests/mac/mac_finds_claude_in_local_bin.py
+@@ -0,0 +1,60 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 12, build plan V3): the installer must find Claude Code in ~/.local/bin.
++
++Claude Code's own installer puts `claude` in ~/.local/bin and, on GitHub's Intel test Mac
++(2026-09-24), told the member to add that folder to ~/.bash_profile, which a Mac's shell (zsh)
++never reads. So `claude` was installed but not found by name, and Jeeves' installer refused:
++"Claude Code is not installed, or not on your PATH. Nothing has been changed."
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_finds_claude_in_local_bin.py
++"""
++import importlib
++import json
++import os
++import stat
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Claude Code's Mac install folder")
++
++
++def fake_claude(folder):
++    folder.mkdir(parents=True)
++    c = folder / "claude"
++    c.write_text("#!/bin/sh\necho '2.1.280 (Claude Code)'\n", encoding="utf-8")
++    c.chmod(c.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
++    return c
++
++
++@pytest.mark.parametrize("where", [".local/bin", ".claude/local"])
++def test_claude_off_the_path_is_found_where_its_installer_puts_it(world, fake_home, tmp_path, monkeypatch,
++                                                                   capsys, where):
++    fake_claude(fake_home.joinpath(*where.split("/")))
++    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")  # a Terminal that lacks that folder
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    rc = install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--port", "4556", "--yes"])
++    out = capsys.readouterr().out
++    assert rc == 0, out
++    assert "not installed" not in out
++    assert "Found Claude Code" in out and "2.1.280" in out
++    assert cfg.exists()
++
++
++def test_with_no_claude_anywhere_it_still_refuses(world, fake_home, tmp_path, monkeypatch, capsys):
++    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    if os.path.exists("/usr/local/bin/claude") or os.path.exists("/opt/homebrew/bin/claude"):
++        pytest.skip("this Mac has claude in a folder the test cannot take off the PATH")
++    rc = install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes"])
++    assert rc == 1
++    assert "not installed" in capsys.readouterr().out
++    assert not cfg.exists()
+diff --git a/tests/mac/mac_printed_commands_python3.py b/tests/mac/mac_printed_commands_python3.py
+new file mode 100644
+index 0000000..131abf5
+--- /dev/null
++++ b/tests/mac/mac_printed_commands_python3.py
+@@ -0,0 +1,54 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 18, build plan V3): what Jeeves prints must never tell a Mac member to type `python`.
++
++A Mac has `python3` and no plain `python`. On GitHub's test Macs (wave 0a M7, 2026-09-24) the
++installer ended with "Done. Start it now:  python start.py", which fails there with "command not
++found". Windows keeps `python`.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_printed_commands_python3.py
++"""
++import importlib
++import json
++import re
++import subprocess
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def bad(text):
++    # "nothing to pip install" is a sentence, not a command
++    return [ln for ln in text.splitlines() if COMMAND.search(ln.replace("nothing to pip install", ""))]
++
++
++def test_the_installer_says_python3(world, tmp_path, monkeypatch, capsys):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    assert install.main(["--copy", str(tmp_path / "jeeves-trial")]) == 0
++    out = capsys.readouterr().out
++    assert "python3 start.py" in out
++    assert bad(out) == [], bad(out)
++
++
++def test_start_says_python3(tmp_path):
++    empty = tmp_path / "config.json"
++    empty.write_text("{}", encoding="utf-8")
++    r = subprocess.run([sys.executable, str(ROOT / "start.py"), "--no-open", "--config", str(empty)],
++                       capture_output=True, text=True, timeout=60)
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++    broken = tmp_path / "broken.json"
++    broken.write_text("{ not json", encoding="utf-8")
++    r = subprocess.run([sys.executable, str(ROOT / "start.py"), "--no-open", "--config", str(broken)],
++                       capture_output=True, text=True, timeout=60)
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
+diff --git a/tests/mac/mac_repo_setting.py b/tests/mac/mac_repo_setting.py
+new file mode 100644
+index 0000000..76ca0f4
+--- /dev/null
++++ b/tests/mac/mac_repo_setting.py
+@@ -0,0 +1,72 @@
++# -*- coding: utf-8 -*-
++"""Wave 1 second read (push order): Jeeves' Work board and FleetView links must lead to a repo that
++exists, and switch to the Mac copies with 1 setting.
++
++The Mac copies of the Work board and FleetView (outliers-ws-03-projectforge-mac and
++outliers-ws-02-fleetview-mac) are published in a later wave of the Mac build plan. A Mac member
++sent there before then finds nothing. So jeeves/config.py has 1 setting, MAC_REPOS_PUBLISHED:
++False today (every member is sent to the repos that exist), True from wave 6 (a Mac member is sent
++to the Mac copies). These checks run on every system.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_repo_setting.py
++(pytest never collects tests/mac/ in a plain run, so the counts the guides print stay true.)
++"""
++import re
++import shutil
++import subprocess
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[2]
++BASE = "https://github.com/OUTLIERS-ai/"
++APPS = {"projectforge": "outliers-ws-03-projectforge", "fleetview": "outliers-ws-02-fleetview"}
++NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++
++
++def setting_lines(text):
++    return re.findall(r"(?m)^MAC_REPOS_PUBLISHED\s*=\s*(\w+)\s*$", text)
++
++
++def test_the_setting_is_1_line_and_off_until_the_mac_repos_exist():
++    lines = setting_lines((ROOT / "jeeves" / "config.py").read_text(encoding="utf-8"))
++    assert lines == ["False"], "jeeves/config.py must set MAC_REPOS_PUBLISHED exactly once, to False: %r" % lines
++    for f in ROOT.rglob("*.py"):
++        if f.name == "config.py" and f.parent.name == "jeeves" or "tests" in f.parts:
++            continue
++        text = f.read_text(encoding="utf-8", errors="replace")
++        assert '"-mac"' not in text and "'-mac'" not in text, "%s names a -mac repo itself; use config.app_repo" % f
++
++
++def test_today_every_member_is_sent_to_a_repo_that_exists():
++    from jeeves import config as C
++    for mac in (True, False):
++        for name in APPS.values():
++            assert C.app_repo(name, mac=mac) == BASE + name
++    assert {k: v["repo"] for k, v in C.DEFAULTS["apps"].items()} == {k: BASE + n for k, n in APPS.items()}
++
++
++def mac_addresses_with(tmp_path, value):
++    """Copy Jeeves, set the 1 line, and ask it (as a Mac) where the apps are downloaded from."""
++    copy = tmp_path / ("jeeves-" + value)
++    shutil.copytree(ROOT / "jeeves", copy / "jeeves", ignore=shutil.ignore_patterns("__pycache__"))
++    cfg = copy / "jeeves" / "config.py"
++    text = cfg.read_text(encoding="utf-8")
++    new = re.sub(r"(?m)^MAC_REPOS_PUBLISHED\s*=\s*\w+\s*$", "MAC_REPOS_PUBLISHED = " + value, text)
++    assert new.count("MAC_REPOS_PUBLISHED = " + value) == 1
++    cfg.write_text(new, encoding="utf-8")
++    code = ("import sys; sys.platform = 'darwin'\n"
++            "from jeeves import config as C\n"
++            "print({k: v['repo'] for k, v in C.DEFAULTS['apps'].items()})\n"
++            "print(C.app_repo('outliers-ws-02-fleetview', mac=False))\n")
++    r = subprocess.run([sys.executable, "-c", code], cwd=str(copy), capture_output=True, text=True,
++                       timeout=60, creationflags=NO_WINDOW)
++    assert r.returncode == 0, r.stderr
++    return r.stdout.splitlines()
++
++
++def test_switching_the_1_line_sends_a_mac_member_to_the_mac_copies(tmp_path):
++    on = mac_addresses_with(tmp_path, "True")
++    assert on[0] == str({k: BASE + n + "-mac" for k, n in APPS.items()}), on
++    assert on[1] == BASE + "outliers-ws-02-fleetview", "a Windows member must never be sent to a -mac repo"
++    off = mac_addresses_with(tmp_path, "False")
++    assert off[0] == str({k: BASE + n for k, n in APPS.items()}), off
+diff --git a/tests/mac/mac_server_starts_quickly.py b/tests/mac/mac_server_starts_quickly.py
+new file mode 100644
+index 0000000..00f8d2e
+--- /dev/null
++++ b/tests/mac/mac_server_starts_quickly.py
+@@ -0,0 +1,36 @@
++"""Fault row 11 (build plan V3): Jeeves must not wait 35 seconds for a name look-up before it answers.
++
++Measured 2026-09-24 on all 3 of GitHub's test Macs: Python's socket.getfqdn("127.0.0.1") took
++35 seconds on every call, and Python's web server calls it once when it starts, only to fill in a
++name nothing here uses. So Jeeves answered 35 seconds after it started, and the checks that wait
++15 seconds for it failed (tests/test_fixes.py::test_stop_stops_a_real_jeeves, whose stop found no running record yet and so looked only at the port in the settings file). The server now starts with no name look-up.
++
++This check makes the look-up slow on purpose (30 seconds), so it shows the fault on any computer,
++then times how long the server takes to start. It is kept in tests/mac/ and named mac_*.py so a
++plain `python -m pytest -q` never runs it and the counts the guides print stay true. Run by name:
++  python3 -m pytest -q tests/mac/mac_server_starts_quickly.py
++"""
++import subprocess
++import sys
++import textwrap
++from pathlib import Path
++
++KIT = Path(__file__).resolve().parents[2]
++
++
++def test_the_server_starts_without_waiting_for_a_name_look_up():
++    code = textwrap.dedent('''
++        import socket, sys, time
++        sys.path.insert(0, {kit!r})
++        socket.getfqdn = lambda *a, **k: (time.sleep(30), "slow.example")[1]
++        t = time.time()
++        from jeeves.server import JeevesServer, Handler
++        srv = JeevesServer(("127.0.0.1", 0), Handler)
++        print("started in %.1f seconds" % (time.time() - t))
++        srv.server_close()
++    ''').format(kit=str(KIT))
++    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
++                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    assert r.returncode == 0, r.stdout + r.stderr
++    took = float(r.stdout.split("started in ")[1].split()[0])
++    assert took < 5, "the server took %.1f seconds to start: it waited for the name look-up" % took
+diff --git a/tests/mac/mac_stop_spares_caller.py b/tests/mac/mac_stop_spares_caller.py
+new file mode 100644
+index 0000000..642a145
+--- /dev/null
++++ b/tests/mac/mac_stop_spares_caller.py
+@@ -0,0 +1,69 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 11, build plan V3): stopping Jeeves must never stop the program that asked.
++
++`start.py --stop` ends Jeeves with jeeves/proc.py kill_tree, which ended the whole process group
++of the Jeeves it found. A Jeeves started by a script or a check (not typed in Terminal) shares its
++caller's group, so the caller was ended too: on GitHub's test Macs (2026-09-24) the test run
++itself was ended once Jeeves started in time to be found (the other half of row 11). Each check
++here runs in a separate Python program, in a session of its own, so a wrong kill_tree ends only
++that program and the check reports it.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_stop_spares_caller.py
++"""
++import subprocess
++import sys
++import textwrap
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="process groups are a Mac and Linux idea")
++
++
++def run_caller(body):
++    code = textwrap.dedent('''
++        import os, subprocess, sys, time
++        sys.path.insert(0, %r)
++        from jeeves import proc as P
++    ''' % str(ROOT)) + textwrap.dedent(body) + "\nprint('CALLER SURVIVED', flush=True)\n"
++    return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
++                          start_new_session=True)
++
++
++def test_ending_a_jeeves_in_our_group_spares_the_caller():
++    r = run_caller('''
++        kid = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
++        P.kill_tree(kid.pid)
++        kid.wait(timeout=20)
++        print("child ended with", kid.returncode, flush=True)
++    ''')
++    assert "CALLER SURVIVED" in r.stdout, "kill_tree ended its caller (exit %s): %s%s" % (r.returncode, r.stdout, r.stderr)
++    assert "child ended with" in r.stdout
++
++
++def test_what_that_jeeves_started_is_ended_too():
++    r = run_caller('''
++        kid = subprocess.Popen([sys.executable, "-c",
++            "import subprocess, sys, time; g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']);"
++            "print(g.pid, flush=True); time.sleep(60)"], stdout=subprocess.PIPE, text=True)
++        grandkid = int(kid.stdout.readline())
++        P.kill_tree(kid.pid)
++        kid.wait(timeout=20)
++        end = time.time() + 10
++        while time.time() < end and P.alive(grandkid):
++            time.sleep(0.2)
++        print("grandchild alive:", P.alive(grandkid), flush=True)
++    ''')
++    assert "CALLER SURVIVED" in r.stdout, "kill_tree ended its caller (exit %s): %s%s" % (r.returncode, r.stdout, r.stderr)
++    assert "grandchild alive: False" in r.stdout, r.stdout + r.stderr
++
++
++def test_a_jeeves_in_its_own_group_is_ended_with_its_whole_group():
++    r = run_caller('''
++        kid = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True)
++        P.kill_tree(kid.pid)
++        kid.wait(timeout=20)
++        print("child ended with", kid.returncode, flush=True)
++    ''')
++    assert "CALLER SURVIVED" in r.stdout and "child ended with -9" in r.stdout, r.stdout + r.stderr
+diff --git a/tests/mac/mac_today_names_python3.py b/tests/mac/mac_today_names_python3.py
+new file mode 100644
+index 0000000..ea8ae0f
+--- /dev/null
++++ b/tests/mac/mac_today_names_python3.py
+@@ -0,0 +1,42 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 10, build plan V3): the Today panel must not tell a Mac member to type `python`.
++
++With no Today.md in the CRM folder, the Today panel said "In your CRM folder run: python
++_engine/today.py --write" (jeeves/vaults.py) and the overview card said the same
++(jeeves/static/app.js), on every computer (seen on GitHub's test Macs, 2026-09-24). A Mac has
++python3 and no python.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_today_names_python3.py
++"""
++import re
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def test_the_today_panel_says_python3(tmp_path):
++    from jeeves import vaults
++    crm = tmp_path / "CRM"
++    crm.mkdir()
++    brain = tmp_path / "Second Brain"
++    brain.mkdir()
++    out = vaults.today({"crm_vault": str(crm), "second_brain": str(brain)})
++    hint = out["crm"]["hint"]
++    assert "python3 _engine/today.py --write" in hint
++    assert not COMMAND.search(hint), hint
++
++
++def test_the_page_is_told_which_python_to_print(tmp_path):
++    from jeeves.server import public_config
++    assert public_config({})["python"] == "python3"
++
++
++def test_the_overview_card_prints_the_python_the_page_is_told():
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "<code>python _engine/today.py" not in js
++    assert "CFG.python" in js
+diff --git a/tests/mac/mac_vault_lookup.py b/tests/mac/mac_vault_lookup.py
+new file mode 100644
+index 0000000..e85ec14
+--- /dev/null
++++ b/tests/mac/mac_vault_lookup.py
+@@ -0,0 +1,30 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 23, build plan V3): on a Mac, Jeeves suggests ~/Second Brain first.
++
++macOS may refuse a program that starts by itself access to ~/Documents, so the Mac guides put the
++Second Brain at ~/Second Brain. The installer looked in ~/Documents/Second Brain first. Windows
++keeps its own order, unchanged.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_lookup.py
++"""
++import importlib
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac look-up order")
++
++
++def test_second_brain_outside_documents_comes_first(fake_home):
++    for p in (fake_home / "Second Brain", fake_home / "Documents" / "Second Brain"):
++        p.mkdir(parents=True)
++    import install
++    importlib.reload(install)
++    assert install.guess_brain() == str(fake_home / "Second Brain")
++
++
++def test_documents_is_still_found_when_it_is_the_only_one(fake_home):
++    (fake_home / "Documents" / "Second Brain").mkdir(parents=True)
++    import install
++    importlib.reload(install)
++    assert install.guess_brain() == str(fake_home / "Documents" / "Second Brain")
+diff --git a/tests/mac/mac_vault_refusal_shown.py b/tests/mac/mac_vault_refusal_shown.py
+new file mode 100644
+index 0000000..497f77c
+--- /dev/null
++++ b/tests/mac/mac_vault_refusal_shown.py
+@@ -0,0 +1,95 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 20, build plan V3): when macOS refuses a vault, Jeeves' page says so.
++
++A program that starts by itself on a Mac (Jeeves' start-up file) may be refused the Documents
++folder with "Operation not permitted". Python then reads the folder as not there, so the page said
++"Your second brain folder is not there" about a vault that was where it should be. It must say
++"macOS refused access to <folder>", and never that the vault is missing.
++
++GitHub's test Macs cannot show a real refusal (System Integrity Protection is off there, wave 0a
++M5), so the first check makes reading the vault raise the error macOS gives, and the second uses
++a folder this user may not read, which the test Macs do refuse.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_refusal_shown.py
++"""
++import errno
++import os
++import sys
++from pathlib import Path
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS folder refusal")
++
++
++def said_plainly(text, folder):
++    return "macOS refused access to" in text and str(folder) in text and "not there" not in text
++
++
++def check_every_view(cfg, crm, brain):
++    from jeeves import vaults
++    today = vaults.today(cfg)
++    assert today["crm"]["exists"] is False and said_plainly(today["crm"]["refused"], crm), today["crm"]
++    assert today["brain"]["found"] is False and said_plainly(today["brain"]["refused"], brain), today["brain"]
++    listed = {v["key"]: v for v in vaults.listing(cfg)}
++    assert said_plainly(listed["brain"]["refused"], brain) and listed["brain"]["exists"] is False
++    tree = vaults.tree(cfg, "brain")
++    assert tree["exists"] is False and said_plainly(tree["refused"], brain)
++
++
++def test_operation_not_permitted_is_reported_as_a_refusal(tmp_path, monkeypatch):
++    crm = tmp_path / "Documents" / "CRM"
++    brain = tmp_path / "Documents" / "Second Brain"
++    for v in (crm, brain):
++        v.mkdir(parents=True)
++    refused = {crm, brain}
++    real_listdir, real_is_dir, real_is_file = os.listdir, Path.is_dir, Path.is_file
++
++    def no_listdir(p="."):
++        if Path(p) in refused:
++            raise PermissionError(errno.EPERM, "Operation not permitted", str(p))
++        return real_listdir(p)
++
++    monkeypatch.setattr(os, "listdir", no_listdir)
++    # What Python answers for a folder macOS refuses, and for anything inside it: not there.
++    monkeypatch.setattr(Path, "is_dir", lambda self, **kw: False if (self in refused or self.parent in refused)
++                        else real_is_dir(self, **kw))
++    monkeypatch.setattr(Path, "is_file", lambda self, **kw: False if self.parent in refused
++                        else real_is_file(self, **kw))
++    check_every_view({"crm_vault": str(crm), "second_brain": str(brain)}, crm, brain)
++
++
++def test_a_folder_this_user_may_not_open_is_reported_as_a_refusal(tmp_path):
++    crm = tmp_path / "CRM"
++    brain = tmp_path / "Second Brain"
++    for v in (crm, brain):
++        v.mkdir()
++        v.chmod(0)
++    try:
++        check_every_view({"crm_vault": str(crm), "second_brain": str(brain)}, crm, brain)
++    finally:
++        for v in (crm, brain):
++            v.chmod(0o755)
++
++
++def test_the_page_shows_the_refusal_instead_of_missing():
++    from conftest import ROOT
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "function missingFolder(path, setting, refused)" in js
++    assert js.count("missingFolder(") >= 5 and "t.refused" in js
++
++
++def test_the_advice_keeps_each_folder_s_own_name(tmp_path, monkeypatch):
++    """A refused CRM must not be told to move to ~/Second Brain: that is the second brain's place.
++    The advice names the folder's own name in the home folder (second read, 2026-09-24)."""
++    from jeeves import vaults
++    crm = tmp_path / "Documents" / "Priya Shah CRM"
++    crm.mkdir(parents=True)
++
++    def no_listdir(p="."):
++        raise PermissionError(errno.EPERM, "Operation not permitted", str(p))
++
++    monkeypatch.setattr(os, "listdir", no_listdir)
++    text = vaults.refused(crm)
++    assert str(Path.home() / "Priya Shah CRM") in text, text
++    assert "Second Brain" not in text, text
+diff --git a/tests/test_copy.py b/tests/test_copy.py
+index 59f76e7..48f7d42 100644
+--- a/tests/test_copy.py
++++ b/tests/test_copy.py
+@@ -54,7 +54,9 @@ def test_the_copy_gets_its_own_port_and_none_of_the_running_copys_files(world, t
+     assert not (dest / "state").exists()
+     assert not list(dest.glob("config.json.bak-*"))
+     out = capsys.readouterr().out
+-    assert str(got["port"]) in out and "python start.py" in out
++    # a Mac has python3 and no python, so the copy tells a Mac member to type python3
++    assert str(got["port"]) in out
++    assert ("python3 start.py" if sys.platform == "darwin" else "python start.py") in out
+ 
+ 
+ @pytest.mark.skipif(os.name != "nt", reason="the double-click start file is made on Windows")
