@@ -13,6 +13,10 @@ on:
         description: "Repos, comma separated"
         required: false
         default: "outliers-crm-02-rules"
+      fix:
+        description: "Optional folder under fixes/: its fix.patch is applied right after the clone (1 repo only)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -43,7 +47,11 @@ jobs:
         with:
           python-version: "3.13"
       - name: Walk through the repo as a Windows member
-        run: python _mactest/harness/wintest.py "${{ matrix.repo }}" "$env:RUNNER_TEMP/out"
+        env:
+          FIX: ${{ inputs.fix }}
+        run: |
+          if ($env:FIX) { $env:WINTEST_FIX_PATCH = "_mactest/fixes/$env:FIX/fix.patch"; Write-Output "fix patch: $env:WINTEST_FIX_PATCH" }
+          python _mactest/harness/wintest.py "${{ matrix.repo }}" "$env:RUNNER_TEMP/out"
       - name: "Scan every printed output (a record only, since Windows words are right on Windows)"
         if: always()
         run: python _mactest/harness/scan_output.py "$env:RUNNER_TEMP/out"

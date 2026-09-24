@@ -110,7 +110,24 @@ def main():
     repo, out = sys.argv[1], Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
     os.environ["OUT"] = str(out)
-    steps = [run_step(s, repo) for s in specs.get(repo)["steps"]]
+    # WINTEST_FIX_PATCH (optional): a fix not yet on GitHub, from fixes/<name>/fix.patch, applied
+    # to the member repo straight after it is cloned, so the Windows walk-through tests the fix
+    # (plan 9d) before it is pushed. Recorded as its own step, never counted.
+    patch = os.environ.get("WINTEST_FIX_PATCH", "").strip()
+    steps = []
+    for s in specs.get(repo)["steps"]:
+        steps.append(run_step(s, repo))
+        if patch and s["id"] == "clone" and steps[-1]["verdict"] == "WORKS":
+            code, out, secs = run(["git", "apply", "--verbose", str(Path(patch).resolve())],
+                                  str(HOME / repo))
+            steps.append({"id": "apply-fix-patch", "kind": "prereq", "counts": False,
+                          "verdict": "WORKS" if code == 0 else "FAILS", "started": now(),
+                          "attempts": [{"label": "harness", "command": "git apply " + patch,
+                                        "exit": code, "seconds": secs,
+                                        "output_tail": out[-TAIL:]}]})
+            if code != 0:
+                print("the fix patch did not apply: %s" % out[-800:], flush=True)
+                return 1
     for s in steps:
         print("[%s] %s" % (s["verdict"], s["id"]), flush=True)
     counted = [s for s in steps if s["counts"]]
