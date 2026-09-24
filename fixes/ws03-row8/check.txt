@@ -1,0 +1,1 @@
+[ -d ../v ] || $PY -m venv ../v; if [ -f ../v/bin/activate ]; then . ../v/bin/activate; else . ../v/Scripts/activate; fi; python -m pip install -q pytest; python -m pytest -q -p no:cacheprovider tests/test_logon_and_stop.py::test_the_logon_file_is_written_when_you_ask tests/mac/mac_logon_plist.py

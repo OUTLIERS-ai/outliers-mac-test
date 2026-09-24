@@ -1,0 +1,27 @@
+diff --git a/engine/server.py b/engine/server.py
+index 0b414bc..d045120 100644
+--- a/engine/server.py
++++ b/engine/server.py
+@@ -92,6 +92,9 @@ def make_handler(store, config, base_dir: Path):
+             "managers": config.get("managers", []),
+             "outward_owners": config.get("outward_owners", []),
+             "crm_vault": config.get("crm_vault", ""),
++            # the command this computer runs Python with, for commands the
++            # page prints (python3 on a Mac, python on Windows)
++            "python": "python" if os.name == "nt" else "python3",
+         }
+ 
+     class Handler(BaseHTTPRequestHandler):
+diff --git a/viewer/app.js b/viewer/app.js
+index 3056b40..a7aecf2 100644
+--- a/viewer/app.js
++++ b/viewer/app.js
+@@ -441,7 +441,7 @@ function firstRunPanel() {
+         would get it. Nothing changes until you run <code>/forge-run</code>.</li>
+     </ol>
+     <p class="dimtext">Want to look round a full board first? In a terminal in
+-      this folder: <code>python tools/demo_board.py --out demo --serve</code>,
++      this folder: <code>${(STATE.config && STATE.config.python) || "python"} tools/demo_board.py --out demo --serve</code>,
+       then open http://127.0.0.1:3029.</p>`;
+   el.querySelector("#fr-project").onclick = openNewProject;
+   return el;

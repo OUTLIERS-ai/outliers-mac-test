@@ -1,0 +1,265 @@
+diff --git a/tests/mac/mac_board_names_python3.py b/tests/mac/mac_board_names_python3.py
+new file mode 100644
+index 0000000..0fc0069
+--- /dev/null
++++ b/tests/mac/mac_board_names_python3.py
+@@ -0,0 +1,40 @@
++"""Mac only (fault row 7, build plan V3): the empty web board must not tell a Mac member to type `python`.
++
++The empty board's first-run panel said "python tools/demo_board.py --out demo --serve" on every
++computer (seen on GitHub's test Macs, 2026-09-24). A Mac has python3 and no python. The board now
++tells the page which command this computer runs Python with, and the page prints that.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_board_names_python3.py
++"""
++import json
++import sys
++import threading
++import urllib.request
++
++import pytest
++
++from conftest import REPO
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++
++
++def test_the_board_tells_the_page_to_say_python3(store, tmp_path):
++    from engine import server
++
++    httpd = server.make_server(store, {"summary_note": "", "db_path": str(tmp_path / "t.db")}, tmp_path, port=0)
++    port = httpd.server_address[1]
++    t = threading.Thread(target=httpd.serve_forever, daemon=True)
++    t.start()
++    try:
++        with urllib.request.urlopen("http://127.0.0.1:%d/api/state" % port, timeout=10) as r:
++            state = json.loads(r.read())
++    finally:
++        httpd.shutdown()
++        httpd.server_close()
++    assert state["config"].get("python") == "python3"
++
++
++def test_the_page_prints_the_command_the_board_names():
++    js = (REPO / "viewer" / "app.js").read_text(encoding="utf-8")
++    assert "<code>python tools/demo_board.py" not in js, "the page prints `python` whatever the computer"
++    assert "STATE.config.python" in js
+diff --git a/tests/mac/mac_logon_plist.py b/tests/mac/mac_logon_plist.py
+new file mode 100644
+index 0000000..e5cce05
+--- /dev/null
++++ b/tests/mac/mac_logon_plist.py
+@@ -0,0 +1,35 @@
++"""Mac only (fault row 8, build plan V3): the Mac twin of the Windows-only start-up file check.
++
++tests/test_logon_and_stop.py::test_the_logon_file_is_written_when_you_ask checks the Windows
++.vbs file for `pythonw`, the Windows Python that opens no window. A Mac has no pythonw, so on a
++Mac that check failed although nothing was wrong; it now runs on Windows only. This is the same
++check for the file a Mac gets: a LaunchAgent that starts the board with this computer's own
++Python, and that macOS's own checker (plutil) accepts.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_logon_plist.py
++"""
++import plistlib
++import subprocess
++import sys
++
++import pytest
++
++import install
++from test_install import fake_setup, run
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac start-up file (LaunchAgent)")
++
++
++def test_the_mac_start_up_file_is_written_when_you_ask(tmp_path, monkeypatch):
++    home, ch, sb, crm, cfgp = fake_setup(tmp_path, monkeypatch)
++    assert run(sb, crm, ["--start-with-computer"]) == 0
++    plist = home / "Library" / "LaunchAgents" / install.PLIST_NAME
++    assert plist.is_file()
++    lint = subprocess.run(["plutil", "-lint", str(plist)], capture_output=True, text=True)
++    assert lint.returncode == 0, lint.stdout + lint.stderr
++    job = plistlib.loads(plist.read_bytes())
++    assert job["RunAtLoad"] is True
++    assert job["ProgramArguments"][0] == sys.executable
++    assert job["ProgramArguments"][1].endswith("forge.py") and job["ProgramArguments"][2] == "serve"
++    assert install.main(["--uninstall", "--yes"]) == 0
++    assert not plist.exists()
+diff --git a/tests/mac/mac_printed_commands_python3.py b/tests/mac/mac_printed_commands_python3.py
+new file mode 100644
+index 0000000..310f838
+--- /dev/null
++++ b/tests/mac/mac_printed_commands_python3.py
+@@ -0,0 +1,92 @@
++"""Mac only (fault row 18, build plan V3): what ProjectForge prints must never tell a Mac member to type `python`.
++
++A Mac has `python3` and no plain `python`. On GitHub's test Macs (wave 0a M7, 2026-09-24) the
++installer, the board and the command line printed 10 lines such as "1. Open the board:
++python forge.py serve", each of which fails there with "command not found". Windows keeps `python`.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_printed_commands_python3.py
++"""
++import json
++import re
++import subprocess
++import sys
++
++import pytest
++
++from conftest import REPO
++from test_install import fake_setup, run
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def bad(text):
++    return [ln for ln in text.splitlines() if COMMAND.search(ln)]
++
++
++def forge(args, cfgp):
++    import os
++    env = dict(os.environ, FORGE_CONFIG=str(cfgp))
++    return subprocess.run([sys.executable, str(REPO / "forge.py")] + args, cwd=str(REPO), env=env,
++                          capture_output=True, text=True, timeout=120)
++
++
++def test_the_installer_says_python3(tmp_path, monkeypatch, capsys):
++    home, ch, sb, crm, cfgp = fake_setup(tmp_path, monkeypatch)
++    assert run(sb, crm) == 0
++    out = capsys.readouterr().out
++    assert "python3 forge.py serve" in out
++    assert bad(out) == [], bad(out)
++
++
++def test_the_command_line_says_python3(cfg_env):
++    out = forge(["list"], cfg_env).stdout + forge(["projects"], cfg_env).stdout
++    r = forge(["add-project", "Content week 39", "--dept", "content", "--actor", "you"], cfg_env)
++    out += r.stdout + r.stderr
++    r = forge(["add-task", "pf-p-nothere", "Card", "--actor", "you"], cfg_env)
++    out += r.stdout + r.stderr
++    assert "python3 forge.py" in out
++    assert bad(out) == [], bad(out)
++
++
++def test_the_board_says_python3_when_the_port_is_taken(cfg_env):
++    import socket
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    s.listen(1)
++    try:
++        r = forge(["serve", "--port", str(s.getsockname()[1])], cfg_env)
++    finally:
++        s.close()
++    assert "python3 forge.py serve --port" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++
++
++def test_a_broken_config_says_python3(tmp_path):
++    cfgp = tmp_path / "config.json"
++    cfgp.write_text("{ not json", encoding="utf-8")
++    r = forge(["list"], cfgp)
++    assert "python3 install.py" in r.stdout + r.stderr
++    assert bad(r.stdout + r.stderr) == []
++
++
++def test_the_demo_and_the_summary_note_say_python3(tmp_path, store):
++    from engine import mirror
++    r = subprocess.run([sys.executable, str(REPO / "tools" / "demo_board.py"), "--out", str(tmp_path / "demo")],
++                       cwd=str(REPO), capture_output=True, text=True, timeout=120)
++    assert "python3 tools/demo_board.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++    vault = tmp_path / "vault"
++    vault.mkdir()
++    note = vault / "ProjectForge Board.md"
++    mirror.write_mirrors(store, {"summary_note": str(note)}, REPO)
++    assert "`python3 forge.py mirror`" in note.read_text(encoding="utf-8")
++    with pytest.raises(mirror.VaultMissing) as e:
++        mirror.write_mirrors(store, {"summary_note": str(tmp_path / "gone" / "n.md")}, REPO)
++    assert bad(str(e.value)) == [], str(e.value)
++
++
++def test_a_practice_copy_says_python3(tmp_path, cfg_env):
++    r = forge(["make-copy", str(tmp_path / "practice")], cfg_env)
++    assert "python3 forge.py serve" in r.stdout, r.stdout + r.stderr
++    assert bad(r.stdout) == [], r.stdout
+diff --git a/tests/mac/mac_vault_refusal_shown.py b/tests/mac/mac_vault_refusal_shown.py
+new file mode 100644
+index 0000000..f415581
+--- /dev/null
++++ b/tests/mac/mac_vault_refusal_shown.py
+@@ -0,0 +1,74 @@
++"""Mac only (fault row 20, build plan V3): when macOS refuses the vault, the board says so.
++
++A program that starts by itself on a Mac (the board's start-up file) may be refused the
++Documents folder with "Operation not permitted". Python then sees the folder as missing, so the
++summary job said the folder "is not there" and pointed at a vault that was where it should be.
++It must say "macOS refused access to <folder>", and never that the vault is missing.
++
++GitHub's test Macs cannot show a real refusal (System Integrity Protection is off there, wave 0a
++M5), so the first check makes reading the vault raise the error macOS gives, and the second
++uses a folder this user may not read, which the test Macs do refuse.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_refusal_shown.py
++"""
++import errno
++import os
++import sys
++from pathlib import Path
++
++import pytest
++
++from conftest import REPO
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS folder refusal")
++
++
++def assert_refusal_said_plainly(message, folder):
++    assert "macOS refused access to" in message, message
++    assert str(folder) in message, message
++    assert "is not there" not in message and "missing" not in message.lower(), message
++    assert "python3" in message
++
++
++def test_operation_not_permitted_is_reported_as_a_refusal(store, tmp_path, monkeypatch):
++    from engine import hygiene, mirror
++
++    vault = tmp_path / "Documents" / "Second Brain"
++    vault.mkdir(parents=True)
++    config = {"summary_note": str(vault / "ProjectForge Board.md")}
++    real_listdir, real_is_dir = os.listdir, Path.is_dir
++
++    def refused_listdir(p="."):
++        if Path(p) == vault:
++            raise PermissionError(errno.EPERM, "Operation not permitted", str(p))
++        return real_listdir(p)
++
++    def refused_is_dir(self):
++        # What Python answers for a folder macOS refuses: not a folder.
++        return False if self == vault else real_is_dir(self)
++
++    monkeypatch.setattr(os, "listdir", refused_listdir)
++    monkeypatch.setattr(Path, "is_dir", refused_is_dir)
++    with pytest.raises(mirror.VaultMissing) as e:
++        mirror.write_mirrors(store, config, REPO)
++    assert_refusal_said_plainly(str(e.value), vault)
++    # the health check turns it into the alert the board shows
++    hygiene.run(store, dict(config, human="you", orchestrator="orchestrator", managers=["content-lead"],
++                            departments=[{"id": "content", "name": "Content", "lead": ""}]), REPO)
++    notes = [a for a in store.open_alerts() if a["kind"] == "summary-note"]
++    assert notes, "the health check raised no alert about the summary note"
++    assert_refusal_said_plainly(notes[0]["message"], vault)
++
++
++def test_a_folder_this_user_may_not_open_is_reported_as_a_refusal(store, tmp_path):
++    from engine import mirror
++
++    vault = tmp_path / "Second Brain"
++    vault.mkdir()
++    vault.chmod(0)
++    try:
++        with pytest.raises(OSError) as e:
++            mirror.write_mirrors(store, {"summary_note": str(vault / "ProjectForge Board.md")}, REPO)
++    finally:
++        vault.chmod(0o755)
++    assert_refusal_said_plainly(str(e.value), vault)

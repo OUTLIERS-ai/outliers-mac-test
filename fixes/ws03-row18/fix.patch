@@ -1,0 +1,246 @@
+diff --git a/engine/config.py b/engine/config.py
+index 6051681..0f3815b 100644
+--- a/engine/config.py
++++ b/engine/config.py
+@@ -13,6 +13,10 @@ from pathlib import Path
+ 
+ REPO = Path(__file__).resolve().parent.parent
+ 
++# The command a member types to run Python. A current Mac has python3 and no
++# python, so a printed "python forge.py ..." fails there with "command not found".
++PY = "python" if os.name == "nt" else "python3"
++
+ DEFAULTS = {
+     "workspace": "My AI Workforce",
+     # the name the board uses for YOU, the human. Your moves are allowed.
+@@ -106,11 +110,11 @@ def read_json_file(p) -> dict:
+         raise ConfigError(
+             f"{p} could not be read: line {e.lineno} is wrong ({e.msg}). "
+             f"Open that file, fix line {e.lineno}, and save it as plain "
+-            f"UTF-8 - or delete the file and run: python install.py")
++            f"UTF-8 - or delete the file and run: {PY} install.py")
+     if not isinstance(data, dict):
+         raise ConfigError(
+             f"{p} must hold settings between curly brackets. Fix it, or "
+-            f"delete the file and run: python install.py")
++            f"delete the file and run: {PY} install.py")
+     return data
+ 
+ 
+diff --git a/engine/db.py b/engine/db.py
+index 5626cd9..9a9d505 100644
+--- a/engine/db.py
++++ b/engine/db.py
+@@ -13,6 +13,7 @@ import threading
+ import time
+ from pathlib import Path
+ 
++from .config import PY
+ from .rules import (NotAllowed, Roles, check_handover,
+                     handover_refusal_for_the_board, handover_summary)
+ 
+@@ -347,7 +348,7 @@ class Store:
+                              (project_id,)).fetchone() is None:
+             raise ValueError(
+                 f"no project with the id '{project_id}'. See the ids with: "
+-                f"python forge.py projects")
++                f"{PY} forge.py projects")
+         tid = new_id("pf-t")
+         ts = now()
+         self.conn.execute(
+diff --git a/engine/mirror.py b/engine/mirror.py
+index 47232ac..a94b981 100644
+--- a/engine/mirror.py
++++ b/engine/mirror.py
+@@ -8,7 +8,7 @@ import time
+ from pathlib import Path
+ from urllib.parse import quote
+ 
+-from .config import atomic_write
++from .config import PY, atomic_write
+ from .db import STATUSES
+ 
+ STATUS_LABEL = {
+@@ -25,7 +25,7 @@ tags: [projectforge, board, auto-generated]
+ ---
+ 
+ > Auto-generated copy of the ProjectForge board. Do not edit by hand:
+-> it is rewritten after every change. Regenerate with `python forge.py mirror`.
++> it is rewritten after every change. Regenerate with `{py} forge.py mirror`.
+ 
+ """
+ 
+@@ -122,10 +122,10 @@ def write_mirrors(store, config, base_dir=None):
+             f"the summary note was not written: the folder {folder} is not "
+             f"there. The board never makes a folder in your vault. Check the "
+             f"vault is where you think it is - a OneDrive vault may not have "
+-            f"synced yet - then run: python forge.py mirror")
++            f"synced yet - then run: {PY} forge.py mirror")
+     state = store.state()
+     state["alerts"] = store.open_alerts()
+-    text = NOTE_HEADER.format(date=time.strftime("%Y-%m-%d")) + \
++    text = NOTE_HEADER.format(date=time.strftime("%Y-%m-%d"), py=PY) + \
+         render(state, config)
+     atomic_write(Path(target), text)
+     return [target]
+diff --git a/engine/practice.py b/engine/practice.py
+index 32bf000..e9f3918 100644
+--- a/engine/practice.py
++++ b/engine/practice.py
+@@ -24,7 +24,7 @@ import socket
+ import sqlite3
+ from pathlib import Path
+ 
+-from .config import atomic_write, config_path, db_path, read_json_file
++from .config import PY, atomic_write, config_path, db_path, read_json_file
+ 
+ SET_PORTS = {3001, 3010, 3020, 4040}
+ SKIP = ("data", "config.json", "__pycache__", ".pytest_cache", "*.tmp",
+@@ -102,5 +102,5 @@ def make_copy(cfg, base, dest, port=None):
+         "file and no schedule.",
+         "Next, in this terminal:",
+         f"  cd \"{dest}\"",
+-        "  python forge.py serve",
++        f"  {PY} forge.py serve",
+     ]
+diff --git a/engine/server.py b/engine/server.py
+index 0b414bc..67dfdae 100644
+--- a/engine/server.py
++++ b/engine/server.py
+@@ -29,6 +29,7 @@ from urllib.parse import parse_qs, urlparse
+ 
+ from . import cards as cards_mod
+ from . import mirror
++from .config import PY
+ from .rules import NotAllowed
+ 
+ ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
+@@ -475,12 +476,12 @@ def stop(config):
+ 
+ def port_in_use_message(config, port):
+     """What to say when the port is taken, naming who has it."""
+-    other = ("run this one on another port:  python forge.py serve --port %d"
+-             % (int(port) + 1))
++    other = ("run this one on another port:  %s forge.py serve --port %d"
++             % (PY, int(port) + 1))
+     meta = ask_board(port)
+     if meta and is_ours(config, meta):
+         return (f"This board is already running at http://127.0.0.1:{port} - "
+-                f"open that address in your browser. To stop it:  python "
++                f"open that address in your browser. To stop it:  {PY} "
+                 f"forge.py serve --stop")
+     if meta:
+         return (f"Port {port} is already in use by a ProjectForge board from "
+@@ -504,7 +505,7 @@ def serve(store, config, base_dir: Path, port=3020, health_every_min=None):
+               f"still works, but serve --stop will not find it)", flush=True)
+     print(f"ProjectForge board: http://127.0.0.1:{port}", flush=True)
+     print("Leave this window open while you use the board. Press Ctrl+C "
+-          "here, or run  python forge.py serve --stop  in another terminal, "
++          f"here, or run  {PY} forge.py serve --stop  in another terminal, "
+           "to stop it.", flush=True)
+     try:
+         httpd.serve_forever()
+diff --git a/forge.py b/forge.py
+index f32adae..5873902 100644
+--- a/forge.py
++++ b/forge.py
+@@ -42,7 +42,7 @@ sys.path.insert(0, str(BASE))
+ 
+ from engine import cards as cards_mod  # noqa: E402
+ from engine import mirror, server  # noqa: E402
+-from engine.config import ConfigError, load_config  # noqa: E402
++from engine.config import PY, ConfigError, load_config  # noqa: E402
+ from engine.db import (PASS_RESULTS, PERFORMATIVES, STATUSES,  # noqa: E402
+                        NotAllowed, open_store)
+ 
+@@ -219,7 +219,7 @@ def run(args, cfg, store, remirror):
+                 if t["status"] != "done" and not t["archived"]]
+         if not rows:
+             print("The board is empty. Add a card with add-task, or open "
+-                  "the web board with: python forge.py serve")
++                  f"the web board with: {PY} forge.py serve")
+         for t in rows:
+             print(f"[{t['status']:>12}] {t['id']}  {t['title']}  "
+                   f"({titles.get(t['project_id'], '?')}) "
+@@ -227,7 +227,7 @@ def run(args, cfg, store, remirror):
+     elif c == "projects":
+         state = store.state()
+         if not state["projects"]:
+-            print("No projects yet. Make one with:  python forge.py "
++            print(f"No projects yet. Make one with:  {PY} forge.py "
+                   "add-project \"Content week 39\" --dept content "
+                   f"--actor {cfg.get('human', 'you')}")
+         for p in state["projects"]:
+@@ -280,7 +280,7 @@ def run(args, cfg, store, remirror):
+                                 actor=args.actor)
+         remirror()
+         print(pid)
+-        print(f"  add a card to it:  python forge.py add-task {pid} "
++        print(f"  add a card to it:  {PY} forge.py add-task {pid} "
+               f"\"Card title\" --actor {args.actor}")
+     elif c == "add-task":
+         print(store.add_task(args.project_id, args.title, status=args.status,
+diff --git a/install.py b/install.py
+index c3ffc03..876547c 100644
+--- a/install.py
++++ b/install.py
+@@ -503,9 +503,9 @@ def interview(args, ask, existing):
+         "   for http://127.0.0.1:%d to answer, so if you close its window or\n"
+         "   restart the computer, the board is gone until you start it again.\n"
+         "   Yes writes a small file that starts it with no window at all.\n"
+-        "   To stop it, type  python forge.py serve --stop  in this folder.\n"
+-        "   To take the file away again:  python install.py --uninstall"
+-        % (sign_in_words(), port))
++        "   To stop it, type  %s forge.py serve --stop  in this folder.\n"
++        "   To take the file away again:  %s install.py --uninstall"
++        % (sign_in_words(), port, python_word(), python_word()))
+     if args.start_with_computer:
+         say("   Start by itself when the computer starts: yes")
+         logon = True
+@@ -667,17 +667,17 @@ def do_install(args):
+             say(f"  done: {c}")
+     say(f"""
+ Next:
+-  1. Open the board:      python forge.py serve
++  1. Open the board:      {python_word()} forge.py serve
+      then visit          http://127.0.0.1:{cfg['port']}
+      (leave that window open. To stop the board, press Ctrl+C in it, or
+      open a second terminal, type  cd "{BASE}"  and then
+-     python forge.py serve --stop )
++     {python_word()} forge.py serve --stop )
+   2. Paste the lines in  {snippet}
+      into the CLAUDE.md every session reads ({claude_home() / 'CLAUDE.md'}),
+      or your vault's CLAUDE.md if you chose "vault" at question 7.
+   3. In Claude Code, try  /forge-run dry  (a preview that changes nothing).
+ Nothing runs on a timer. To add the optional schedule later:
+-     python tools/schedule.py --print""")
++     {python_word()} tools/schedule.py --print""")
+     return 0
+ 
+ 
+diff --git a/tools/demo_board.py b/tools/demo_board.py
+index 0d80900..ac7929f 100644
+--- a/tools/demo_board.py
++++ b/tools/demo_board.py
+@@ -161,7 +161,7 @@ def main(argv=None):
+         c = load_config(cfgp)
+         server.serve(open_store(c), c, BASE, port=a.port)
+     else:
+-        print(f"See it with:  python tools/demo_board.py --out {a.out} "
++        print(f"See it with:  {'python' if os.name == 'nt' else 'python3'} tools/demo_board.py --out {a.out} "
+               f"--serve")
+ 
+ 
+diff --git a/tools/schedule.py b/tools/schedule.py
+index 675dd65..8574e5c 100644
+--- a/tools/schedule.py
++++ b/tools/schedule.py
+@@ -152,7 +152,7 @@ def main(argv=None):
+             return r.returncode
+         set_installed(True, every)
+         print(f"Schedule on: every {every} minutes. Claude starts only when "
+-              f"a card is ready. Turn off with: python tools/schedule.py "
++              f"a card is ready. Turn off with: {'python' if os.name == 'nt' else 'python3'} tools/schedule.py "
+               f"--remove")
+         return 0
+     if a.remove:

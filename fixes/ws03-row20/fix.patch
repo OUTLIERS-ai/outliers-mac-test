@@ -1,0 +1,64 @@
+diff --git a/engine/mirror.py b/engine/mirror.py
+index 47232ac..6ecf7c5 100644
+--- a/engine/mirror.py
++++ b/engine/mirror.py
+@@ -4,6 +4,8 @@ Off unless config "summary_note" names a file (the installer asks, and you
+ confirm the path). Rewritten in full after every change, via a temporary
+ file and os.replace, so Obsidian never sees half a note.
+ """
++import os
++import sys
+ import time
+ from pathlib import Path
+ from urllib.parse import quote
+@@ -39,6 +41,24 @@ class VaultMissing(OSError):
+     """
+ 
+ 
++class VaultRefused(VaultMissing):
++    """The folder is there, but macOS refused the board access to it.
++
++    On a Mac, a program started by itself (the board's start-up file) may be
++    refused the Documents folder. Python then reads the folder as missing, so
++    the board said the vault was not there when it was. It now says macOS
++    refused, and what to do. Other systems are unchanged.
++    """
++
++
++def refused_message(folder):
++    return (f"the summary note was not written: macOS refused access to "
++            f"{folder}. A program that starts by itself may be refused the "
++            f"Documents folder. Move your vault out of Documents, for example "
++            f"to {Path.home() / 'Second Brain'}, then run  python3 install.py  "
++            f"again and give it the vault's new place.")
++
++
+ def crm_link(rel, config):
+     """A link that opens the person's note in the CRM vault. The summary
+     note lives in your second brain, so a [[wiki link]] would look in the
+@@ -117,6 +137,13 @@ def write_mirrors(store, config, base_dir=None):
+     if not target:
+         return []
+     folder = Path(target).parent
++    if sys.platform == "darwin":
++        try:
++            os.listdir(folder)
++        except PermissionError:
++            raise VaultRefused(refused_message(folder)) from None
++        except OSError:
++            pass
+     if not folder.is_dir():
+         raise VaultMissing(
+             f"the summary note was not written: the folder {folder} is not "
+@@ -127,5 +154,10 @@ def write_mirrors(store, config, base_dir=None):
+     state["alerts"] = store.open_alerts()
+     text = NOTE_HEADER.format(date=time.strftime("%Y-%m-%d")) + \
+         render(state, config)
+-    atomic_write(Path(target), text)
++    try:
++        atomic_write(Path(target), text)
++    except PermissionError:
++        if sys.platform != "darwin":
++            raise
++        raise VaultRefused(refused_message(folder)) from None
+     return [target]
