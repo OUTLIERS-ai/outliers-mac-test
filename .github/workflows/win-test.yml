@@ -44,7 +44,7 @@ jobs:
           python-version: "3.13"
       - name: Walk through the repo as a Windows member
         run: python _mactest/harness/wintest.py "${{ matrix.repo }}" "$env:RUNNER_TEMP/out"
-      - name: Scan every printed output (a record only: Windows words are right on Windows)
+      - name: "Scan every printed output (a record only, since Windows words are right on Windows)"
         if: always()
         run: python _mactest/harness/scan_output.py "$env:RUNNER_TEMP/out"
       - if: always()
