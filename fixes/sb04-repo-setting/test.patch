@@ -1,0 +1,669 @@
+diff --git a/guide/Part-4-Operations.html b/guide/Part-4-Operations.html
+index a4d0253..e1f0b78 100644
+--- a/guide/Part-4-Operations.html
++++ b/guide/Part-4-Operations.html
+@@ -52,4 +52,4 @@
+   .tw { font-size:9.2px; letter-spacing:.05em; fill:#F3EEE3; }
+   .tsw{ font-size:8px;   letter-spacing:.05em; fill:#F3EEE3; }
+   .tsb{ font-size:8px;   letter-spacing:.12em; fill:#B08A3E; }
+-</style></head><body><div class="page cover"><div><svg width="132" height="132" viewBox="0 0 200 200" style="display:block;margin:0 auto"><circle cx="100" cy="100" r="90" fill="none" stroke="#14110C" stroke-width="3.15"/><circle cx="100" cy="100" r="50.4" fill="none" stroke="#14110C" stroke-width="18"/><circle cx="162.51" cy="35.26" r="10.35" fill="#6E1A18"/></svg><div class="word mono">Outliers</div><h1>It Still Needs You</h1><div class="sub">Part 4 of 4 &nbsp;&middot;&nbsp; Getting it to run on its own,<br>and to tell you when it stops.</div></div><div style="margin-bottom:15mm"><div class="mono" style="font-size:8.5pt;color:#B08A3E">Est. MMXXVI &nbsp;&middot;&nbsp; Outliers Accelerator</div></div></div><div class="page"><div class="label mono">Part 4 &middot; Operations</div><div class="pos"><svg viewBox="0 0 152 20" width="100%"><rect x="0" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="38" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="76" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="114" y="0" width="34" height="7" fill="#14110C" stroke="#14110C" stroke-width="0.4"/><text x="0" y="17" style="font-size:6px;letter-spacing:.14em;fill:#B08A3E">PART 4</text></svg></div><h2>Why do you still have to remember to use it?</h2><div class="deck">Everything in it works, and all of it works when you sit down and start it. Which means you have not built a system yet. You have built a tool, and you are still the one operating it.</div><h3>You will recognise some of this</h3><ul><li>You forget it exists for a week at a time.</li><li>You set something up to run by itself and have no idea whether it still does.</li><li>You cannot tell whether it did nothing because there was nothing to do, or because it broke a fortnight ago.</li><li>Something once opened a window in the middle of your afternoon, and you turned it off and never turned it back on.</li><li>You start each morning deciding what to look at, which is the job it was supposed to be doing for you.</li></ul><h3>Why it happens</h3><p>Nothing here runs unless you start it, and nothing tells you when it stops.</p><p>The second half is worse than it sounds. <b>A job that ran and produced nothing looks exactly like a job that had nothing to do.</b> Both are silent. So a thing can fail on a Tuesday and carry on reporting success for a month, and there is nobody sitting beside you to notice. Mine did precisely that: it ran sixty-four times, produced nothing every time, and said it had worked.</p><p>And the window that opened in the middle of your afternoon is not a small thing. A job that interrupts you gets switched off within a week, and a job that is off is a job that is not running.</p><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">2</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; What fixes it</div><h2>What fixes it</h2><div class="deck">A timetable, a gate, a record of what happened, and one short list each morning.</div><p><b>A timetable.</b> Things run at a set time rather than when you remember, and they run out of sight - no window, nothing taking your keyboard mid-sentence.</p><p><b>A gate.</b> Anything meant for another person is written, checked by something other than the thing that wrote it, and then waits in a list for you to read. It goes nowhere until you send it yourself.</p><p><b>A record.</b> A running list of what happened and when, added to and never rewritten. Your notes describe how things are; the record describes what occurred.</p><p><b>One list each morning</b>, ordered by what has changed, each line saying why it is there.</p><figure><svg viewBox="0 0 480 166" width="100%"><defs><marker id="a4" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#6E1A18"/></marker></defs><rect x="0" y="8" width="112" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Runs on a clock</text><text x="7" y="39" style="font-size:7.5px;fill:#6E1A18">out of sight</text><line x1="116" y1="28" x2="154" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="158" y="8" width="118" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="165" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Shared limits</text><text x="165" y="39" style="font-size:7.5px;fill:#6E1A18">one budget, not five</text><line x1="280" y1="28" x2="318" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="322" y="8" width="158" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="329" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Your hand on it</text><text x="329" y="39" style="font-size:7.5px;fill:#6E1A18">before anything leaves</text><line x1="56" y1="52" x2="56" y2="82" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="0" y="86" width="198" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">A record of what happened</text><line x1="202" y1="106" x2="240" y2="106" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="244" y="86" width="236" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="251" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">One list each morning</text><text x="251" y="117" style="font-size:7.5px;fill:#6E1A18">ordered by what changed</text><text x="0" y="152" style="font-size:7.5px;fill:#6E1A18">Nothing appears on your screen while you work. That is the difference between automation you keep and automation you disable.</text></svg><div class="cap">A clock, a gate, a record, and one list</div></figure><h3>Why this way and not another</h3><ul><li><b>It runs invisibly, and that is not cosmetic.</b> The most common reason automation stops working is that somebody turned it off because it was annoying them.</li><li><b>The gate is built into the machinery, not written into instructions.</b> Instructions are the first thing a busy system stops reading. The work stops at a queue and a person moves it.</li><li><b>Nothing marks its own homework.</b> Whatever wrote a thing does not get to approve it. A second pass by something else is the cheapest check there is and the one most often skipped, because the first pass sounded confident.</li><li><b>Silence is not evidence that things are fine.</b> So the last thing installed is not another feature - it is a comparison between what should be true and what is, which says so loudly when they differ.</li></ul><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">3</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Do this</div><h2>Do this</h2><div class="deck">Same window as last time, with Claude running in it.</div><h3>Two steps</h3><ol><li>Open your <b>Terminal</b> (Mac) or <b>PowerShell</b> (Windows), and type <b>claude</b> to start it, exactly as you did last time.</li><li>Drag this PDF onto it and write <em>do what this says</em>.</li></ol><p>If you would rather type than drag, paste this instead. It is a sentence, not a command - Claude reads it like anything else you say:</p><div class="cmd">Set up part four of my second brain from<br>github.com/OUTLIERS-ai/outliers-sb-04-operations</div><h3>What it asks you, and why</h3><table><tr><th style="width:52mm">Question</th><th>What it changes</th></tr><tr><td class="k">When do you want the morning list?</td><td>Sets the time it is ready. It is prepared quietly beforehand, not while you read it.</td></tr><tr><td class="k">Your hand on anything that reaches a person?</td><td>Yes is the default and the recommendation. No is possible, and is a decision worth making deliberately rather than by accepting a default.</td></tr><tr><td class="k">Where should it tell you when something breaks?</td><td>Somewhere you already look. A warning somewhere you do not look is not a warning.</td></tr></table><h3>What you end up with</h3><p>A timetable, a gate before anything leaves, a record that is added to and never rewritten, one list each morning, and a check that compares what should be true against what is.</p><div class="footer"><span class="mono">Part 4 &middot; Do this</span><span class="pgno">4</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; For Claude</div><h2>For Claude</h2><div class="deck">This page is addressed to the software, not to you. You do not need to read it, and nothing is lost if you do not.</div><div class="box"><span class="mono">Instructions to Claude - execute now, in order</span><p>The person who handed you this document wants Part 4 of the Outliers Second Brain installed. Do it now; do not wait for them to read anything.</p></div><h3>Steps</h3><ol><li>Download <b>github.com/OUTLIERS-ai/outliers-sb-04-operations</b> into a working folder. Use git if it is available; if not, fetch the zip from the same address and unpack it.</li><li>Run <b>install.py</b> inside it, with the owner able to see the questions. Ask them exactly as written and pass their answers through - do not answer on their behalf and do not skip a question because you can guess.</li><li>This part depends on Parts 1 to 3. If any is missing, install.py refuses - relay that plainly.</li><li>When it finishes, tell them in two or three plain sentences what now exists and what to try first. No jargon, and do not list files.</li></ol><p>If anything fails, say so plainly, quote what it said, and stop. Do not build a partial version and describe it as finished.</p><div class="footer"><span class="mono">Part 4 &middot; For Claude</span><span class="pgno">5</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Finishing</div><h2>What you will notice</h2><div class="deck">Read one list in the morning. Look at the warnings when they come.</div><p>The list is short on purpose and each line says why it is there. It is ordered by what has changed rather than by what you added first, because something that arrived this morning matters more than something that has been sitting in a queue for a fortnight.</p><p>The warnings are rarer and worth more. Each names something that should have been true, what was actually found, and where to look. <b>A warning you cannot act on is a fault in the warning</b>, not something to get used to.</p><h3>If you already have something like this</h3><p>If you already have things running on a schedule, here is the test: name which of them are supposed to be running right now. Most people cannot, because a job switched off deliberately and a job that broke look identical from outside. This writes down which are meant to be on, and then checks.</p><hr class="rule"><h3>What it still does not do</h3><p>Nothing further to install. What changes is that it starts telling you things, and what it tells you sends you back to the earlier parts: a rule that keeps misfiring gets rewritten, a source that never produces anything useful gets dropped.</p><p>The other thing that changes is what you can now build on top. Something that remembers, keeps itself honest, fills itself and runs without watching is solid enough for the next thing to stand on - and the first one worth standing there is the one that tracks your dealings with other people.</p><div class="box"><span class="mono">Next: Part 1 &middot; Memory</span><p>Back to the beginning with what you have learned. This is the last of the four, and not the end of the build: it is the point where the thing starts improving from what it reports rather than from the next instalment.</p></div><h3>Words used here</h3><table><tr><th style="width:44mm">Word</th><th>What it means</th></tr><tr><td class="k">The timetable</td><td>What makes your computer run something at a set time without being asked. Set it to run out of sight, or it interrupts you and gets switched off.</td></tr><tr><td class="k">The record</td><td>A list of what happened, only ever added to and never rewritten, so what it said last month still says the same thing today.</td></tr><tr><td class="k">The gate</td><td>The rule that anything meant for another person stops and waits for you. Built into how it works, not asked for in an instruction.</td></tr></table><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">6</span><span class="mono">Outliers</span></div></div></body></html>
+\ No newline at end of file
++</style></head><body><div class="page cover"><div><svg width="132" height="132" viewBox="0 0 200 200" style="display:block;margin:0 auto"><circle cx="100" cy="100" r="90" fill="none" stroke="#14110C" stroke-width="3.15"/><circle cx="100" cy="100" r="50.4" fill="none" stroke="#14110C" stroke-width="18"/><circle cx="162.51" cy="35.26" r="10.35" fill="#6E1A18"/></svg><div class="word mono">Outliers</div><h1>It Still Needs You</h1><div class="sub">Part 4 of 4 &nbsp;&middot;&nbsp; Getting it to run on its own,<br>and to tell you when it stops.</div></div><div style="margin-bottom:15mm"><div class="mono" style="font-size:8.5pt;color:#B08A3E">Est. MMXXVI &nbsp;&middot;&nbsp; Outliers Accelerator</div></div></div><div class="page"><div class="label mono">Part 4 &middot; Operations</div><div class="pos"><svg viewBox="0 0 152 20" width="100%"><rect x="0" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="38" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="76" y="0" width="34" height="7" fill="#C9BCA0" stroke="#14110C" stroke-width="0.4"/><rect x="114" y="0" width="34" height="7" fill="#14110C" stroke="#14110C" stroke-width="0.4"/><text x="0" y="17" style="font-size:6px;letter-spacing:.14em;fill:#B08A3E">PART 4</text></svg></div><h2>Why do you still have to remember to use it?</h2><div class="deck">Everything in it works, and all of it works when you sit down and start it. Which means you have not built a system yet. You have built a tool, and you are still the one operating it.</div><h3>You will recognise some of this</h3><ul><li>You forget it exists for a week at a time.</li><li>You set something up to run by itself and have no idea whether it still does.</li><li>You cannot tell whether it did nothing because there was nothing to do, or because it broke a fortnight ago.</li><li>Something once opened a window in the middle of your afternoon, and you turned it off and never turned it back on.</li><li>You start each morning deciding what to look at, which is the job it was supposed to be doing for you.</li></ul><h3>Why it happens</h3><p>Nothing here runs unless you start it, and nothing tells you when it stops.</p><p>The second half is worse than it sounds. <b>A job that ran and produced nothing looks exactly like a job that had nothing to do.</b> Both are silent. So a thing can fail on a Tuesday and carry on reporting success for a month, and there is nobody sitting beside you to notice. Mine did precisely that: it ran sixty-four times, produced nothing every time, and said it had worked.</p><p>And the window that opened in the middle of your afternoon is not a small thing. A job that interrupts you gets switched off within a week, and a job that is off is a job that is not running.</p><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">2</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; What fixes it</div><h2>What fixes it</h2><div class="deck">A timetable, a gate, a record of what happened, and one short list each morning.</div><p><b>A timetable.</b> Things run at a set time rather than when you remember, and they run out of sight - no window, nothing taking your keyboard mid-sentence.</p><p><b>A gate.</b> Anything meant for another person is written, checked by something other than the thing that wrote it, and then waits in a list for you to read. It goes nowhere until you send it yourself.</p><p><b>A record.</b> A running list of what happened and when, added to and never rewritten. Your notes describe how things are; the record describes what occurred.</p><p><b>One list each morning</b>, ordered by what has changed, each line saying why it is there.</p><figure><svg viewBox="0 0 480 166" width="100%"><defs><marker id="a4" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#6E1A18"/></marker></defs><rect x="0" y="8" width="112" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Runs on a clock</text><text x="7" y="39" style="font-size:7.5px;fill:#6E1A18">out of sight</text><line x1="116" y1="28" x2="154" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="158" y="8" width="118" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="165" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Shared limits</text><text x="165" y="39" style="font-size:7.5px;fill:#6E1A18">one budget, not five</text><line x1="280" y1="28" x2="318" y2="28" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="322" y="8" width="158" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="329" y="25" style="font-size:9px;font-weight:bold;fill:#14110C">Your hand on it</text><text x="329" y="39" style="font-size:7.5px;fill:#6E1A18">before anything leaves</text><line x1="56" y1="52" x2="56" y2="82" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="0" y="86" width="198" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="7" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">A record of what happened</text><line x1="202" y1="106" x2="240" y2="106" stroke="#6E1A18" stroke-width="1.4" marker-end="url(#a4)"/><rect x="244" y="86" width="236" height="40" fill="#E7DEC9" stroke="#14110C" stroke-width="1"/><text x="251" y="103" style="font-size:9px;font-weight:bold;fill:#14110C">One list each morning</text><text x="251" y="117" style="font-size:7.5px;fill:#6E1A18">ordered by what changed</text><text x="0" y="152" style="font-size:7.5px;fill:#6E1A18">Nothing appears on your screen while you work. That is the difference between automation you keep and automation you disable.</text></svg><div class="cap">A clock, a gate, a record, and one list</div></figure><h3>Why this way and not another</h3><ul><li><b>It runs invisibly, and that is not cosmetic.</b> The most common reason automation stops working is that somebody turned it off because it was annoying them.</li><li><b>The gate is built into the machinery, not written into instructions.</b> Instructions are the first thing a busy system stops reading. The work stops at a queue and a person moves it.</li><li><b>Nothing marks its own homework.</b> Whatever wrote a thing does not get to approve it. A second pass by something else is the cheapest check there is and the one most often skipped, because the first pass sounded confident.</li><li><b>Silence is not evidence that things are fine.</b> So the last thing installed is not another feature - it is a comparison between what should be true and what is, which says so loudly when they differ.</li></ul><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">3</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Do this</div><h2>Do this</h2><div class="deck">Same window as last time, with Claude running in it.</div><h3>Two steps</h3><ol><li>Open your <b>Terminal</b> (Mac) or <b>PowerShell</b> (Windows), and type <b>claude</b> to start it, exactly as you did last time.</li><li>Drag this PDF onto it and write <em>do what this says</em>.</li></ol><p>If you would rather type than drag, paste this instead. It is a sentence, not a command - Claude reads it like anything else you say:</p><div class="cmd">Set up part four of my second brain from<br>github.com/OUTLIERS-ai/outliers-sb-04-operations</div><h3>What it asks you, and why</h3><table><tr><th style="width:52mm">Question</th><th>What it changes</th></tr><tr><td class="k">When do you want the morning list?</td><td>Sets the time it is ready. It is prepared quietly beforehand, not while you read it.</td></tr><tr><td class="k">Your hand on anything that reaches a person?</td><td>Yes is the default and the recommendation. No is possible, and is a decision worth making deliberately rather than by accepting a default.</td></tr><tr><td class="k">Where should it tell you when something breaks?</td><td>Somewhere you already look. A warning somewhere you do not look is not a warning.</td></tr><tr><td class="k">Put the morning list on this computer's timetable?</td><td>Yes makes it run by itself at the time you gave, every day, with no window. No leaves it off, and you run it yourself when you want it.</td></tr></table><h3>What you end up with</h3><p>A timetable, a gate before anything leaves, a record that is added to and never rewritten, one list each morning, and a check that compares what should be true against what is.</p><div class="footer"><span class="mono">Part 4 &middot; Do this</span><span class="pgno">4</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; For Claude</div><h2>For Claude</h2><div class="deck">This page is addressed to the software, not to you. You do not need to read it, and nothing is lost if you do not.</div><div class="box"><span class="mono">Instructions to Claude - execute now, in order</span><p>The person who handed you this document wants Part 4 of the Outliers Second Brain installed. Do it now; do not wait for them to read anything.</p></div><h3>Steps</h3><ol><li>Download <b>github.com/OUTLIERS-ai/outliers-sb-04-operations</b> into a working folder. Use git if it is available; if not, fetch the zip from the same address and unpack it.</li><li>Run <b>install.py</b> inside it, with the owner able to see the questions. Ask them exactly as written and pass their answers through - do not answer on their behalf and do not skip a question because you can guess.</li><li>This part depends on Parts 1 to 3. If any is missing, install.py refuses - relay that plainly.</li><li>When it finishes, tell them in two or three plain sentences what now exists and what to try first. No jargon, and do not list files.</li></ol><p>If anything fails, say so plainly, quote what it said, and stop. Do not build a partial version and describe it as finished.</p><div class="footer"><span class="mono">Part 4 &middot; For Claude</span><span class="pgno">5</span><span class="mono">Outliers</span></div></div><div class="page"><div class="label mono">Part 4 &middot; Finishing</div><h2>What you will notice</h2><div class="deck">Read one list in the morning. Look at the warnings when they come.</div><p>The list is short on purpose and each line says why it is there. It is ordered by what has changed rather than by what you added first, because something that arrived this morning matters more than something that has been sitting in a queue for a fortnight.</p><p>The warnings are rarer and worth more. Each names something that should have been true, what was actually found, and where to look. <b>A warning you cannot act on is a fault in the warning</b>, not something to get used to.</p><h3>If you already have something like this</h3><p>If you already have things running on a schedule, here is the test: name which of them are supposed to be running right now. Most people cannot, because a job switched off deliberately and a job that broke look identical from outside. This writes down which are meant to be on, and then checks.</p><hr class="rule"><h3>What it still does not do</h3><p>Nothing further to install. What changes is that it starts telling you things, and what it tells you sends you back to the earlier parts: a rule that keeps misfiring gets rewritten, a source that never produces anything useful gets dropped.</p><p>The other thing that changes is what you can now build on top. Something that remembers, keeps itself honest, fills itself and runs without watching is solid enough for the next thing to stand on - and the first one worth standing there is the one that tracks your dealings with other people.</p><div class="box"><span class="mono">Next: Part 1 &middot; Memory</span><p>Back to the beginning with what you have learned. This is the last of the four, and not the end of the build: it is the point where the thing starts improving from what it reports rather than from the next instalment.</p></div><h3>Words used here</h3><table><tr><th style="width:44mm">Word</th><th>What it means</th></tr><tr><td class="k">The timetable</td><td>What makes your computer run something at a set time without being asked. Set it to run out of sight, or it interrupts you and gets switched off.</td></tr><tr><td class="k">The record</td><td>A list of what happened, only ever added to and never rewritten, so what it said last month still says the same thing today.</td></tr><tr><td class="k">The gate</td><td>The rule that anything meant for another person stops and waits for you. Built into how it works, not asked for in an instruction.</td></tr></table><div class="footer"><span class="mono">Part 4 &middot; Operations</span><span class="pgno">6</span><span class="mono">Outliers</span></div></div></body></html>
+\ No newline at end of file
+diff --git a/guide/Part-4-Operations.pdf b/guide/Part-4-Operations.pdf
+index f82a370..1751ced 100644
+--- a/guide/Part-4-Operations.pdf
++++ b/guide/Part-4-Operations.pdf
+@@ -96,24 +96,27 @@ like anything else you say:
+ 
+ WHAT IT ASKS YOU, AND WHY
+ 
+-QUESTION                    WHAT IT CHANGES
++QUESTION                      WHAT IT CHANGES
+ 
+-When do you want the        Sets the time it is ready. It is prepared quietly beforehand, not while you read
+-morning list?               it.
++When do you want the          Sets the time it is ready. It is prepared quietly beforehand, not while you read
++morning list?                 it.
+ 
+-Your hand on anything that  Yes is the default and the recommendation. No is possible, and is a decision
+-reaches a person?           worth making deliberately rather than by accepting a default.
++Your hand on anything that    Yes is the default and the recommendation. No is possible, and is a decision
++reaches a person?             worth making deliberately rather than by accepting a default.
+ 
+ Where should it tell you when Somewhere you already look. A warning somewhere you do not look is not a
+ 
+-something breaks?           warning.
++something breaks?             warning.
++
++Put the morning list on this  Yes makes it run by itself at the time you gave, every day, with no window.
++computer's timetable?         No leaves it off, and you run it yourself when you want it.
+ 
+ WHAT YOU END UP WITH
+ 
+ A timetable, a gate before anything leaves, a record that is added to and never rewritten, one list each
+ morning, and a check that compares what should be true against what is.
+ 
+-PART 4 · DO THIS                             4  OUTLIERS
++PART 4 · DO THIS                               4  OUTLIERS
+ PART 4 · FOR CLAUDE
+ 
+ For Claude
+diff --git a/install.py b/install.py
+index 3f9c925..4b6d55c 100644
+--- a/install.py
++++ b/install.py
+@@ -16,10 +16,12 @@ Needs: Python 3.8 or newer, and Layers 1 to 3 already installed.
+ 
+ import json
+ import os
++import plistlib
++import re
+ import shutil
+ import subprocess
+ import sys
+-from datetime import date
++from datetime import date, datetime
+ from pathlib import Path
+ 
+ LAYER = 4
+@@ -28,6 +30,21 @@ NEEDS_LAYER = 3
+ HERE = Path(__file__).resolve().parent
+ POINTER = Path.home() / ".outliers-sb"
+ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows. Used only in
++# lines printed for the member to type; the programs themselves run with sys.executable.
++PY = "python3" if sys.platform == "darwin" else "python"
++IS_MAC = sys.platform == "darwin"
++TASK = "OutliersSecondBrain-Morning"
++MAC_LABEL = "ai.outliers.sb.morning"
++MAC_PLIST = Path.home() / "Library" / "LaunchAgents" / (MAC_LABEL + ".plist")
++# On a Mac the job runs from outside the second brain, so that if macOS refuses it the second
++# brain's folder, the job can still say so in the morning log instead of failing in silence.
++MAC_JOB_DIR = Path.home() / "Library" / "Application Support" / "Outliers Second Brain"
++# The morning job's log, in the home folder (see sb/morning_job.py).
++MORNING_LOG = Path.home() / ".outliers-sb-morning.log"
++REMOVE_WIN = "schtasks /Delete /TN %s /F" % TASK
++REMOVE_MAC = ["launchctl unload ~/Library/LaunchAgents/%s.plist" % MAC_LABEL,
++              "rm ~/Library/LaunchAgents/%s.plist" % MAC_LABEL]
+ 
+ 
+ def ask(q, default=""):
+@@ -48,12 +65,22 @@ def say(*lines):
+         print("  " + ln if ln else "")
+ 
+ 
++def places_to_look():
++    """On a Mac a new second brain lives at ~/Second Brain (Part 1 puts it outside Documents), so
++    that is looked at first; one made earlier in Documents is still found. Windows is unchanged."""
++    places = [Path.cwd()]
++    if IS_MAC:
++        places.append(Path.home() / "Second Brain")
++    places.append(Path.home() / "Documents" / "Second Brain")
++    return places
++
++
+ def find_vault():
+     if POINTER.exists():
+         p = POINTER.read_text(encoding="utf-8").strip()
+         if p and (Path(p) / "_layers" / "config.json").exists():
+             return Path(p)
+-    for c in (Path.cwd(), Path.home() / "Documents" / "Second Brain"):
++    for c in places_to_look():
+         if (Path(c) / "_layers" / "config.json").exists():
+             return Path(c)
+     return None
+@@ -62,12 +89,13 @@ def find_vault():
+ def install_silent_launcher(engine, when, warn_to):
+     """A job that opens a window while you are working gets switched off within a week, and a job
+     that is off is a job that is not running. So on Windows the timetable points at a launcher that
+-    runs the work with no window at all, rather than at Python directly."""
++    runs the work with no window at all, rather than at Python directly. On a Mac the timetable is
++    a LaunchAgent, which never opens a window. Returns (what to tell the member, whether it worked)."""
++    if IS_MAC:
++        return install_mac_job(when)
+     if os.name != "nt":
+-        return ("This machine is not Windows, so nothing was put on a timetable. To run the "
+-                "morning list on a clock, add this to your crontab:\n"
+-                "     0 %s * * * cd %s && python _engine/today.py"
+-                % (when.split(":")[0], engine.parent))
++        return ("Nothing was put on a timetable: this installer knows the Windows and Mac "
++                "timetables only. Run '%s _engine/today.py' yourself." % PY, False)
+     vbs = engine / "run-quiet.vbs"
+     vbs.write_text(
+         'Set sh = CreateObject("WScript.Shell")\n'
+@@ -75,17 +103,144 @@ def install_silent_launcher(engine, when, warn_to):
+         'WScript.Quit sh.Run(cmd, 0, True)\n', encoding="utf-8")
+     pyw = Path(sys.executable).with_name("pythonw.exe")
+     runner = str(pyw if pyw.exists() else sys.executable)
+-    task = "OutliersSecondBrain-Morning"
+     try:
+         subprocess.run(
+-            ["schtasks", "/Create", "/F", "/SC", "DAILY", "/ST", when, "/TN", task,
++            ["schtasks", "/Create", "/F", "/SC", "DAILY", "/ST", when, "/TN", TASK,
+              "/TR", 'wscript.exe //B //Nologo "%s" "%s" "%s"'
+-                    % (vbs, runner, engine / "today.py")],
++                    % (vbs, runner, engine / "morning_job.py")],
+             capture_output=True, text=True, check=True, creationflags=NO_WINDOW, timeout=60)
+-        return "The morning list is on a timetable for %s, and runs with no window." % when
++        return ("The morning list is on a timetable for %s, and runs with no window.\n"
++                "  To take it off the timetable later, type:  %s" % (when, REMOVE_WIN), True)
+     except Exception as exc:
+         return ("Could not put it on a timetable (%s). Everything else works - run "
+-                "'python _engine/today.py' yourself until this is sorted." % exc)
++                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY), False)
++
++
++def install_mac_job(when):
++    """The Mac timetable: a LaunchAgent that runs the morning job at the same time each day.
++    Written the way outliers-gather-05-timetable writes its own, then loaded straight away so it
++    runs tomorrow without waiting for you to log out and in."""
++    try:
++        hour, minute = [int(x) for x in when.split(":")[:2]]
++        if not (0 <= hour <= 23 and 0 <= minute <= 59):
++            raise ValueError(when)
++    except ValueError:
++        return ("'%s' is not a time like 07:00, so nothing was put on a timetable. Run this "
++                "installer again with a time like 07:00." % when, False)
++    try:
++        MAC_JOB_DIR.mkdir(parents=True, exist_ok=True)
++        job = MAC_JOB_DIR / "morning_job.py"
++        tmp = job.with_name(job.name + ".tmp")
++        shutil.copy2(str(HERE / "sb" / "morning_job.py"), str(tmp))
++        os.replace(str(tmp), str(job))
++        plan = {
++            "Label": MAC_LABEL,
++            "ProgramArguments": [sys.executable, str(job)],
++            "StartCalendarInterval": {"Hour": hour, "Minute": minute},
++            # Home, not the second brain: a job refused its folder must still be able to start.
++            "WorkingDirectory": str(Path.home()),
++            "StandardOutPath": str(MAC_JOB_DIR / "morning-job-output.log"),
++            "StandardErrorPath": str(MAC_JOB_DIR / "morning-job-output.log"),
++        }
++        MAC_PLIST.parent.mkdir(parents=True, exist_ok=True)
++        tmp = MAC_PLIST.with_name(MAC_PLIST.name + ".tmp")
++        with open(str(tmp), "wb") as fh:
++            plistlib.dump(plan, fh)
++        os.replace(str(tmp), str(MAC_PLIST))
++    except OSError as exc:
++        return ("Could not write the timetable entry (%s). Everything else works - run "
++                "'%s _engine/today.py' yourself until this is sorted." % (exc, PY), False)
++    try:
++        subprocess.run(["launchctl", "unload", str(MAC_PLIST)],
++                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
++        done = subprocess.run(["launchctl", "load", "-w", str(MAC_PLIST)],
++                              capture_output=True, text=True, timeout=60)
++        # launchctl load can print an error and still end with 0, so ask launchd directly.
++        listed = subprocess.run(["launchctl", "list", MAC_LABEL],
++                                capture_output=True, text=True, timeout=60)
++    except (OSError, subprocess.SubprocessError) as exc:
++        return ("The timetable entry was written but macOS did not answer (%s). Everything else "
++                "works - run '%s _engine/today.py' yourself until this is sorted." % (exc, PY),
++                False)
++    if done.returncode != 0 or listed.returncode != 0:
++        return ("The timetable entry was written but macOS did not accept it (%s). Everything "
++                "else works - run '%s _engine/today.py' yourself until this is sorted."
++                % ((done.stderr or done.stdout or listed.stderr).strip()[:200]
++                   or "no reason given", PY), False)
++    return ("The morning list is on a timetable for %s, and runs with no window.\n"
++            "  To take it off the timetable later, type:\n     %s"
++            % (when, "\n     ".join(REMOVE_MAC)), True)
++
++
++def entry_already_there():
++    """Whether an earlier install left the morning list on this computer's timetable."""
++    if IS_MAC:
++        return MAC_PLIST.exists()
++    if os.name != "nt":
++        return False
++    try:
++        return subprocess.run(["schtasks", "/Query", "/TN", TASK], capture_output=True,
++                              creationflags=NO_WINDOW, timeout=60).returncode == 0
++    except Exception:
++        return False
++
++
++def log_installed(home):
++    """A line in the morning log saying a timetable entry was just added, so an old refusal or
++    failure is no longer reported as the latest news."""
++    try:
++        with open(str(MORNING_LOG), "a", encoding="utf-8", newline="\n") as fh:
++            fh.write("\t".join([datetime.now().isoformat(timespec="minutes"), "installed",
++                                str(home), "timetable entry added by Part 4"]) + "\n")
++    except OSError:
++        pass
++
++
++def point_at(home):
++    """On a Mac: if the second brain was found somewhere other than where Layer 1 recorded it (it
++    was moved out of Documents), record the new address and change the line in ~/.claude/CLAUDE.md
++    that tells your AI where it is. Returns a sentence for the member, or "" if nothing changed.
++    Windows is unchanged: nothing here runs there."""
++    if not IS_MAC:
++        return ""
++    try:
++        old = POINTER.read_text(encoding="utf-8").strip() if POINTER.is_file() else ""
++    except (OSError, UnicodeError):
++        old = ""
++    if old and Path(old) == home:
++        return ""
++    try:
++        tmp = POINTER.with_name(POINTER.name + ".tmp")
++        tmp.write_text(str(home), encoding="utf-8")
++        os.replace(str(tmp), str(POINTER))
++    except OSError as exc:
++        return "Could not record the second brain's new address in %s (%s)." % (POINTER, exc)
++    manual = Path.home() / ".claude" / "CLAUDE.md"
++    begin, end = "<!-- OUTLIERS-SECOND-BRAIN:BEGIN -->", "<!-- OUTLIERS-SECOND-BRAIN:END -->"
++    told = False
++    try:
++        with open(str(manual), encoding="utf-8", newline="") as fh:
++            text = fh.read()
++        if begin in text and end in text:
++            i, j = text.index(begin), text.index(end) + len(end)
++            section = text[i:j]
++            m = re.search(r"My second brain is at: (.+?)\r?\n", section)
++            was = m.group(1) if m else old
++            if was and was != str(home):
++                text = text[:i] + section.replace(was, str(home)) + text[j:]
++                tmp = manual.with_name(manual.name + ".tmp")
++                with open(str(tmp), "w", encoding="utf-8", newline="") as fh:
++                    fh.write(text)
++                os.replace(str(tmp), str(manual))
++                told = True
++    except (OSError, UnicodeError):
++        pass
++    if told:
++        return ("Your second brain is at a new address. Recorded it, and changed the line in "
++                "~/.claude/CLAUDE.md that tells your AI where it is.")
++    return ("Your second brain is at a new address, and it is recorded. The line in "
++            "~/.claude/CLAUDE.md that tells your AI where it is was not changed: run Part 1 "
++            "again and give it %s, or edit that line yourself." % home)
+ 
+ 
+ def main():
+@@ -105,7 +260,7 @@ def main():
+             "This layer arranges things that already work, so there has to be something to",
+             "arrange.", "",
+             "   git clone https://github.com/OUTLIERS-ai/outliers-sb-03-capture",
+-            "   cd outliers-sb-03-capture", "   python install.py", "",
++            "   cd outliers-sb-03-capture", "   %s install.py" % PY, "",
+             "Nothing has been changed.", "")
+         return 1
+ 
+@@ -114,11 +269,16 @@ def main():
+     human_gate = yes("Your hand on anything that reaches a person?", True)
+     warn_to = ask("Where should it tell you when something breaks? (a note name)",
+                   "Areas/System warnings")
++    no_schedule = "--no-schedule" in sys.argv
++    schedule = False
++    if not no_schedule:
++        schedule = yes("Put the morning list on this computer's timetable, so it runs by itself "
++                       "at %s each day?" % when, True)
+ 
+     say("", "-" * 66, "")
+     engine = home / "_engine"
+     engine.mkdir(exist_ok=True)
+-    for f in ("today.py", "ledger.py"):
++    for f in ("today.py", "ledger.py", "morning_job.py"):
+         shutil.copy2(HERE / "sb" / f, engine / f)
+     say("Installed the record and the morning list into _engine/")
+ 
+@@ -147,23 +307,42 @@ def main():
+     say("Wrote Areas/The gate.md - %s" % ("your hand on everything that leaves."
+                                           if human_gate else "no final human tap. Your decision."))
+ 
+-    if "--no-schedule" in sys.argv:
++    moved = point_at(home)
++    if moved:
++        say(moved)
++
++    on_timetable = False
++    if no_schedule:
+         say("Skipped the timetable because you asked (--no-schedule).",
+-            "Run 'python _engine/today.py' yourself, or run this installer again without the flag.")
++            "Run '%s _engine/today.py' yourself, or run this installer again without the flag."
++            % PY)
++    elif not schedule:
++        say("Nothing was put on a timetable, because you said no.",
++            "Run '%s _engine/today.py' yourself, or run this installer again and answer yes."
++            % PY)
+     else:
+-        say(install_silent_launcher(engine, when, warn_to))
++        told, on_timetable = install_silent_launcher(engine, when, warn_to)
++        say(told)
++        if on_timetable:
++            log_installed(home)
++    if not schedule and entry_already_there():
++        say("An earlier install put the morning list on this computer's timetable, and it is "
++            "still there. To take it off, type:")
++        for line in (REMOVE_MAC if IS_MAC else [REMOVE_WIN]):
++            say("   " + line)
+ 
+     cfg["layer"] = max(int(cfg.get("layer", 0)), LAYER)
+     cfg["layer_%d_installed" % LAYER] = date.today().isoformat()
+     cfg["morning_list_at"] = when
+     cfg["human_gate"] = bool(human_gate)
+     cfg["warnings_go_to"] = warn_to
++    cfg["morning_list_on_timetable"] = bool(on_timetable)
+     cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+ 
+     say("", "-" * 66, "", "From now on:", "",
+-        "   python _engine/today.py       the morning list, on demand",
+-        "   python _engine/doctor.py      the check from Layer 2",
+-        "   python _engine/ledger.py      what has happened, most recent first", "")
++        "   %-30sthe morning list, on demand" % (PY + " _engine/today.py"),
++        "   %-30sthe check from Layer 2" % (PY + " _engine/doctor.py"),
++        "   %-30swhat has happened, most recent first" % (PY + " _engine/ledger.py"), "")
+     say("Your system is now built. What changes from here is that it starts telling you things,",
+         "and what it tells you goes back down the ladder: a rule that keeps misfiring gets",
+         "rewritten in Layer 2, a source that never produces anything useful gets dropped in",
+diff --git a/sb/ledger.py b/sb/ledger.py
+index ce780fb..40e2bfe 100644
+--- a/sb/ledger.py
++++ b/sb/ledger.py
+@@ -24,6 +24,8 @@ from pathlib import Path
+ HERE = Path(__file__).resolve().parent
+ VAULT = HERE.parent
+ LEDGER = VAULT / "_engine" / "events.jsonl"
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ 
+ def add(what, kind="note", source="hand"):
+@@ -59,7 +61,7 @@ def main(argv):
+     if argv and argv[0] == "add":
+         what = argv[1] if len(argv) > 1 else ""
+         if not what:
+-            print("  Nothing to write down. Try: python ledger.py add \"what happened\"")
++            print("  Nothing to write down. Try: %s ledger.py add \"what happened\"" % PY)
+             return 1
+         kind = "note"
+         if "--kind" in argv:
+@@ -73,7 +75,7 @@ def main(argv):
+     rows = read(20)
+     if not rows:
+         print("\n  Nothing has been written down yet.")
+-        print("  Try: python ledger.py add \"finished the pricing page\"\n")
++        print("  Try: %s ledger.py add \"finished the pricing page\"\n" % PY)
+         return 0
+     print("\n  WHAT HAS HAPPENED  (most recent last)\n")
+     for r in rows:
+diff --git a/sb/morning_job.py b/sb/morning_job.py
+new file mode 100644
+index 0000000..a8ae61c
+--- /dev/null
++++ b/sb/morning_job.py
+@@ -0,0 +1,57 @@
++# -*- coding: utf-8 -*-
++"""morning_job.py - what the timetable runs each morning.
++
++It writes the morning list to _engine/reports/today.txt in your second brain, then adds one line
++to the morning log, ~/.outliers-sb-morning.log, saying what happened. The log lives in your home
++folder, outside the second brain, on purpose: if the computer ever refuses this job access to the
++second brain's folder, the log is still written, and today.py tells you the next time you run it.
++
++A job that fails with nobody watching looks exactly like a job that had nothing to do. This is the
++difference.
++"""
++
++import importlib.util
++import os
++import sys
++from datetime import datetime
++from pathlib import Path
++
++POINTER = Path.home() / ".outliers-sb"
++LOG = Path.home() / ".outliers-sb-morning.log"
++
++
++def log(status, folder, detail=""):
++    """One line per run, added to the end, never rewritten: when, what happened, which folder."""
++    line = "\t".join([datetime.now().isoformat(timespec="minutes"), status, str(folder),
++                      " ".join(str(detail).split())])
++    with open(str(LOG), "a", encoding="utf-8", newline="\n") as fh:
++        fh.write(line + "\n")
++
++
++def main():
++    try:
++        vault = Path(POINTER.read_text(encoding="utf-8").strip())
++    except OSError as exc:
++        log("failed", POINTER, "cannot read where the second brain is: %s" % exc)
++        return 1
++    engine = vault / "_engine"
++    try:
++        # Touch the folder first. If the computer refuses this job the folder, this is where it
++        # shows: macOS says "Operation not permitted".
++        os.listdir(str(engine))
++        spec = importlib.util.spec_from_file_location("sb_today", str(engine / "today.py"))
++        today = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(today)
++        written = today.write_list()
++    except PermissionError as exc:
++        log("refused", vault, exc)
++        return 1
++    except Exception as exc:
++        log("failed", vault, "%s: %s" % (type(exc).__name__, exc))
++        return 1
++    log("written", vault, written)
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/sb/today.py b/sb/today.py
+index beeec54..57ea168 100644
+--- a/sb/today.py
++++ b/sb/today.py
+@@ -14,6 +14,7 @@ import json
+ import os
+ import re
+ import sys
++import tempfile
+ from datetime import datetime, timedelta
+ from pathlib import Path
+ 
+@@ -23,6 +24,11 @@ SCHEMA = HERE / "_schema" / "note-types.json"
+ HEALTH = HERE / "reports" / "latest.json"
+ LEDGER = HERE / "events.jsonl"
+ CONFIG = VAULT / "_layers" / "config.json"
++WRITTEN = HERE / "reports" / "today.txt"
++# The morning job's own record, outside the second brain (see morning_job.py).
++JOB_LOG = Path.home() / ".outliers-sb-morning.log"
++# The command a member types to run Python: "python3" on a Mac, "python" on Windows.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ MAX_LINES = 12
+ 
+@@ -64,7 +70,7 @@ def recently_changed(files, days=3):
+ def warnings():
+     """What the check said last time it ran. A warning nobody surfaces is not a warning."""
+     if not HEALTH.exists():
+-        return ["The check has not run yet - python _engine/doctor.py"]
++        return ["The check has not run yet - %s _engine/doctor.py" % PY]
+     try:
+         d = json.loads(HEALTH.read_text(encoding="utf-8"))
+     except Exception:
+@@ -95,36 +101,156 @@ def open_questions(files):
+     return out
+ 
+ 
+-def main():
++def job_record():
++    """What the morning job last did, from its log: (last written, last run, last time Part 4
++    added the timetable entry). Each is a tuple (when, status, folder, detail) or None."""
++    last_written = last_run = last_installed = None
++    try:
++        with open(str(JOB_LOG), encoding="utf-8", errors="replace") as fh:
++            for line in fh:
++                parts = line.rstrip("\n").split("\t")
++                if len(parts) < 3:
++                    continue
++                row = (parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else "")
++                if row[1] == "installed":
++                    last_installed = row
++                last_run = row
++                if row[1] == "written":
++                    last_written = row
++    except OSError:
++        pass
++    return last_written, last_run, last_installed
++
++
++def parse_stamp(stamp):
++    for fmt, n in (("%Y-%m-%dT%H:%M", 16), ("%Y-%m-%d", 10)):
++        try:
++            return datetime.strptime(str(stamp)[:n], fmt)
++        except ValueError:
++            pass
++    return None
++
++
++def when_text(stamp):
++    try:
++        return datetime.strptime(stamp[:16], "%Y-%m-%dT%H:%M").strftime("%A %d %B %Y, %H:%M")
++    except ValueError:
++        return stamp
++
++
++def same_folder(a, b):
++    try:
++        return os.path.normcase(os.path.abspath(str(a))) == os.path.normcase(os.path.abspath(str(b)))
++    except (TypeError, ValueError):
++        return False
++
++
++def job_lines():
++    """The morning job's news: a refusal, a failure or a job that has stopped (warnings), then when
++    the list was last written. Silent when there is no timetable and no log, as before. A refusal
++    of a folder this second brain is no longer in (it was moved) is old news and is not shown."""
++    last_written, last_run, last_installed = job_record()
++    warn, note = [], []
++    try:
++        cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
++    except Exception:
++        cfg = {}
++    on = bool(cfg.get("morning_list_on_timetable"))
++    if last_run and last_run[1] == "refused" and same_folder(last_run[2], VAULT):
++        if sys.platform == "darwin":
++            new_home = Path.home() / "Second Brain"
++            warn.append("macOS refused access to %s on %s, so the morning list was not written."
++                        % (last_run[2], when_text(last_run[0])))
++            warn.append("Fix: in Finder, drag the folder %s into your home folder (the one with "
++                        "your name), so it becomes %s. Then install Part 4 again, the same way "
++                        "as the first time. It finds the folder there and points the morning "
++                        "list and your AI at it." % (last_run[2], new_home))
++        else:
++            warn.append("The computer refused access to %s on %s, so the morning list was not "
++                        "written. Check the folder is still there and opens. This warning goes "
++                        "once a morning run works." % (last_run[2], when_text(last_run[0])))
++    elif last_run and last_run[1] == "failed" and same_folder(last_run[2], VAULT):
++        warn.append("The morning job failed on %s. Start your AI in your second brain and paste "
++                    "it this line: %s" % (when_text(last_run[0]), last_run[3]))
++    if on:
++        # Counted from the later of: the last list written, and the last time Part 4 added the
++        # timetable entry, so installing again (what this warning advises) starts the clock again.
++        since, written = None, False
++        for row, is_written in ((last_written, True), (last_installed, False)):
++            t = parse_stamp(row[0]) if row else None
++            if t and (since is None or t > since):
++                since, written = t, is_written
++        if since is None:
++            since = parse_stamp(cfg.get("layer_4_installed", ""))
++        if since and datetime.now() - since > timedelta(hours=26):
++            warn.append("The morning list has not been written since %s. The timetable may have "
++                        "stopped: install Part 4 again to put it back."
++                        % (when_text(last_written[0]) if written else
++                           "the timetable entry was added on %s" % since.strftime("%A %d %B %Y")))
++    if last_written:
++        note.append("Morning list last written: %s (in _engine/reports/today.txt)."
++                    % when_text(last_written[0]))
++    elif on or last_run:
++        note.append("Morning list last written: never. The timetable has not written one yet.")
++    return warn, note
++
++
++def lines(for_file=False):
+     files = scoped()
+-    print("")
+-    print("  TODAY  -  %s" % datetime.now().strftime("%A %d %B %Y"))
+-    print("")
++    out = ["", "  TODAY  -  %s" % datetime.now().strftime("%A %d %B %Y"), ""]
+ 
+-    warns = warnings()
++    job_warn, job_note = ([], []) if for_file else job_lines()
++    warns = job_warn + warnings()
+     if warns:
+-        print("  Worth knowing")
+-        for w in warns[:4]:
+-            print("    - %s" % w)
+-        print("")
++        out.append("  Worth knowing")
++        for w in warns[:4 + len(job_warn)]:
++            out.append("    - %s" % w)
++        out.append("")
+ 
+     changed = recently_changed(files)
+     if changed:
+-        print("  Moved in the last few days")
++        out.append("  Moved in the last few days")
+         for m, p in changed[:6]:
+-            print("    - %-11s %s" % (m.strftime("%a %H:%M"), p.relative_to(VAULT)))
+-        print("")
++            out.append("    - %-11s %s" % (m.strftime("%a %H:%M"), p.relative_to(VAULT)))
++        out.append("")
+ 
+     todo = open_questions(files)
+     if todo:
+-        print("  Left unfinished")
++        out.append("  Left unfinished")
+         for p, t in todo[:MAX_LINES - len(warns) - min(len(changed), 6)][:5]:
+-            print("    - %-46s %s" % (t[:46], p.name))
+-        print("")
++            out.append("    - %-46s %s" % (t[:46], p.name))
++        out.append("")
+ 
+     if not (warns or changed or todo):
+-        print("  Nothing has moved and nothing is owed. That is a real answer, not an empty one.")
+-        print("")
++        out.append("  Nothing has moved and nothing is owed. That is a real answer, not an "
++                   "empty one.")
++        out.append("")
++    if job_note:
++        for n in job_note:
++            out.append("  %s" % n)
++        out.append("")
++    return out
++
++
++def write_list():
++    """The morning job's half: the same list, written to _engine/reports/today.txt through a
++    temporary file, so a crash never leaves half a list. Returns where it went."""
++    WRITTEN.parent.mkdir(parents=True, exist_ok=True)
++    fd, tmp = tempfile.mkstemp(dir=str(WRITTEN.parent), suffix=".tmp")
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
++            fh.write("\n".join(lines(for_file=True)) + "\n")
++        os.replace(tmp, str(WRITTEN))
++    except Exception:
++        if os.path.exists(tmp):
++            os.unlink(tmp)
++        raise
++    return WRITTEN
++
++
++def main():
++    for line in lines():
++        print(line)
+     return 0
+ 
+ 
+diff --git a/_mac_regress/sb_tests.txt b/_mac_regress/sb_tests.txt
+new file mode 100644
+index 0000000..aedf7c1
+--- /dev/null
++++ b/_mac_regress/sb_tests.txt
+@@ -0,0 +1,2 @@
++# Wave 1 fix round 2: the download address comes from 1 setting (regress/sb/run.py)
++sb-04/test_repo_setting.py@.
