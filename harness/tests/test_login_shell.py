@@ -1,5 +1,5 @@
 """Wave 0b: in a login-shell run (MACTEST_LOGIN=1) every step starts as a new Terminal window
-does: a login shell whose environment holds only HOME, USER, LOGNAME, SHELL and TERM (plus the
+does: a login shell whose environment has only HOME, USER, LOGNAME, SHELL and TERM (plus the
 harness's own OUT and the step's settings), so PATH comes only from the Mac's own files and the
 member's profile files (build plan V3, section 9a).
 
