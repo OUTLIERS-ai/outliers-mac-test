@@ -1,0 +1,20 @@
+diff --git a/README.md b/README.md
+index 59c009a..2a2649b 100644
+--- a/README.md
++++ b/README.md
+@@ -70,6 +70,15 @@ pip install playwright
+ playwright install chromium
+ ```
+ 
++On Windows, in PowerShell, skip the virtual environment and run these 2 lines instead. PowerShell,
++as Windows sets it up, refuses to run the file that switches a virtual environment on, so
++Playwright goes in with your usual Python:
++
++```powershell
++python -m pip install playwright
++python -m playwright install chromium
++```
++
+ The last line downloads the browser itself, so it takes a minute. If you made a virtual
+ environment, run `source .venv/bin/activate` in each new Terminal window before using the tools.
+ 

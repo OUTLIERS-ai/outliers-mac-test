@@ -75,6 +75,11 @@ def looks_failed(code, out, step):
     return False
 
 
+def readme_text(repo):
+    p = HOME / repo / "README.md"
+    return p.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n") if p.exists() else ""
+
+
 def run_step(step, repo):
     kind = step.get("kind", "run")
     rec = {"id": step["id"], "kind": kind, "command_as_printed": step.get("cmd"),
@@ -91,7 +96,16 @@ def run_step(step, repo):
         code, out, secs = bash(cmd, cwd, step.get("stdin", "\n" * 60))
         label = "harness line in Git Bash"
     else:
-        cmd = step["cmd"]
+        # win_cmd: the Windows lines the README prints for this step, where they differ from the
+        # Mac lines. win_readme: those same lines, each of which must appear word for word in the
+        # repo's README, so the harness never runs a Windows command the member is not shown.
+        cmd = step.get("win_cmd", step["cmd"])
+        missing = [line for line in step.get("win_readme", []) if line not in readme_text(repo)]
+        if missing:
+            rec.update(verdict="FAILS", attempts=[{
+                "label": "README check", "command": cmd, "exit": "not run", "seconds": 0,
+                "output_tail": "the README does not print: %r" % missing, "check": ""}])
+            return rec
         code, out, secs = powershell(cmd, cwd, step.get("stdin", "\n" * 60))
         label = "as printed, in PowerShell"
     failed = looks_failed(code, out, step)
