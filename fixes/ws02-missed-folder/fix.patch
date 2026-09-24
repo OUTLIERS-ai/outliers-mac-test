@@ -1,0 +1,60 @@
+diff --git a/watcher.js b/watcher.js
+index e7e4f73..66e96f6 100644
+--- a/watcher.js
++++ b/watcher.js
+@@ -278,10 +278,37 @@ function readNext() {
+     });
+   } catch (e) { console.error(`Skipped ${path.basename(f)}: ${e.message}`); next(); }
+ }
++const told = new Set(); // every log FleetView has been told about, by chokidar or by the sweep
+ function readSafely(f) {
++  told.add(f);
+   if (!inLine.has(f)) { inLine.add(f); readLine.push(f); }
+   readNext();
+ }
++// A sweep, beside chokidar. On GitHub's Windows machine chokidar sometimes reported nothing at
++// all after it was ready: a new project folder and the 53 MB log in it were never reported, so
++// never read (2 of 20 runs of npm test, 2026-09-24; its record showed "ready" and then no event
++// for 25 seconds). Claude Code makes a new folder for every new project, so a member could meet
++// the same. Every SWEEP_MS FleetView lists the log folder itself, 4 levels deep as chokidar
++// watches it, and reads any log it was never told about. Only folder listings, no file contents,
++// and the listing runs off the main thread (fs.promises), so the page keeps answering.
++const SWEEP_MS = 5000;
++let sweeping = false;
++async function sweep() {
++  if (sweeping) return;
++  sweeping = true;
++  try {
++    const walk = async (dir, depth) => {
++      let entries;
++      try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); } catch { return; }
++      for (const e of entries) {
++        const full = path.join(dir, e.name);
++        if (e.isDirectory()) { if (depth < 4) await walk(full, depth + 1); }
++        else if (want(full) && !told.has(full)) readSafely(full);
++      }
++    };
++    await walk(CFG.projectsDir, 0);
++  } finally { sweeping = false; }
++}
+ let watcher = null;
+ function attachWatcher() {
+   watcher = chokidar.watch(CFG.projectsDir, {
+@@ -291,7 +318,9 @@ function attachWatcher() {
+   watcher.on('add', f => { if (want(f)) readSafely(f); });
+   watcher.on('change', f => { if (want(f)) readSafely(f); });
+   watcher.on('error', e => console.error('watch error:', e.message));
++  if (!sweepTimer) sweepTimer = setInterval(sweep, SWEEP_MS);
+ }
++let sweepTimer = null;
+ let folderCheck = null;
+ if (fs.existsSync(CFG.projectsDir)) attachWatcher();
+ else {
+@@ -332,6 +361,7 @@ server.on('error', (err) => {
+ function stop() {
+   removePidFile();
+   if (folderCheck) clearInterval(folderCheck);
++  if (sweepTimer) clearInterval(sweepTimer);
+   Promise.resolve(watcher && watcher.close()).finally(() => server.close(() => process.exit(0)));
+   setTimeout(() => process.exit(0), 2000).unref();
+ }
