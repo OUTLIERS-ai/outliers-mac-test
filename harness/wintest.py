@@ -118,15 +118,15 @@ def main():
     for s in specs.get(repo)["steps"]:
         steps.append(run_step(s, repo))
         if patch and s["id"] == "clone" and steps[-1]["verdict"] == "WORKS":
-            code, out, secs = run(["git", "apply", "--verbose", str(Path(patch).resolve())],
-                                  str(HOME / repo))
+            code, said, secs = run(["git", "apply", "--verbose", str(Path(patch).resolve())],
+                                   str(HOME / repo))
             steps.append({"id": "apply-fix-patch", "kind": "prereq", "counts": False,
                           "verdict": "WORKS" if code == 0 else "FAILS", "started": now(),
                           "attempts": [{"label": "harness", "command": "git apply " + patch,
                                         "exit": code, "seconds": secs,
-                                        "output_tail": out[-TAIL:]}]})
+                                        "output_tail": said[-TAIL:]}]})
             if code != 0:
-                print("the fix patch did not apply: %s" % out[-800:], flush=True)
+                print("the fix patch did not apply: %s" % said[-800:], flush=True)
                 return 1
     for s in steps:
         print("[%s] %s" % (s["verdict"], s["id"]), flush=True)
