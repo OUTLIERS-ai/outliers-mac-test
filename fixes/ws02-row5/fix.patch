@@ -1,0 +1,39 @@
+diff --git a/watcher.js b/watcher.js
+index 7502e6e..39ce0e1 100644
+--- a/watcher.js
++++ b/watcher.js
+@@ -249,9 +249,32 @@ console.log(`FleetView reading: ${CFG.projectsDir}`);
+ const want = (f) => f.endsWith('.jsonl') && !path.basename(f).includes('compact');
+ // One piece per turn of the event loop, so a huge log never keeps the thread
+ // to itself and the page carries on answering while it is read.
++//
++// Files wait in 1 line and are read 1 at a time. When 300 logs arrived together,
++// each queued its first piece for the same turn of the event loop, so a page request
++// waited for all 300: up to 4.5 seconds on GitHub's Intel test Mac (5 of 10 runs of
++// `npm test` failed there, 2026-09-24), close to the 5 seconds after which the page
++// shows "FleetView stopped".
++const readLine = [];
++const inLine = new Set();
++let reading = false;
++function readNext() {
++  if (reading) return;
++  const f = readLine.shift();
++  if (f === undefined) return;
++  inLine.delete(f);
++  reading = true;
++  const next = () => { reading = false; setImmediate(readNext); };
++  try {
++    store.processFileAsync(f, (err) => {
++      if (err) console.error(`Skipped ${path.basename(f)}: ${err.message}`);
++      next();
++    });
++  } catch (e) { console.error(`Skipped ${path.basename(f)}: ${e.message}`); next(); }
++}
+ function readSafely(f) {
+-  try { store.processFileAsync(f, (err) => { if (err) console.error(`Skipped ${path.basename(f)}: ${err.message}`); }); }
+-  catch (e) { console.error(`Skipped ${path.basename(f)}: ${e.message}`); }
++  if (!inLine.has(f)) { inLine.add(f); readLine.push(f); }
++  readNext();
+ }
+ let watcher = null;
+ function attachWatcher() {

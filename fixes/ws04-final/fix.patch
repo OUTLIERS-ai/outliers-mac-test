@@ -1,0 +1,387 @@
+diff --git a/install.py b/install.py
+index aba75e8..1256d82 100644
+--- a/install.py
++++ b/install.py
+@@ -51,6 +51,8 @@ DEFAULT_PORT = 4040
+ # so a member knows exactly what they are running. Checked live on 2026-09-22.
+ MODELS = {"best": "claude-opus-5-5", "deep": "claude-sonnet-5", "fast": "claude-haiku-4-5"}
+ PLIST_NAME = "ai.outliers.jeeves.plist"
++# The command a member types to run Python: a Mac has python3 and no plain python.
++PY = "python3" if sys.platform == "darwin" else "python"
+ 
+ 
+ def too_old(info):
+@@ -101,9 +103,12 @@ def pointer(name):
+ 
+ 
+ def guess_brain():
+-    return pointer(".outliers-sb") or next(
+-        (str(p) for p in (home() / "Documents" / "Second Brain", home() / "Second Brain")
+-         if p.is_dir()), "")
++    # A Mac looks outside Documents first: macOS may refuse a program that starts by itself
++    # access to ~/Documents, so the Mac guides put the Second Brain at ~/Second Brain.
++    places = (home() / "Documents" / "Second Brain", home() / "Second Brain")
++    if sys.platform == "darwin":
++        places = places[::-1]
++    return pointer(".outliers-sb") or next((str(p) for p in places if p.is_dir()), "")
+ 
+ 
+ def guess_crm():
+@@ -231,8 +236,8 @@ def belongs_here(path):
+ 
+ def not_ours(target):
+     return ("Another Jeeves folder already starts by itself when the computer starts (%s)."
+-            % target + "\n  Left as it is. To move it to this folder, run  python install.py"
+-            " --uninstall  in that folder first.")
++            % target + "\n  Left as it is. To move it to this folder, run  %s install.py" % PY
++            + " --uninstall  in that folder first.")
+ 
+ 
+ def install_launcher():
+@@ -326,7 +331,7 @@ def copy_to(dest, port=None):
+         except ValueError:
+             old = {}
+     if not old.get("second_brain"):
+-        say("Install this Jeeves first (python install.py), then make the copy.",
++        say("Install this Jeeves first (%s install.py), then make the copy." % PY,
+             "Nothing has been changed.", "")
+         return 1
+     if dest == HERE or HERE in dest.parents:
+@@ -354,7 +359,7 @@ def copy_to(dest, port=None):
+     if os.name == "nt":
+         atomic_write(dest / "Start Jeeves (hidden).vbs", vbs_text(dest, dest / "config.json"))
+         say("Its own Start Jeeves (hidden).vbs starts the copy, not this one.")
+-    say("", "Start the copy:", "", "    cd %s" % dest, "    python start.py", "",
++    say("", "Start the copy:", "", "    cd %s" % dest, "    %s start.py" % PY, "",
+         "It opens http://127.0.0.1:%d/ . Ctrl+C in that terminal stops it." % port, "")
+     return 0
+ 
+@@ -391,6 +396,18 @@ def main(argv=None):
+             "Nothing has been changed.", "")
+         return 1
+     claude = shutil.which("claude")
++    if not claude and os.name != "nt":
++        # Claude Code's own Mac installer puts claude in ~/.local/bin and may leave that
++        # folder off the PATH a Mac's Terminal uses (seen on GitHub's Intel test Mac,
++        # 2026-09-24): it is installed, just not found by name.
++        for c in (home() / ".local" / "bin" / "claude", home() / ".claude" / "local" / "claude"):
++            if c.is_file() and os.access(str(c), os.X_OK):
++                claude = str(c)
++                say("Found Claude Code at %s. That folder is not on this Terminal's PATH, so" % c,
++                    "typing  claude  may say \"command not found\"; Jeeves finds it anyway. To fix",
++                    "it for typing too:  echo 'export PATH=\"%s:$PATH\"' >> ~/.zshrc" % c.parent,
++                    "then open a new Terminal window.", "")
++                break
+     if not claude and not a.skip_claude_check:
+         say("Claude Code is not installed, or not on your PATH.", "",
+             "Jeeves has no brain of its own: every answer comes from your Claude Code.",
+@@ -471,7 +488,7 @@ def main(argv=None):
+         # 4041 was being told to try the port that had just refused them.
+         spare = next((p for p in range(port + 1, port + 60) if port_free(p)), port + 1)
+         say("  Port %d is busy right now. Jeeves will say so when it starts; pick another "
+-            "with python install.py --port %d" % (port, spare))
++            "with %s install.py --port %d" % (port, PY, spare))
+ 
+     # 4. One config file. Keep anything you added by hand.
+     cfg = dict(old)
+@@ -483,11 +500,13 @@ def main(argv=None):
+     cfg.setdefault("permission_mode", "dontAsk")
+     cfg.setdefault("allow_actions", False)
+     cfg.setdefault("claude_command", "claude")
++    # A Mac member is sent to the Mac copy of each repo (its name ends in -mac).
++    app_repo = "https://github.com/OUTLIERS-ai/%s" + ("-mac" if sys.platform == "darwin" else "")
+     cfg.setdefault("apps", {
+         "projectforge": {"url": "http://127.0.0.1:3020",
+-                         "repo": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge"},
++                         "repo": app_repo % "outliers-ws-03-projectforge"},
+         "fleetview": {"url": "http://127.0.0.1:3010",
+-                      "repo": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview"}})
++                      "repo": app_repo % "outliers-ws-02-fleetview"}})
+     say("")
+     if cfg == old:
+         say("config.json already says exactly this. Nothing changed.")
+@@ -511,11 +530,11 @@ def main(argv=None):
+         say(install_launcher())
+     else:
+         say("Jeeves will not start by itself when the computer starts. "
+-            "Start it yourself with:  python start.py")
++            "Start it yourself with:  %s start.py" % PY)
+ 
+     say("", "-" * 66,
+         "Done. Start it now:", "",
+-        "    python start.py", "",
++        "    %s start.py" % PY, "",
+         "Your browser opens http://127.0.0.1:%d/ . You should see the orb top left," % port,
+         "Chat on the left, Today in the middle and Across everything on the right.",
+         "On a laptop: Chat on the left and a stack of tabs on the right.",
+diff --git a/jeeves/config.py b/jeeves/config.py
+index cc9d250..63be467 100644
+--- a/jeeves/config.py
++++ b/jeeves/config.py
+@@ -8,8 +8,17 @@ whole program somewhere else by setting JEEVES_CONFIG to another file.
+ 
+ import json
+ import os
++import sys
+ from pathlib import Path
+ 
++# The command a member types to run Python. A Mac has python3 and no python, so a
++# printed "python start.py" fails there with "command not found".
++PY = "python3" if sys.platform == "darwin" else "python"
++
++# Where the Work board and FleetView are downloaded from. A Mac member gets the Mac
++# copy of each (its name ends in -mac); the Windows repos print Windows commands.
++APP_REPO = "https://github.com/OUTLIERS-ai/%s" + ("-mac" if sys.platform == "darwin" else "")
++
+ ROOT = Path(__file__).resolve().parent.parent
+ 
+ DEFAULTS = {
+@@ -32,10 +41,8 @@ DEFAULTS = {
+     "inbox_file": "",
+     "daily_note_folders": ["Daily", "Daily Notes", "Journal", "Diary", "Calendar"],
+     "apps": {
+-        "projectforge": {"url": "http://127.0.0.1:3020",
+-                         "repo": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge"},
+-        "fleetview": {"url": "http://127.0.0.1:3010",
+-                      "repo": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview"},
++        "projectforge": {"url": "http://127.0.0.1:3020", "repo": APP_REPO % "outliers-ws-03-projectforge"},
++        "fleetview": {"url": "http://127.0.0.1:3010", "repo": APP_REPO % "outliers-ws-02-fleetview"},
+     },
+     "ccusage": "auto",
+     "orb": {"inner": "At your service", "outer": "Your second brain is listening"},
+@@ -98,8 +105,8 @@ def problem(path=None):
+         if line:
+             where = "\n  Look at line %d:  %s" % (line, text.splitlines()[line - 1].strip()[:90])
+         return ("%s could not be read: %s%s\n"
+-                "  Fix that line, or run  python install.py  to write a fresh one."
+-                % (p, exc.msg if hasattr(exc, "msg") else exc, where))
++                "  Fix that line, or run  %s install.py  to write a fresh one."
++                % (p, exc.msg if hasattr(exc, "msg") else exc, where, PY))
+     if not isinstance(data, dict):
+         return "%s could not be read: it must start with { and end with }." % p
+     return None
+diff --git a/jeeves/server.py b/jeeves/server.py
+index f850991..c206781 100644
+--- a/jeeves/server.py
++++ b/jeeves/server.py
+@@ -31,6 +31,7 @@ import json
+ import mimetypes
+ import os
+ import socket
++import socketserver
+ import sys
+ import threading
+ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+@@ -192,6 +193,8 @@ def public_config(cfg):
+         "read_only": chat.read_only(cfg),
+         "chat_updated": chat.last_updated("main"),
+         "chat_timeout_seconds": cfg.get("chat_timeout_seconds"),
++        # the command this computer runs Python with, for commands the page prints
++        "python": "python3" if sys.platform == "darwin" else "python",
+     }
+ 
+ 
+@@ -208,7 +211,15 @@ class JeevesServer(ThreadingHTTPServer):
+     def server_bind(self):
+         if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+-        super().server_bind()
++        # http.server's own server_bind also asks for this address's name
++        # (socket.getfqdn), only to fill in server_name, which nothing here uses.
++        # On GitHub's test Macs that look-up took 35 seconds on every start
++        # (measured 2026-09-24), so the page answered 35 seconds late and the
++        # checks that wait 15 or 20 seconds for it failed. The name is now the
++        # address as given, with no look-up.
++        socketserver.TCPServer.server_bind(self)
++        host, port = self.server_address[:2]
++        self.server_name, self.server_port = str(host), port
+ 
+ 
+ def make_server(port=None, config_file=None, verbose=False):
+diff --git a/jeeves/static/app.js b/jeeves/static/app.js
+index 0547c83..2b17dfd 100644
+--- a/jeeves/static/app.js
++++ b/jeeves/static/app.js
+@@ -281,7 +281,9 @@ function mountChat(el) {
+ // A folder that is not there is never reported as a quiet day. The Today panel used
+ // to say "Nothing has moved and nothing is left open" while the Vaults panel 300 px
+ // below it said the folder did not exist, and the loudest of the two was the wrong one.
+-function missingFolder(path, setting) {
++function missingFolder(path, setting, refused) {
++  // macOS refused Jeeves the folder: say so, never that it is missing (the server's words).
++  if (refused) return `<div class="empty gone">${esc(refused)}</div>`;
+   return `<div class="empty gone">Your ${setting === 'crm_vault' ? 'CRM' : 'second brain'} folder is not there:
+     <code class="sel">${esc(path || '(not set)')}</code><br>
+     Nothing can be read from it, so no count below is a real answer. Check
+@@ -295,14 +297,14 @@ async function renderToday(body) {
+   if (d.crm) {
+     h += `<div class="card"><h3>From your CRM${d.crm.built ? ' · built ' + esc(d.crm.built) : ''}</h3>`;
+     h += d.crm.found ? md(d.crm.text)
+-      : (d.crm.exists === false ? missingFolder(d.crm.vault, 'crm_vault')
++      : (d.crm.exists === false ? missingFolder(d.crm.vault, 'crm_vault', d.crm.refused)
+         : `<div class="empty">${esc(d.crm.hint)}</div>`);
+     h += '</div>';
+   } else h += '<div class="empty">No CRM folder is set in config.json, so there is no ranked list of people here.</div>';
+   const b = d.brain;
+   if (b) {
+     h += '<div class="card"><h3>From your second brain</h3>';
+-    if (b.found === false) return void (body.innerHTML = h + missingFolder(b.path, 'second_brain') + '</div>');
++    if (b.found === false) return void (body.innerHTML = h + missingFolder(b.path, 'second_brain', b.refused) + '</div>');
+     if (b.daily) h += `<div class="dim">${esc(b.daily.path)}</div>` + md(b.daily.text);
+     if (b.moved.length) h += '<div class="muted" style="margin-top:6px">Moved in the last 3 days</div><ul class="links">' + b.moved.map(m => `<li><span class="dim">${esc(m.when)}</span> <span class="wl" data-note="${esc(m.path)}">${noteName(m.path)}</span> <span class="dim">${noteDir(m.path)}</span></li>`).join('') + '</ul>';
+     if (b.open.length) h += '<div class="muted" style="margin-top:6px">Left unfinished</div><ul>' + b.open.map(o => `<li>☐ ${inline(o.text)} <span class="dim">·</span> <span class="wl" data-note="${esc(o.path)}">${noteName(o.path)}</span></li>`).join('') + '</ul>';
+@@ -352,7 +354,7 @@ async function mountVault(el) {
+     tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === key));
+     const t = await api('/api/vault/tree?v=' + encodeURIComponent(key));
+     VB.files = t.files || [];
+-    if (t.exists === false) list.innerHTML = '<div class="empty" style="margin:8px">That folder does not exist. Check the path in config.json.</div>'; else draw();
++    if (t.exists === false) list.innerHTML = t.refused ? `<div class="empty" style="margin:8px">${esc(t.refused)}</div>` : '<div class="empty" style="margin:8px">That folder does not exist. Check the path in config.json.</div>'; else draw();
+   };
+   const search = async (text) => {
+     q.value = text;
+@@ -489,8 +491,8 @@ async function renderOverview(body) {
+   jobs.push(safe('/api/today').then(td => {
+     let h;
+     if (!td.crm) h = '<div class="muted">No CRM folder is set in config.json.</div>';
+-    else if (td.crm.exists === false) h = missingFolder(td.crm.vault, 'crm_vault');
+-    else if (!td.crm.found) h = '<div class="muted">Your CRM has no <code>Today.md</code> yet. Build it in your CRM folder with <code>python _engine/today.py --write</code>.</div>';
++    else if (td.crm.exists === false) h = missingFolder(td.crm.vault, 'crm_vault', td.crm.refused);
++    else if (!td.crm.found) h = '<div class="muted">Your CRM has no <code>Today.md</code> yet. Build it in your CRM folder with <code>' + esc(CFG.python || 'python') + ' _engine/today.py --write</code>.</div>';
+     else {
+       const rows = crmPeople(td.crm.text);
+       if (rows.length) h = '<ul>' + rows.slice(0, 4).map(r => `<li><span class="wl" data-vault="crm" data-note="${esc(r.who)}">${esc(r.who)}</span> <span class="muted">· ${inline(r.why)}</span></li>`).join('') + '</ul>' + (rows.length > 4 ? `<button class="cardlink small" data-open="today">and ${rows.length - 4} more in Today ›</button>` : '');
+@@ -499,7 +501,7 @@ async function renderOverview(body) {
+     }
+     fill('people', h);
+     fill('brain', !td.brain ? '<div class="muted">No second brain is set in config.json.</div>'
+-      : td.brain.found === false ? missingFolder(td.brain.path, 'second_brain')
++      : td.brain.found === false ? missingFolder(td.brain.path, 'second_brain', td.brain.refused)
+         : `<div class="kv"><span class="muted">Notes moved (3 days)</span><b>${td.brain.moved.length}</b><span class="muted">Left unfinished</span><b>${td.brain.open.length}</b><span class="muted">Daily note today</span><b>${td.brain.daily ? 'yes' : 'no'}</b></div>`);
+   }));
+   jobs.push(safe('/api/inbox').then(ib => {
+diff --git a/jeeves/vaults.py b/jeeves/vaults.py
+index 3905cd7..c9b7bcb 100644
+--- a/jeeves/vaults.py
++++ b/jeeves/vaults.py
+@@ -6,7 +6,9 @@ checked to be inside the vault it names, so a crafted address such as
+ `../../secret.txt` is refused rather than served.
+ """
+ 
++import os
+ import re
++import sys
+ from datetime import datetime, timedelta
+ from pathlib import Path
+ 
+@@ -18,6 +20,26 @@ MAX_FILES = 4000
+ MAX_BYTES = 400_000
+ 
+ 
++def refused(root):
++    """macOS's refusal of a folder, in words, or "" (Mac only).
++
++    A program that starts by itself on a Mac (Jeeves' start-up file) may be refused the
++    Documents folder with "Operation not permitted". Python then reads the folder as not
++    there, so the page said the vault was missing when it was where it should be."""
++    if sys.platform != "darwin":
++        return ""
++    try:
++        os.listdir(root)
++    except PermissionError:
++        return ("macOS refused access to %s. Jeeves cannot read it, so nothing below is a real "
++                "answer. A program that starts by itself may be refused the Documents folder: move "
++                "the folder out of Documents, for example to %s, and put its new place in "
++                "config.json." % (root, Path.home() / "Second Brain"))
++    except OSError:
++        return ""
++    return ""
++
++
+ def _vault_map(cfg):
+     return {k: (label, p) for k, label, p in C.vaults(cfg)}
+ 
+@@ -25,7 +47,9 @@ def _vault_map(cfg):
+ def listing(cfg):
+     out = []
+     for key, label, p in C.vaults(cfg):
+-        out.append({"key": key, "label": label, "path": str(p), "exists": p.is_dir()})
++        no = refused(p)
++        out.append({"key": key, "label": label, "path": str(p), "exists": False if no else p.is_dir(),
++                    "refused": no})
+     return out
+ 
+ 
+@@ -46,8 +70,9 @@ def tree(cfg, key):
+     if key not in vm:
+         return {"error": "unknown vault"}
+     label, root = vm[key]
+-    if not root.is_dir():
+-        return {"key": key, "label": label, "exists": False, "files": []}
++    no = refused(root)
++    if no or not root.is_dir():
++        return {"key": key, "label": label, "exists": False, "files": [], "refused": no}
+     files = []
+     for p, rel in _md_files(root):
+         try:
+@@ -201,7 +226,10 @@ def today(cfg, now=None):
+     if "crm" in vm:
+         root = vm["crm"][1]
+         page = root / "Today.md"
+-        if page.is_file():
++        no = refused(root)
++        if no:
++            out["crm"] = {"found": False, "exists": False, "vault": str(root), "refused": no, "hint": no}
++        elif page.is_file():
+             out["crm"] = {"found": True, "exists": True, "vault": str(root), "path": "Today.md",
+                           "text": page.read_text(encoding="utf-8", errors="replace")[:MAX_BYTES],
+                           "built": datetime.fromtimestamp(page.stat().st_mtime).strftime("%a %d %b %H:%M")}
+@@ -211,12 +239,15 @@ def today(cfg, now=None):
+                                   "in config.json." % root}
+         else:
+             out["crm"] = {"found": False, "exists": True, "vault": str(root),
+-                          "hint": "No Today.md yet. In your CRM folder run: python _engine/today.py --write"}
++                          "hint": "No Today.md yet. In your CRM folder run: %s _engine/today.py --write"
++                                  % ("python3" if sys.platform == "darwin" else "python")}
+ 
+     if "brain" in vm:
+         root = vm["brain"][1]
+-        b = {"found": root.is_dir(), "path": str(root), "daily": None, "moved": [], "open": []}
+-        if root.is_dir():
++        no = refused(root)
++        b = {"found": False if no else root.is_dir(), "path": str(root), "daily": None, "moved": [],
++             "open": [], "refused": no}
++        if b["found"]:
+             dn = _daily_note(cfg, root, now)
+             if dn:
+                 b["daily"] = {"path": dn.relative_to(root).as_posix(),
+diff --git a/start.py b/start.py
+index 18e3914..f0c8d80 100644
+--- a/start.py
++++ b/start.py
+@@ -123,7 +123,7 @@ def main(argv=None):
+         print("  " + broken)
+         return 1
+     if not cfg.get("second_brain"):
+-        print("  No config.json yet. Run:  python install.py")
++        print("  No config.json yet. Run:  %s install.py" % C.PY)
+         return 1
+     try:
+         srv = make_server(a.port, cfg_file)
+@@ -134,7 +134,7 @@ def main(argv=None):
+             url = "http://127.0.0.1:%d/" % int(port)
+             print("  Jeeves is already running at %s (process %d). Not starting a second copy."
+                   % (url, h["pid"]))
+-            print("  To stop it:  python start.py --stop")
++            print("  To stop it:  %s start.py --stop" % C.PY)
+             if not a.no_open:
+                 try:
+                     webbrowser.open(url)
+@@ -142,7 +142,7 @@ def main(argv=None):
+                     pass
+             return 0
+         print("  Could not listen on port %s: %s" % (port, exc))
+-        print("  Another program is using it. Try:  python start.py --port %d" % free_port(port))
++        print("  Another program is using it. Try:  %s start.py --port %d" % (C.PY, free_port(port)))
+         return 1
+     port = srv.server_address[1]
+     C.atomic_write(pid_file(), "%d %d\n" % (os.getpid(), port))

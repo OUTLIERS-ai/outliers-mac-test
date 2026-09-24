@@ -1,0 +1,378 @@
+diff --git a/tests/mac/mac_app_links.py b/tests/mac/mac_app_links.py
+new file mode 100644
+index 0000000..48f79f0
+--- /dev/null
++++ b/tests/mac/mac_app_links.py
+@@ -0,0 +1,35 @@
++# -*- coding: utf-8 -*-
++"""Mac only (wave 0b fault, build plan V3 row list): Jeeves' Work board and FleetView links must
++lead a Mac member to the Mac repos.
++
++The panels for the Work board (ProjectForge) and FleetView link to the repo to download when the
++app is not running. They named the Windows repos, whose guides print Windows commands. On a Mac
++they name the Mac copy of each (its name ends in -mac).
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_app_links.py
++"""
++import importlib
++import json
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac repo links")
++WANT = {"projectforge": "https://github.com/OUTLIERS-ai/outliers-ws-03-projectforge-mac",
++        "fleetview": "https://github.com/OUTLIERS-ai/outliers-ws-02-fleetview-mac"}
++
++
++def test_the_installer_writes_the_mac_links(world, tmp_path, monkeypatch):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    apps = json.loads(cfg.read_text(encoding="utf-8"))["apps"]
++    assert {k: v["repo"] for k, v in apps.items()} == WANT
++
++
++def test_the_built_in_settings_name_the_mac_links():
++    from jeeves import config as C
++    assert {k: v["repo"] for k, v in C.DEFAULTS["apps"].items()} == WANT
+diff --git a/tests/mac/mac_finds_claude_in_local_bin.py b/tests/mac/mac_finds_claude_in_local_bin.py
+new file mode 100644
+index 0000000..7d3a679
+--- /dev/null
++++ b/tests/mac/mac_finds_claude_in_local_bin.py
+@@ -0,0 +1,60 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 12, build plan V3): the installer must find Claude Code in ~/.local/bin.
++
++Claude Code's own installer puts `claude` in ~/.local/bin and, on GitHub's Intel test Mac
++(2026-09-24), told the member to add that folder to ~/.bash_profile, which a Mac's shell (zsh)
++never reads. So `claude` was installed but not found by name, and Jeeves' installer refused:
++"Claude Code is not installed, or not on your PATH. Nothing has been changed."
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_finds_claude_in_local_bin.py
++"""
++import importlib
++import json
++import os
++import stat
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Claude Code's Mac install folder")
++
++
++def fake_claude(folder):
++    folder.mkdir(parents=True)
++    c = folder / "claude"
++    c.write_text("#!/bin/sh\necho '2.1.280 (Claude Code)'\n", encoding="utf-8")
++    c.chmod(c.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
++    return c
++
++
++@pytest.mark.parametrize("where", [".local/bin", ".claude/local"])
++def test_claude_off_the_path_is_found_where_its_installer_puts_it(world, fake_home, tmp_path, monkeypatch,
++                                                                   capsys, where):
++    fake_claude(fake_home.joinpath(*where.split("/")))
++    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")  # a Terminal that lacks that folder
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    rc = install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--port", "4556", "--yes"])
++    out = capsys.readouterr().out
++    assert rc == 0, out
++    assert "not installed" not in out
++    assert "Found Claude Code" in out and "2.1.280" in out
++    assert cfg.exists()
++
++
++def test_with_no_claude_anywhere_it_still_refuses(world, fake_home, tmp_path, monkeypatch, capsys):
++    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    if os.path.exists("/usr/local/bin/claude") or os.path.exists("/opt/homebrew/bin/claude"):
++        pytest.skip("this Mac has claude in a folder the test cannot take off the PATH")
++    rc = install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes"])
++    assert rc == 1
++    assert "not installed" in capsys.readouterr().out
++    assert not cfg.exists()
+diff --git a/tests/mac/mac_printed_commands_python3.py b/tests/mac/mac_printed_commands_python3.py
+new file mode 100644
+index 0000000..131abf5
+--- /dev/null
++++ b/tests/mac/mac_printed_commands_python3.py
+@@ -0,0 +1,54 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 18, build plan V3): what Jeeves prints must never tell a Mac member to type `python`.
++
++A Mac has `python3` and no plain `python`. On GitHub's test Macs (wave 0a M7, 2026-09-24) the
++installer ended with "Done. Start it now:  python start.py", which fails there with "command not
++found". Windows keeps `python`.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_printed_commands_python3.py
++"""
++import importlib
++import json
++import re
++import subprocess
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def bad(text):
++    # "nothing to pip install" is a sentence, not a command
++    return [ln for ln in text.splitlines() if COMMAND.search(ln.replace("nothing to pip install", ""))]
++
++
++def test_the_installer_says_python3(world, tmp_path, monkeypatch, capsys):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    cfg = tmp_path / "out" / "config.json"
++    monkeypatch.setenv("JEEVES_CONFIG", str(cfg))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    assert install.main(["--copy", str(tmp_path / "jeeves-trial")]) == 0
++    out = capsys.readouterr().out
++    assert "python3 start.py" in out
++    assert bad(out) == [], bad(out)
++
++
++def test_start_says_python3(tmp_path):
++    empty = tmp_path / "config.json"
++    empty.write_text("{}", encoding="utf-8")
++    r = subprocess.run([sys.executable, str(ROOT / "start.py"), "--no-open", "--config", str(empty)],
++                       capture_output=True, text=True, timeout=60)
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
++    broken = tmp_path / "broken.json"
++    broken.write_text("{ not json", encoding="utf-8")
++    r = subprocess.run([sys.executable, str(ROOT / "start.py"), "--no-open", "--config", str(broken)],
++                       capture_output=True, text=True, timeout=60)
++    assert "python3 install.py" in r.stdout
++    assert bad(r.stdout) == [], r.stdout
+diff --git a/tests/mac/mac_server_starts_quickly.py b/tests/mac/mac_server_starts_quickly.py
+new file mode 100644
+index 0000000..00f8d2e
+--- /dev/null
++++ b/tests/mac/mac_server_starts_quickly.py
+@@ -0,0 +1,36 @@
++"""Fault row 11 (build plan V3): Jeeves must not wait 35 seconds for a name look-up before it answers.
++
++Measured 2026-09-24 on all 3 of GitHub's test Macs: Python's socket.getfqdn("127.0.0.1") took
++35 seconds on every call, and Python's web server calls it once when it starts, only to fill in a
++name nothing here uses. So Jeeves answered 35 seconds after it started, and the checks that wait
++15 seconds for it failed (tests/test_fixes.py::test_stop_stops_a_real_jeeves, whose stop found no running record yet and so looked only at the port in the settings file). The server now starts with no name look-up.
++
++This check makes the look-up slow on purpose (30 seconds), so it shows the fault on any computer,
++then times how long the server takes to start. It is kept in tests/mac/ and named mac_*.py so a
++plain `python -m pytest -q` never runs it and the counts the guides print stay true. Run by name:
++  python3 -m pytest -q tests/mac/mac_server_starts_quickly.py
++"""
++import subprocess
++import sys
++import textwrap
++from pathlib import Path
++
++KIT = Path(__file__).resolve().parents[2]
++
++
++def test_the_server_starts_without_waiting_for_a_name_look_up():
++    code = textwrap.dedent('''
++        import socket, sys, time
++        sys.path.insert(0, {kit!r})
++        socket.getfqdn = lambda *a, **k: (time.sleep(30), "slow.example")[1]
++        t = time.time()
++        from jeeves.server import JeevesServer, Handler
++        srv = JeevesServer(("127.0.0.1", 0), Handler)
++        print("started in %.1f seconds" % (time.time() - t))
++        srv.server_close()
++    ''').format(kit=str(KIT))
++    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
++                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    assert r.returncode == 0, r.stdout + r.stderr
++    took = float(r.stdout.split("started in ")[1].split()[0])
++    assert took < 5, "the server took %.1f seconds to start: it waited for the name look-up" % took
+diff --git a/tests/mac/mac_today_names_python3.py b/tests/mac/mac_today_names_python3.py
+new file mode 100644
+index 0000000..ea8ae0f
+--- /dev/null
++++ b/tests/mac/mac_today_names_python3.py
+@@ -0,0 +1,42 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 10, build plan V3): the Today panel must not tell a Mac member to type `python`.
++
++With no Today.md in the CRM folder, the Today panel said "In your CRM folder run: python
++_engine/today.py --write" (jeeves/vaults.py) and the overview card said the same
++(jeeves/static/app.js), on every computer (seen on GitHub's test Macs, 2026-09-24). A Mac has
++python3 and no python.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_today_names_python3.py
++"""
++import re
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def test_the_today_panel_says_python3(tmp_path):
++    from jeeves import vaults
++    crm = tmp_path / "CRM"
++    crm.mkdir()
++    brain = tmp_path / "Second Brain"
++    brain.mkdir()
++    out = vaults.today({"crm_vault": str(crm), "second_brain": str(brain)})
++    hint = out["crm"]["hint"]
++    assert "python3 _engine/today.py --write" in hint
++    assert not COMMAND.search(hint), hint
++
++
++def test_the_page_is_told_which_python_to_print(tmp_path):
++    from jeeves.server import public_config
++    assert public_config({})["python"] == "python3"
++
++
++def test_the_overview_card_prints_the_python_the_page_is_told():
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "<code>python _engine/today.py" not in js
++    assert "CFG.python" in js
+diff --git a/tests/mac/mac_vault_lookup.py b/tests/mac/mac_vault_lookup.py
+new file mode 100644
+index 0000000..e85ec14
+--- /dev/null
++++ b/tests/mac/mac_vault_lookup.py
+@@ -0,0 +1,30 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 23, build plan V3): on a Mac, Jeeves suggests ~/Second Brain first.
++
++macOS may refuse a program that starts by itself access to ~/Documents, so the Mac guides put the
++Second Brain at ~/Second Brain. The installer looked in ~/Documents/Second Brain first. Windows
++keeps its own order, unchanged.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_lookup.py
++"""
++import importlib
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac look-up order")
++
++
++def test_second_brain_outside_documents_comes_first(fake_home):
++    for p in (fake_home / "Second Brain", fake_home / "Documents" / "Second Brain"):
++        p.mkdir(parents=True)
++    import install
++    importlib.reload(install)
++    assert install.guess_brain() == str(fake_home / "Second Brain")
++
++
++def test_documents_is_still_found_when_it_is_the_only_one(fake_home):
++    (fake_home / "Documents" / "Second Brain").mkdir(parents=True)
++    import install
++    importlib.reload(install)
++    assert install.guess_brain() == str(fake_home / "Documents" / "Second Brain")
+diff --git a/tests/mac/mac_vault_refusal_shown.py b/tests/mac/mac_vault_refusal_shown.py
+new file mode 100644
+index 0000000..6b5a3e4
+--- /dev/null
++++ b/tests/mac/mac_vault_refusal_shown.py
+@@ -0,0 +1,79 @@
++# -*- coding: utf-8 -*-
++"""Mac only (fault row 20, build plan V3): when macOS refuses a vault, Jeeves' page says so.
++
++A program that starts by itself on a Mac (Jeeves' start-up file) may be refused the Documents
++folder with "Operation not permitted". Python then reads the folder as not there, so the page said
++"Your second brain folder is not there" about a vault that was where it should be. It must say
++"macOS refused access to <folder>", and never that the vault is missing.
++
++GitHub's test Macs cannot show a real refusal (System Integrity Protection is off there, wave 0a
++M5), so the first check makes reading the vault raise the error macOS gives, and the second uses
++a folder this user may not read, which the test Macs do refuse.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_refusal_shown.py
++"""
++import errno
++import os
++import sys
++from pathlib import Path
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS folder refusal")
++
++
++def said_plainly(text, folder):
++    return "macOS refused access to" in text and str(folder) in text and "not there" not in text
++
++
++def check_every_view(cfg, crm, brain):
++    from jeeves import vaults
++    today = vaults.today(cfg)
++    assert today["crm"]["exists"] is False and said_plainly(today["crm"]["refused"], crm), today["crm"]
++    assert today["brain"]["found"] is False and said_plainly(today["brain"]["refused"], brain), today["brain"]
++    listed = {v["key"]: v for v in vaults.listing(cfg)}
++    assert said_plainly(listed["brain"]["refused"], brain) and listed["brain"]["exists"] is False
++    tree = vaults.tree(cfg, "brain")
++    assert tree["exists"] is False and said_plainly(tree["refused"], brain)
++
++
++def test_operation_not_permitted_is_reported_as_a_refusal(tmp_path, monkeypatch):
++    crm = tmp_path / "Documents" / "CRM"
++    brain = tmp_path / "Documents" / "Second Brain"
++    for v in (crm, brain):
++        v.mkdir(parents=True)
++    refused = {crm, brain}
++    real_listdir, real_is_dir, real_is_file = os.listdir, Path.is_dir, Path.is_file
++
++    def no_listdir(p="."):
++        if Path(p) in refused:
++            raise PermissionError(errno.EPERM, "Operation not permitted", str(p))
++        return real_listdir(p)
++
++    monkeypatch.setattr(os, "listdir", no_listdir)
++    # What Python answers for a folder macOS refuses, and for anything inside it: not there.
++    monkeypatch.setattr(Path, "is_dir", lambda self, **kw: False if (self in refused or self.parent in refused)
++                        else real_is_dir(self, **kw))
++    monkeypatch.setattr(Path, "is_file", lambda self, **kw: False if self.parent in refused
++                        else real_is_file(self, **kw))
++    check_every_view({"crm_vault": str(crm), "second_brain": str(brain)}, crm, brain)
++
++
++def test_a_folder_this_user_may_not_open_is_reported_as_a_refusal(tmp_path):
++    crm = tmp_path / "CRM"
++    brain = tmp_path / "Second Brain"
++    for v in (crm, brain):
++        v.mkdir()
++        v.chmod(0)
++    try:
++        check_every_view({"crm_vault": str(crm), "second_brain": str(brain)}, crm, brain)
++    finally:
++        for v in (crm, brain):
++            v.chmod(0o755)
++
++
++def test_the_page_shows_the_refusal_instead_of_missing():
++    from conftest import ROOT
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "function missingFolder(path, setting, refused)" in js
++    assert js.count("missingFolder(") >= 5 and "t.refused" in js
