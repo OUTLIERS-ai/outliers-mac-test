@@ -1,3 +1,63 @@
+diff --git a/jeeves/proc.py b/jeeves/proc.py
+index a1a3e8c..307dba2 100644
+--- a/jeeves/proc.py
++++ b/jeeves/proc.py
+@@ -32,15 +32,51 @@ def kill_tree(pid):
+         r = subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True,
+                            creationflags=NO_WINDOW)
+         return r.returncode == 0
++    # The whole process group, but never the caller's own: a Jeeves started by a script
++    # or a check (not typed in Terminal) shares its caller's group, and ending that group
++    # ended the caller as well (GitHub's test Macs, 2026-09-24: the test run itself was
++    # ended). Then the program and its children are ended one by one instead.
+     try:
+-        os.killpg(os.getpgid(pid), signal.SIGKILL)
+-        return True
++        group = os.getpgid(pid)
+     except (OSError, AttributeError):
++        group = None
++    if group is not None and group != os.getpgrp():
+         try:
+-            os.kill(pid, signal.SIGKILL)
++            os.killpg(group, signal.SIGKILL)
+             return True
+         except OSError:
+-            return False
++            pass
++    sent = False
++    for p in _descendants(pid) + [pid]:
++        if p == os.getpid():
++            continue
++        try:
++            os.kill(p, signal.SIGKILL)
++            sent = True
++        except OSError:
++            pass
++    return sent
++
++
++def _descendants(pid):
++    """Every program started by this one, and by those, and so on (Mac and Linux)."""
++    try:
++        out = subprocess.run(["ps", "-A", "-o", "pid=,ppid="], capture_output=True, text=True,
++                             timeout=10, creationflags=NO_WINDOW).stdout or ""
++    except (OSError, subprocess.TimeoutExpired):
++        return []
++    children = {}
++    for line in out.splitlines():
++        parts = line.split()
++        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
++            children.setdefault(int(parts[1]), []).append(int(parts[0]))
++    found, todo = [], [int(pid)]
++    while todo:
++        for kid in children.get(todo.pop(), []):
++            if kid not in found:
++                found.append(kid)
++                todo.append(kid)
++    return found
+ 
+ 
+ def alive(pid):
 diff --git a/jeeves/server.py b/jeeves/server.py
 index f850991..e9be9db 100644
 --- a/jeeves/server.py
