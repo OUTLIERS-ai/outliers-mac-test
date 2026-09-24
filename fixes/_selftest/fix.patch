@@ -1,0 +1,7 @@
+diff --git a/SELFTEST-MARKER b/SELFTEST-MARKER
+new file mode 100644
+index 0000000..e95697c
+--- /dev/null
++++ b/SELFTEST-MARKER
+@@ -0,0 +1 @@
++fix-check self-test

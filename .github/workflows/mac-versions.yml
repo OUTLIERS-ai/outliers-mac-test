@@ -1,0 +1,121 @@
+name: Mac versions member test
+
+# Build plan V3, section 9a (wave 0b): the strict Mac member test on 5 jobs.
+#   3 clean set-ups     macos-15, macos-26 (Apple Silicon), macos-15-intel: python.org Python,
+#                       nodejs.org Node.js, no Homebrew on PATH (setup/clean.sh)
+#   2 Homebrew set-ups  macos-15, macos-15-intel: order A then order B in the same job
+#                       (setup/homebrew.sh)
+# Every step runs exactly as printed (MACTEST_STRICT=1: no stand-in command, no private Python
+# folder no step made) in a fresh login shell (MACTEST_LOGIN=1). Every printed output is then
+# scanned for Windows commands and words (harness/scan_output.py).
+# From wave 3 the repo is a published `-mac` repo; in wave 0b it is a Windows repo, recorded as
+# the starting point. Started by hand only. No secret is used or needed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Repo to test"
+        required: false
+        default: "outliers-crm-02-rules"
+
+permissions:
+  contents: read
+
+jobs:
+  clean:
+    name: ${{ inputs.repo }} clean on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - name: Clean set-up
+        run: bash _mactest/setup/clean.sh "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/setup-clean.log"; exit ${PIPESTATUS[0]}
+      - name: Strict member test
+        env:
+          MAC_LABEL: ${{ matrix.os }}-clean
+          MACTEST_STRICT: "1"
+          MACTEST_LOGIN: "1"
+        run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
+      - name: Scan every printed output
+        if: always()
+        run: /usr/bin/python3 _mactest/harness/scan_output.py "$RUNNER_TEMP/out"
+      - name: Keep the record
+        if: always()
+        run: cp "$RUNNER_TEMP/setup-clean.log" "$RUNNER_TEMP/out/" 2>/dev/null; true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macv-${{ inputs.repo }}--${{ matrix.os }}-clean
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+
+  homebrew:
+    name: ${{ inputs.repo }} Homebrew on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - name: Homebrew set-up, order A
+        run: bash _mactest/setup/homebrew.sh A "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/out-setup-A.log"; exit ${PIPESTATUS[0]}
+      - name: Strict member test, order A
+        env:
+          MAC_LABEL: ${{ matrix.os }}-homebrew-A
+          MACTEST_STRICT: "1"
+          MACTEST_LOGIN: "1"
+        run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
+      - name: Homebrew set-up, order B
+        if: always()
+        run: bash _mactest/setup/homebrew.sh B "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/out-setup-B.log"; exit ${PIPESTATUS[0]}
+      - name: Strict member test, order B
+        if: always()
+        env:
+          MAC_LABEL: ${{ matrix.os }}-homebrew-B
+          MACTEST_STRICT: "1"
+          MACTEST_LOGIN: "1"
+        run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
+      - name: Scan every printed output
+        if: always()
+        run: /usr/bin/python3 _mactest/harness/scan_output.py "$RUNNER_TEMP/out"
+      - name: Keep the record
+        if: always()
+        run: cp "$RUNNER_TEMP"/out-setup-*.log "$RUNNER_TEMP/out/" 2>/dev/null; true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macv-${{ inputs.repo }}--${{ matrix.os }}-homebrew
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+
+  harness-tests:
+    name: Harness tests, and each proved red on purpose
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Green with the rules in place
+        run: /usr/bin/python3 -m unittest -v harness/tests/test_strict_no_venv.py harness/tests/test_login_shell.py
+      - name: Red with each rule removed
+        run: |
+          for tag in STRICT-RULE-A STRICT-RULE-B LOGIN-RULE; do
+            d="$RUNNER_TEMP/no-$tag"; mkdir -p "$d"
+            grep -v "$tag" harness/mactest.py > "$d/mactest.py"; cp harness/specs.py "$d/"
+            case "$tag" in LOGIN-RULE) t=harness/tests/test_login_shell.py;; *) t=harness/tests/test_strict_no_venv.py;; esac
+            if MACTEST_DIR="$d" /usr/bin/python3 -m unittest -v "$t"; then
+              echo "RESULT $tag removed: still green (the test does not catch it)"; exit 1
+            else
+              echo "RESULT $tag removed: red, as it must be"
+            fi
+          done

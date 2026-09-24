@@ -1,0 +1,32 @@
+name: Mac repos drift backstop
+
+# Build plan V3, section 7f: once a week, is every published `-mac` repo still made from its
+# Windows repo's current main? The real check runs on Ashley's PC before every macgen and publish
+# run; this is the backstop. GitHub switches off a clock like this after 60 days with no activity
+# in the repo, so the date of the last green run is kept in the record (drift.json) and printed
+# in each send-folder README. No secret is used or needed.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests of the verdict
+        run: python3 -m unittest -v harness/tests/test_drift.py
+      - name: Check every pair
+        run: python3 harness/drift.py "$RUNNER_TEMP/out"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift
+          path: ${{ runner.temp }}/out/
+          retention-days: 90

@@ -64,3 +64,12 @@ secret, and this repo stores none, so it is left out on purpose.
 | `harness/windows_words.py` | The Windows-word rules, as a scanner with its own self-test |
 | `harness/help_sweep.py` | Runs each command-line program in a repo with `--help` and keeps the output |
 | `harness/tests/test_strict_no_venv.py` | Proves a strict run (`MACTEST_STRICT=1`) never makes a private Python folder no step made |
+| `.github/workflows/mac-versions.yml` | The strict Mac member test on 5 jobs: 3 clean Macs (python.org Python, nodejs.org Node.js, no Homebrew on PATH) and 2 Macs that already have Homebrew, each tried in both install orders. Every step exactly as printed, in a fresh login shell, then every printed output scanned for Windows words. Started by hand |
+| `setup/clean.sh`, `setup/homebrew.sh` | The 2 ways a test Mac is made like a member's Mac before that test |
+| `harness/check_no_windows.py` | The Windows-word rules (a byte-for-byte copy of the one the Mac versions are built with) |
+| `harness/scan_output.py` | Runs those rules over every printed output of a member test |
+| `harness/tests/test_login_shell.py` | Proves a login-shell run (`MACTEST_LOGIN=1`) gives each step only what a new Terminal window has |
+| `.github/workflows/fix-check.yml`, `fixes/` | Proves a fix from 2 patch files: the new test must fail on the downloaded repo, then pass once the fix is applied, on 3 Macs and Windows. Nothing is pushed anywhere. `fixes/_selftest` proves the workflow itself; `fixes/_selftest-no-red` must fail it |
+| `.github/workflows/win-test.yml`, `harness/wintest.py` | The same member steps on GitHub's Windows machine, exactly as printed, in PowerShell |
+| `.github/workflows/drift.yml`, `harness/drift.py` | Weekly: is each Mac version still made from its Windows repo's current version? |
+| `harness/public_repos.txt` | The 25 public repos; nothing else may be named in a fix |

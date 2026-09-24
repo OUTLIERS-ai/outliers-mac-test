@@ -43,6 +43,13 @@ TAIL = int(os.environ.get("MACTEST_TAIL", "4000"))  # wave 0a M7 keeps whole out
 # step makes one. Off unless MACTEST_STRICT=1, so the baseline run is unchanged.
 STRICT = os.environ.get("MACTEST_STRICT") == "1"
 
+# Login-shell run (build plan V3, section 9a, wave 0b): every step starts in a fresh login shell
+# with nothing but HOME, USER, LOGNAME, SHELL and TERM set, as `env -i ... /bin/zsh -l -i -c`
+# does, so PATH comes only from the Mac's own files (/etc/paths, /etc/paths.d, /etc/zprofile)
+# and the member's ~/.zprofile and ~/.zshrc, never from the test Mac's own settings.
+# Off unless MACTEST_LOGIN=1, so the baseline run is unchanged.
+LOGIN = os.environ.get("MACTEST_LOGIN") == "1"
+
 STATE = {"venv": None, "bg": [], "plists_before": set(), "plists": [], "shots": []}
 
 
@@ -76,6 +83,26 @@ def env_for_step(extra=None):
     return env
 
 
+def login_env(env_extra=None):
+    """The whole environment of a fresh login shell: the 5 names a new Terminal window starts
+    with, the harness's record folder (OUT, never read by a member step), and the step's own
+    settings. Nothing else from the test Mac comes through."""
+    user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+    env = {"HOME": str(HOME), "USER": user, "LOGNAME": user, "SHELL": "/bin/zsh", "TERM": "xterm-256color"}
+    if os.environ.get("OUT"):
+        env["OUT"] = os.environ["OUT"]
+    for k, v in (env_extra or {}).items():
+        env[k] = os.path.expanduser(v)
+    return env
+
+
+def shell_argv(cmd, env_extra=None):
+    """(argv, env) for 1 command line: a login shell in a login-shell run, else as before."""
+    if LOGIN:  # LOGIN-RULE
+        return ["/bin/zsh", "-l", "-i", "-c", cmd], login_env(env_extra)  # LOGIN-RULE
+    return ["/bin/zsh", "-c", cmd], env_for_step(env_extra)
+
+
 def run_shell(cmd, cwd, stdin="", timeout=600, env_extra=None):
     """Run one command line through zsh, as Terminal would. Returns (code, output, seconds)."""
     t0 = time.time()
@@ -83,9 +110,10 @@ def run_shell(cmd, cwd, stdin="", timeout=600, env_extra=None):
         os.makedirs(cwd, exist_ok=True)
     except OSError:
         pass
-    proc = subprocess.Popen(["/bin/zsh", "-c", cmd], cwd=cwd, stdin=subprocess.PIPE,
+    argv, env = shell_argv(cmd, env_extra)
+    proc = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                            env=env_for_step(env_extra), start_new_session=True)
+                            env=env, start_new_session=True)
     try:
         out, _ = proc.communicate(input=stdin, timeout=timeout)
         code = proc.returncode
@@ -363,11 +391,11 @@ def run_bg(step, ctx):
         cands = cands[:1]  # STRICT-RULE-C
     for label, cmd in cands:
         STATE["as_printed"] = (label == "as printed")
-        env = env_for_step(step.get("env"))
+        argv, env = shell_argv(cmd, step.get("env"))
         STATE["as_printed"] = False
         logf = ctx["out"] / ("bg-%s-%s.log" % (step["id"], len(attempts)))
         fh = open(logf, "w")
-        proc = subprocess.Popen(["/bin/zsh", "-c", cmd], cwd=expand(step.get("cwd"), ctx), stdin=subprocess.PIPE,
+        proc = subprocess.Popen(argv, cwd=expand(step.get("cwd"), ctx), stdin=subprocess.PIPE,
                                 stdout=fh, stderr=subprocess.STDOUT, text=True, env=env, start_new_session=True)
         up = wait_for_url(step["url"], step.get("wait", 60))
         rec = {"label": label, "command": cmd, "url": step["url"], "http_status": up}
@@ -405,11 +433,11 @@ def run_interactive(step, ctx):
         logf = ctx["out"] / ("int-%s-%s.log" % (step["id"], len(attempts)))
         fh = open(logf, "w")
         STATE["as_printed"] = (label == "as printed")
-        env = env_for_step(step.get("env"))
+        argv, env = shell_argv(cmd, step.get("env"))
         STATE["as_printed"] = False
         # `script` gives the command a real terminal, as Terminal.app does; without one the
         # sign-in commands refuse ("needs you at the keyboard").
-        proc = subprocess.Popen(["/usr/bin/script", "-q", "/dev/null", "/bin/zsh", "-c", cmd],
+        proc = subprocess.Popen(["/usr/bin/script", "-q", "/dev/null"] + argv,
                                 cwd=expand(step.get("cwd"), ctx), stdin=subprocess.PIPE,
                                 stdout=fh, stderr=subprocess.STDOUT, text=True, env=env,
                                 start_new_session=True)
@@ -595,7 +623,7 @@ def main():
     spec = specs.get(repo)
     STATE["plists_before"] = list_plists()
     ctx = {"repo": repo, "mac": mac_label, "out": out, "repo_dir": HOME / repo}
-    meta = {"repo": repo, "mac_label": mac_label, "started": now(),
+    meta = {"repo": repo, "mac_label": mac_label, "started": now(), "strict": STRICT, "login_shell": LOGIN,
             "runner_os": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion")}
     _, arch, _ = run_shell("uname -m", "/tmp", "", 10)
     _, ver, _ = run_shell("sw_vers -productVersion", "/tmp", "", 10)

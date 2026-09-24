@@ -1,0 +1,7 @@
+diff --git a/SELFTEST-SECOND b/SELFTEST-SECOND
+new file mode 100644
+index 0000000..e95697c
+--- /dev/null
++++ b/SELFTEST-SECOND
+@@ -0,0 +1 @@
++fix-check self-test

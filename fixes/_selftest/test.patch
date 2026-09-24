@@ -1,0 +1,13 @@
+diff --git a/tests/test_selftest_marker.py b/tests/test_selftest_marker.py
+new file mode 100644
+index 0000000..06d68c1
+--- /dev/null
++++ b/tests/test_selftest_marker.py
+@@ -0,0 +1,7 @@
++"""Self-test of fix-check.yml only: red until SELFTEST-MARKER exists, green after."""
++import sys
++from pathlib import Path
++
++ok = (Path(__file__).resolve().parents[1] / "SELFTEST-MARKER").exists()
++print("SELFTEST-MARKER present" if ok else "SELFTEST-MARKER missing")
++sys.exit(0 if ok else 1)

@@ -1,0 +1,81 @@
+name: Fix check (red, then green)
+
+# Build plan V3, section 6a rule 3 and 6c: a fix is proved from 2 patch files, never on a branch
+# of a member repo. For fixes/<name>/ (repo.txt, test.patch, fix.patch, check.txt):
+#   1. download the member repo's current main
+#   2. apply test.patch, run the check: it must FAIL (red), or the test proves nothing
+#   3. apply fix.patch, run the check again: it must PASS (green)
+# on the 3 test Macs and on windows-latest. Nothing is pushed anywhere.
+# The check line uses $PY: python3 on a Mac, python on Windows.
+# Only the 25 public repos in harness/public_repos.txt may be named; the private content engine
+# is fixed and checked on Ashley's PC only (plan 6a rule 3). fixes/_selftest proves this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      fix:
+        description: "Folder under fixes/"
+        required: false
+        default: "_selftest"
+      os:
+        description: "Machines, comma separated"
+        required: false
+        default: "macos-15,macos-26,macos-15-intel,windows-latest"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        run: |
+          python3 -c "import json,sys; print('matrix=' + json.dumps({'os': [s.strip() for s in sys.argv[1].split(',') if s.strip()]}))" "${{ inputs.os }}" >> "$GITHUB_OUTPUT"
+
+  check:
+    needs: plan
+    name: ${{ inputs.fix }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: "3.13"
+      - name: Red, then green
+        env:
+          FIX: ${{ inputs.fix }}
+        run: |
+          set -u
+          D="_mactest/fixes/$FIX"
+          REPO="$(tr -d '\r\n' < "$D/repo.txt")"
+          grep -qxF "$REPO" _mactest/harness/public_repos.txt || { echo "REFUSED: $REPO is not 1 of the 25 public repos"; exit 1; }
+          if [ "$RUNNER_OS" = "Windows" ]; then export PY=python; else export PY=python3; fi
+          CHECK="$(tr -d '\r' < "$D/check.txt" | head -1)"
+          git -c core.autocrlf=false clone -q "https://github.com/OUTLIERS-ai/$REPO" member
+          cd member
+          echo "member repo $REPO at $(git rev-parse --short HEAD)"
+          git apply --verbose "../$D/test.patch"
+          set +e
+          ( eval "$CHECK" ); RED=$?
+          set -e
+          echo "RESULT after test.patch: exit $RED (must not be 0)"
+          git apply --verbose "../$D/fix.patch"
+          set +e
+          ( eval "$CHECK" ); GREEN=$?
+          set -e
+          echo "RESULT after fix.patch: exit $GREEN (must be 0)"
+          if [ "$RED" != "0" ] && [ "$GREEN" = "0" ]; then echo "RESULT red then green: PROVED"; else echo "RESULT NOT PROVED"; exit 1; fi

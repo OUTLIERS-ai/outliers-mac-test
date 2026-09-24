@@ -1,0 +1,55 @@
+name: Windows member test
+
+# Build plan V3, section 9d: a fix made for the Mac must not break Windows. On GitHub's Windows
+# machine, every step a member types is run exactly as the repo prints it, in PowerShell, with
+# no stand-in command (harness/wintest.py); the counts of the repo's own tests are kept.
+# Ashley's own PC stays the only check of the Startup-folder and scheduled-task routes.
+# Started by hand only. No secret is used or needed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: "Repos, comma separated"
+        required: false
+        default: "outliers-crm-02-rules"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        run: |
+          python3 -c "import json,sys; print('matrix=' + json.dumps({'repo': [s.strip() for s in sys.argv[1].split(',') if s.strip()]}))" "${{ inputs.repos }}" >> "$GITHUB_OUTPUT"
+
+  member:
+    needs: plan
+    name: ${{ matrix.repo }} on windows-latest
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Walk through the repo as a Windows member
+        run: python _mactest/harness/wintest.py "${{ matrix.repo }}" "$env:RUNNER_TEMP/out"
+      - name: Scan every printed output (a record only: Windows words are right on Windows)
+        if: always()
+        run: python _mactest/harness/scan_output.py "$env:RUNNER_TEMP/out"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-${{ matrix.repo }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
