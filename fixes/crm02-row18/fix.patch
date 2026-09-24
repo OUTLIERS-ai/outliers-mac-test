@@ -1,0 +1,94 @@
+diff --git a/crm/identity.py b/crm/identity.py
+index 6157b41..0ae777a 100644
+--- a/crm/identity.py
++++ b/crm/identity.py
+@@ -51,6 +51,10 @@ import sys
+ import unicodedata
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ _FRONT = re.compile(r"^\ufeff?---\s*\n(.*?)\n---", re.S)
+ _URL_IN = re.compile(r"(?:https?://)?(?:[\w-]+\.)?linkedin\.com/in/([^/?#\s\"']+)", re.I)
+ _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+@@ -478,7 +482,7 @@ def main(argv):
+             for f in files:
+                 print("      %s" % f)
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/schema.py b/crm/schema.py
+index ebf44bf..0cdf0dd 100644
+--- a/crm/schema.py
++++ b/crm/schema.py
+@@ -38,6 +38,10 @@ from pathlib import Path
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import identity                                    # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ CONTRACT_PATH = Path(__file__).resolve().parent / "_schema" / "person.json"
+ 
+ _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+@@ -244,7 +248,7 @@ def main(argv):
+             lim = int(argv[argv.index("--limit") + 1])
+         _sweep(lim)
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/install.py b/install.py
+index 7536bbd..cfde52d 100644
+--- a/install.py
++++ b/install.py
+@@ -23,6 +23,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 2
+ LAYER_NAME = "The Rules"
+ NEEDS_LAYER = 1
+@@ -313,9 +317,9 @@ them.
+ 
+ Try it:
+ 
+-    python _engine/identity.py stats
+-    python _engine/identity.py who "some name or link"
+-    python _engine/identity.py duplicates
++    {py} _engine/identity.py stats
++    {py} _engine/identity.py who "some name or link"
++    {py} _engine/identity.py duplicates
+ 
+ **The never-dos.** Three prohibitions live in the contract, and nothing overrides
+ them. Never delete a person: park them or mark them, but a deleted record takes its
+@@ -328,7 +332,7 @@ Never let an automation speak as you.
+ in, and whatever you write down about a person goes out of date on its own with
+ nobody touching it. "Spoke to her recently" starts dying the moment you type it.
+ Layer 3 is the difference between a fact and a description.
+-""".format(n=LAYER, name=LAYER_NAME, field=answers["key_field"])
++""".format(n=LAYER, name=LAYER_NAME, field=answers["key_field"], py=PY)
+ 
+ 
+ # ------------------------------------------------------------------------- build
+@@ -443,7 +447,7 @@ def look_at_their_records(home, answers):
+     who = ask("A name, a link or an email address (or Enter to skip)", default="")
+     if not who.strip():
+         say(DIM + "  Skipped. You can run it any time:" + OFF)
+-        say(DIM + "    python _engine/identity.py who \"some name\"" + OFF)
++        say(DIM + "    %s _engine/identity.py who \"some name\"" % PY + OFF)
+         return
+     pid = identity.resolve(who.strip(), index=idx)
+     if not pid:

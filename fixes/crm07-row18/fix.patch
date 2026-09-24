@@ -1,0 +1,51 @@
+diff --git a/install.py b/install.py
+index 04523a1..00d6beb 100644
+--- a/install.py
++++ b/install.py
+@@ -24,6 +24,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 7
+ LAYER_NAME = "What Deserves Today"
+ NEEDS_LAYER = 6
+@@ -219,7 +223,7 @@ def readme(answers, cfg):
+ 
+ **Build the page**
+ 
+-    python _engine/today.py --write
++    %s _engine/today.py --write
+ 
+ It prints the list and writes `Today.md`. Open that before you open your inbox,
+ and work only from it for one morning. That is the whole test of this layer: if
+@@ -262,7 +266,7 @@ the system telling you something.
+ 
+ This layer never writes to the event log, never writes to a person's record, and
+ never sends anything. Ordering is a reading job.
+-""" % (answers["capacity"], w)
++""" % (PY, answers["capacity"], w)
+ 
+ 
+ def layer_note(answers, cfg):
+@@ -334,7 +338,7 @@ def first_run(home, cfg):
+     except Exception as err:
+         say("  Could not build it yet (%s)." % err)
+         say("  Nothing is broken. Run it yourself when you are ready:")
+-        say("      python _engine/today.py --write")
++        say("      %s _engine/today.py --write" % PY)
+         return 0
+     say("  written: %s" % (home / "Today.md"))
+     if not rows:
+@@ -355,7 +359,7 @@ def finish(home, answers, cfg, count):
+     say()
+     say("  Rebuild it any time, from inside %s:" % home)
+     say()
+-    say("      python _engine/today.py --write")
++    say("      %s _engine/today.py --write" % PY)
+     say()
+     say("  What to do now: open Today.md before you open your inbox, and work")
+     say("  only from it for one morning. Nothing else. If the page is worth")

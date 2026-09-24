@@ -1,0 +1,84 @@
+diff --git a/agents/TEMPLATE-agent.md b/agents/TEMPLATE-agent.md
+index f4706d2..e93f788 100644
+--- a/agents/TEMPLATE-agent.md
++++ b/agents/TEMPLATE-agent.md
+@@ -19,9 +19,11 @@ staging: _staging/weak/
+ 
+ # Name it after the job
+ 
+-Copy this file, fill it in, then run the checker over it:
++Copy this file, fill it in, then run the checker over it, from your CRM folder:
+ 
+-    python agent_check.py _agents/your-file.md
++    python3 _engine/agent_check.py _agents/your-file.md
++
++(on Windows: `python _engine/agent_check.py _agents/your-file.md`)
+ 
+ The checker will tell you which parts are missing. It never changes the file.
+ 
+diff --git a/engine/agent_check.py b/engine/agent_check.py
+index a61041f..3592786 100644
+--- a/engine/agent_check.py
++++ b/engine/agent_check.py
+@@ -25,6 +25,10 @@ import re
+ import sys
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # The keys a definition must carry in its front matter (the block between the two
+ # lines of three dashes at the top of the file).
+ REQUIRED_KEYS = ("agent", "job", "reads", "writes", "may-not-write",
+@@ -287,7 +291,7 @@ def main(argv):
+     args = [a for a in argv[1:] if not a.startswith("--")]
+     as_json = "--json" in argv
+     if not args:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+ 
+     files = []
+diff --git a/install.py b/install.py
+index a092add..7997d41 100644
+--- a/install.py
++++ b/install.py
+@@ -24,6 +24,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 5
+ LAYER_NAME = "Judgement"
+ NEEDS_LAYER = 4
+@@ -299,7 +303,7 @@ in `_agents/`; the permissions are the two lists at the top of it.
+ 
+ **Check a definition**
+ 
+-    python _engine/agent_check.py _agents/
++    {py} _engine/agent_check.py _agents/
+ 
+ It reports rule by rule and changes nothing.
+ 
+@@ -324,7 +328,7 @@ verdict points, and does it ever admit it does not know.
+ 
+ Nothing in this layer edits them. There is no code here that writes into your
+ people folder, which is a stronger guarantee than a rule saying it must not.
+-""".format(w=w)
++""".format(w=w, py=PY)
+ 
+ 
+ def layer_note(answers, cfg):
+@@ -430,7 +434,7 @@ def finish(home, answers, cfg):
+     say()
+     say("  Check the example assistant's definition. From inside %s:" % home)
+     say()
+-    say("      python _engine/agent_check.py _agents/")
++    say("      %s _engine/agent_check.py _agents/" % PY)
+     say()
+     say("  It reads the definition and reports rule by rule. It changes nothing.")
+     say()

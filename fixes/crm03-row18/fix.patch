@@ -1,0 +1,117 @@
+diff --git a/crm/derive.py b/crm/derive.py
+index 4af28c8..21cc95c 100644
+--- a/crm/derive.py
++++ b/crm/derive.py
+@@ -45,6 +45,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import ledger                                              # noqa: E402
+ import settings                                            # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # Which events count as an exchange, for counting how much conversation there has
+ # been. One each way is a reply; ten each way is a relationship.
+ EXCHANGE_EVENTS = ("message_sent", "reply_received")
+@@ -233,7 +237,7 @@ def main(argv):
+             print("  ... and %d more" % (len(rows) - 50))
+         if not rows:
+             print("  Nobody, which either means you are on top of it or the log is")
+-            print("  empty. `python ledger.py stats` says which.")
++            print("  empty. `%s ledger.py stats` says which." % PY)
+     elif cmd == "summary":
+         s = summary()
+         total = sum(s["states"].values())
+@@ -248,7 +252,7 @@ def main(argv):
+         for k, v in sorted(s["tiers"].items(), key=lambda x: -x[1]):
+             print("  %-14s %d" % (k, v))
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/ledger.py b/crm/ledger.py
+index e5677ac..99bc80d 100644
+--- a/crm/ledger.py
++++ b/crm/ledger.py
+@@ -52,6 +52,10 @@ from pathlib import Path
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import settings                                            # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # The base vocabulary. Deliberately small and closed. Your own additions come from
+ # `_engine/settings.json`, which the Layer 3 installer wrote from your answers.
+ BASE_TYPES = {
+@@ -251,7 +255,7 @@ def main(argv):
+         for k in sorted(known):
+             print("  %-18s %s" % (k, known[k]))
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/install.py b/install.py
+index c3b1b84..4353e8d 100644
+--- a/install.py
++++ b/install.py
+@@ -27,6 +27,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 3
+ LAYER_NAME = "What You Store"
+ NEEDS_LAYER = 2
+@@ -326,7 +330,7 @@ written, with the raw identifiers kept, and `person` left empty. An event nobody
+ attribute is a gap worth investigating, not something to throw away. Discarding
+ those would make this file look tidier and make every count taken from it wrong.
+ 
+-    python _engine/ledger.py stats
++    {py} _engine/ledger.py stats
+ 
+ tells you how many of those you have.
+ 
+@@ -373,13 +377,13 @@ happened.
+ | `_ledger/events.jsonl` | The log. One line per event. |
+ | `_engine/ledger.py` | Writes and reads it. Refuses an event type nobody agreed on. |
+ | `_engine/derive.py` | Calculates every descriptive field from the log. |
+-| `_engine/settings.json` | Your numbers: the park window, the re-check windows, your own event types. |
++| `_engine/settings.json` | Your numbers: the park window, the re-check periods, your own event types. |
+ 
+ Try it:
+ 
+-    python _engine/ledger.py types
+-    python _engine/ledger.py stats
+-    python _engine/derive.py quiet 60
++    {py} _engine/ledger.py types
++    {py} _engine/ledger.py stats
++    {py} _engine/derive.py quiet 60
+ 
+ **What there is to do now: nothing, honestly.** The calculation is real, but there
+ are no events to calculate from until something starts recording them, and that is
+@@ -389,7 +393,7 @@ admin this whole system exists to avoid.
+ **What it leaves for Layer 4.** A record of events that nobody is writing. If that
+ somebody is you, typing, you have reinvented admin, which is the thing that kills
+ CRMs. Layer 4 fills the log from sources you already own.
+-""".format(n=LAYER, name=LAYER_NAME, park=park)
++""".format(n=LAYER, name=LAYER_NAME, park=park, py=PY)
+ 
+ 
+ # ------------------------------------------------------------------------- build
+@@ -444,7 +448,7 @@ def build(home, answers):
+         lines.append("- `%s` - %s%s"
+                      % (k, known[k], "  (counts as contact)" if k in contact else ""))
+     p = home / "_ledger" / "README.md"
+-    write(p, ledger_readme(answers).format(types="\n".join(lines) or "(none yet)"))
++    write(p, ledger_readme(answers).format(types="\n".join(lines) or "(none yet)", py=PY))
+     note(p, "what the log is and why nothing in it is edited")
+ 
+     p = home / "_layers" / ("Layer %d - %s.md" % (LAYER, LAYER_NAME))

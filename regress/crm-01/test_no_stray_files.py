@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Fault row 1 (build plan V3, section 6b), outliers-crm-01-foundation.
+
+The installer turned on the CRM's history with `git ... >nul 2>&1`. `>nul` is how Windows
+throws output away; on a Mac it makes a file called `nul` in the folder the member ran the
+installer from. This runs the installer as a member does (pressing Enter for every default,
+which says yes to keeping a history), in a throwaway home folder, and checks:
+
+  1. no file called `nul` is left in the folder the installer ran in, or in the CRM;
+  2. the history really was turned on: the CRM's git log holds "Layer 1: foundation",
+     so a fix cannot pass by dropping the history step.
+
+Run from the repo under test:   python3 _mac_regress/test_no_stray_files.py
+"""
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+HERE = Path.cwd()
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def main():
+    work = Path(tempfile.mkdtemp(prefix="crm01-row1-"))
+    try:
+        home = work / "home"
+        home.mkdir()
+        repo = work / "outliers-crm-01-foundation"
+        shutil.copytree(str(HERE), str(repo), ignore=shutil.ignore_patterns(".git", "_mac_regress", "__pycache__"))
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home), PYTHONIOENCODING="utf-8",
+                   GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
+                   GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
+        p = subprocess.run([sys.executable, "install.py"], cwd=str(repo), env=env,
+                           input=("\n" * 60).encode(), capture_output=True, timeout=600,
+                           creationflags=NO_WINDOW)
+        out = (p.stdout + p.stderr).decode("utf-8", "replace")
+        print("installer exit %d" % p.returncode)
+        crm = home / "CRM"
+        if p.returncode != 0 or not (crm / "_layers" / "config.json").exists():
+            print(out[-3000:])
+            print("RESULT FAIL: the installer did not build the CRM")
+            return 1
+
+        # Listed, not asked for by name: on Windows every path ending in `nul` "exists",
+        # because NUL is a device name there, so only a directory listing tells the truth.
+        strays = [str(d / f.name) for d in (repo, crm, home) for f in d.iterdir()
+                  if f.name.lower() == "nul"]
+        for s in strays:
+            print("STRAY FILE | %s" % s)
+
+        log = subprocess.run(["git", "-C", str(crm), "log", "--format=%s"], capture_output=True,
+                             text=True, creationflags=NO_WINDOW)
+        history = "Layer 1: foundation" in log.stdout
+        print("CRM history: %s" % (log.stdout.strip() or log.stderr.strip() or "(none)"))
+        if not history:
+            print("NO HISTORY | the installer said yes to a history but no commit was made")
+        ok = not strays and history
+        print("RESULT %s" % ("PASS" if ok else "FAIL"))
+        return 0 if ok else 1
+    finally:
+        shutil.rmtree(str(work), ignore_errors=True)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

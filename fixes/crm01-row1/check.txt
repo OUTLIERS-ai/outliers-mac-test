@@ -1,0 +1,1 @@
+$PY _mac_regress/test_no_stray_files.py

@@ -1,0 +1,86 @@
+diff --git a/engine/fourbox.py b/engine/fourbox.py
+index 9d1b21f..393f4e2 100644
+--- a/engine/fourbox.py
++++ b/engine/fourbox.py
+@@ -50,6 +50,10 @@ from pathlib import Path
+ 
+ import crm_paths
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # Below this many people in an arm, a percentage is misleading rather than
+ # informative. Not a statistical test: a blunt floor, chosen so that a rate
+ # built from three people never appears on a page next to one built from three
+@@ -226,7 +230,7 @@ def render(box, rate=None):
+ def main(argv):
+     args = [a for a in argv[1:] if not a.startswith("--")]
+     if len(args) < 2:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     within = None
+     if "--within" in argv:
+diff --git a/install.py b/install.py
+index ff16e13..04c37f6 100644
+--- a/install.py
++++ b/install.py
+@@ -22,6 +22,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 8
+ LAYER_NAME = "Is It True And Is It Working"
+ NEEDS_LAYER = 7
+@@ -241,7 +245,7 @@ Two questions, one layer.
+ 
+ ## Is it true
+ 
+-    python _engine/fourbox.py reply_in meeting_booked --within 30
++    %s _engine/fourbox.py reply_in meeting_booked --within 30
+ 
+ Counts all four combinations of a signal and an outcome:
+ 
+@@ -263,7 +267,7 @@ which one moved the other, or whether a third thing moved both.
+ 
+ ## Is it working
+ 
+-    python _engine/watchdog.py
++    %s _engine/watchdog.py
+ 
+ Reads `_schema/expectations.json`, which is yours, and reports the difference
+ between what you said should be true and what is. It never repairs anything. A
+@@ -295,7 +299,7 @@ What you learn here changes the rules in Layer 2 and the collectors in Layer 4.
+ A signal that turns out not to predict anything should stop being ranked in Layer
+ 7. That is not the system being wrong; it is the system being finished, in the
+ sense that a garden is finished.
+-"""
++""" % (PY, PY)
+ 
+ 
+ def layer_note(answers, cfg):
+@@ -382,7 +386,7 @@ def first_run(home):
+         text = watchdog.render(results)
+     except Exception as err:
+         say("  Could not run them yet (%s)." % err)
+-        say("  Run them yourself with: python _engine/watchdog.py")
++        say("  Run them yourself with: %s _engine/watchdog.py" % PY)
+         return 0
+     for line in text.splitlines():
+         say("  " + line)
+@@ -408,8 +412,8 @@ def finish(home, answers, failing):
+     say()
+     say("  From inside %s:" % home)
+     say()
+-    say("      python _engine/watchdog.py")
+-    say("      python _engine/fourbox.py reply_in meeting_booked --within 30")
++    say("      %s _engine/watchdog.py" % PY)
++    say("      %s _engine/fourbox.py reply_in meeting_booked --within 30" % PY)
+     say()
+     say("  What to do now: break something on purpose. Take the identifier off a")
+     say("  record, or put somebody who is held onto the page by hand. Run the")

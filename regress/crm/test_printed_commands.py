@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Fault row 18 (build plan V3, section 6b), CRM layers 2 to 8: what a member reads must name
+the command they can actually type.
+
+Runs the layer the way a member does, in a throwaway home folder:
+  1. the earlier layers, cloned from GitHub and installed (pressing Enter for every default);
+  2. this layer's installer, from the folder this test is run in (the repo under test);
+  3. every command the layer's README prints, then each of its programs with no options,
+     or with "help", which prints its usage;
+and keeps every line printed, plus every note the layer's installer wrote or changed in the CRM.
+
+On a Mac: any of those lines telling the member to type `python` or `pip` (or carrying any other
+section 8f Windows mark) fails the test, because a Mac has no `python` command.
+On Windows: the same lines must still say `python`, and none may say `python3`, so the fix
+cannot change what a Windows member reads.
+
+Run from the repo under test:   python3 _mac_regress/test_printed_commands.py
+It needs the test repo checked out beside it (../_mactest) for the 8f rules, and the network
+for the earlier layers. Nothing outside the throwaway folder is touched.
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+HERE = Path.cwd()
+sys.path.insert(0, str(HERE.parent / "_mactest" / "harness"))
+import check_no_windows as CNW  # noqa: E402
+
+GH = "https://github.com/OUTLIERS-ai/"
+LAYERS = ["outliers-crm-01-foundation", "outliers-crm-02-rules", "outliers-crm-03-records",
+          "outliers-crm-04-capture", "outliers-crm-05-judgement", "outliers-crm-06-safety",
+          "outliers-crm-07-today", "outliers-crm-08-verification"]
+ENTER = "\n" * 60
+MAC = sys.platform == "darwin"
+# Local rehearsal on a Windows PC only: ROW18_AS_MAC=1 judges by the Mac rule, with the programs
+# told they are on a Mac by a sitecustomize.py on PYTHONPATH. The proof is the run on the test Macs.
+if os.environ.get("ROW18_AS_MAC") == "1":
+    MAC = True
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+# What each layer's README tells the member to type once it is installed (run in ~/CRM),
+# as in harness/specs.py, then each program asked for its usage (no options, or "help").
+COMMANDS = {
+    "outliers-crm-02-rules": [
+        ["_engine/identity.py", "stats"], ["_engine/identity.py", "who", "a name"],
+        ["_engine/identity.py", "duplicates"], ["_engine/identity.py", "collisions"],
+        ["_engine/schema.py", "contract"], ["_engine/schema.py", "sweep"],
+        ["_engine/identity.py", "help"], ["_engine/schema.py", "help"]],
+    "outliers-crm-03-records": [
+        ["_engine/ledger.py", "types"], ["_engine/ledger.py", "stats"], ["_engine/ledger.py", "tail", "20"],
+        ["_engine/derive.py", "show", "a name or link"], ["_engine/derive.py", "quiet", "60"],
+        ["_engine/derive.py", "summary"], ["_engine/ledger.py", "help"], ["_engine/derive.py", "help"]],
+    "outliers-crm-04-capture": [
+        ["_engine/collect.py", "list"],
+        ["_engine/collect.py", "run", "connections", "{export}", "--dry-run"],
+        ["_engine/collect.py", "run", "connections", "{export}"],
+        ["_engine/collect.py", "all"], ["_engine/refresh.py", "due"], ["_engine/refresh.py", "tiers"],
+        ["_engine/collect.py", "help"], ["_engine/refresh.py", "help"]],
+    # Layer 4 installs only collect.py, refresh.py and safe_write.py into the CRM; the
+    # ledger.py and derive.py its README also names come from Layer 3 and are judged there.
+    "outliers-crm-05-judgement": [
+        ["_engine/agent_check.py", "_agents/"], ["_engine/agent_check.py"]],
+    "outliers-crm-06-safety": [
+        ["_engine/holds.py", "hold", "Someone You Know", "testing the gate"],
+        ["_engine/sendgate.py", "Someone You Know"],
+        ["_engine/holds.py", "release", "Someone You Know"],
+        ["_engine/limits.py"], ["_engine/holds.py", "help"], ["_engine/holds.py", "status"]],
+    "outliers-crm-07-today": [
+        ["_engine/today.py", "--write"], ["_engine/today.py"]],
+    "outliers-crm-08-verification": [
+        ["_engine/fourbox.py", "reply_in", "meeting_booked", "--within", "30"],
+        ["_engine/watchdog.py"], ["_engine/fourbox.py"]],
+}
+
+
+def env_for(home):
+    env = dict(os.environ)
+    env.update(HOME=str(home), USERPROFILE=str(home), PYTHONIOENCODING="utf-8",
+               GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
+               GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
+    return env
+
+
+def run(args, cwd, env, stdin=None, timeout=900):
+    p = subprocess.run(args, cwd=str(cwd), env=env, input=stdin, capture_output=True,
+                       timeout=timeout, creationflags=NO_WINDOW)
+    out = (p.stdout + p.stderr).decode("utf-8", "replace")
+    return p.returncode, out
+
+
+def snapshot(folder):
+    shot = {}
+    if folder.is_dir():
+        for p in folder.rglob("*.md"):
+            if ".git" in p.parts:
+                continue
+            shot[p] = p.read_bytes()
+    return shot
+
+
+def main():
+    repo = HERE.name
+    # fix-check.yml clones into a folder called "member"; name the layer from its remote.
+    if repo not in LAYERS:
+        try:
+            url = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=str(HERE),
+                                 capture_output=True, text=True, creationflags=NO_WINDOW).stdout.strip()
+            repo = url.rstrip("/").split("/")[-1].replace(".git", "")
+        except OSError:
+            pass
+    if repo not in COMMANDS:
+        print("REFUSED: %s is not a CRM layer this test covers" % repo)
+        return 2
+
+    work = Path(tempfile.mkdtemp(prefix="crm-row18-"))
+    home = work / "home"
+    home.mkdir()
+    env = env_for(home)
+    lines = []  # (where, text)
+    try:
+        # 1. the earlier layers
+        for earlier in LAYERS[:LAYERS.index(repo)]:
+            dest = work / earlier
+            rc, out = run(["git", "clone", "-q", GH + earlier, str(dest)], work, env)
+            if rc != 0:
+                print("SETUP FAILED: could not clone %s\n%s" % (earlier, out))
+                return 2
+            rc, out = run([sys.executable, "install.py"], dest, env, stdin=ENTER.encode())
+            if rc != 0:
+                print("SETUP FAILED: %s installer exit %d\n%s" % (earlier, rc, out[-3000:]))
+                return 2
+        crm = home / "CRM"
+        before = snapshot(crm)
+
+        # 2. this layer's installer
+        member = work / "under-test"
+        shutil.copytree(str(HERE), str(member), ignore=shutil.ignore_patterns(".git", "_mac_regress", "__pycache__"))
+        rc, out = run([sys.executable, "install.py"], member, env, stdin=ENTER.encode())
+        print("installer exit %d" % rc)
+        if rc != 0 or not (crm / "_layers" / "config.json").exists():
+            print("SETUP FAILED: the layer under test did not install\n%s" % out[-3000:])
+            return 2
+        lines += [("installer", l) for l in out.splitlines()]
+
+        # notes the installer wrote or changed
+        after = snapshot(crm)
+        for p, data in sorted(after.items()):
+            if before.get(p) != data:
+                rel = p.relative_to(home).as_posix()
+                lines += [("note ~/%s" % rel, l) for l in data.decode("utf-8", "replace").splitlines()]
+
+        # 3. the printed commands, and each program's usage
+        export = home / "exports" / "connections.csv"
+        export.parent.mkdir(parents=True, exist_ok=True)
+        export.write_text("First Name,Last Name,URL,Email Address,Company,Position,Connected On\n"
+                          "Sam,Testperson,https://www.linkedin.com/in/sam-testperson-000,,Made Up Ltd,Owner,"
+                          "01 Sep 2026\n", encoding="utf-8")
+        for cmd in COMMANDS[repo]:
+            args = [a.replace("{export}", str(export)) for a in cmd]
+            rc, out = run([sys.executable] + args, crm, env, timeout=300)
+            where = "python %s (exit %d)" % (" ".join(cmd), rc)
+            lines += [(where, l) for l in out.splitlines()]
+    finally:
+        shutil.rmtree(str(work), ignore_errors=True)
+
+    # The throwaway home folder's own path is the test's, not the repo's words: shown as ~.
+    lines = [(w, t.replace(str(home), "~")) for w, t in lines]
+    hits = []
+    windows_python3 = []
+    for where, text in lines:
+        # A file Claude reads and acts on (an agent file) is an instruction file: there the
+        # 8f rules allow "(on Windows: `...`)" beside the Mac command (plan 7c rule 5).
+        kind = "output"
+        if where.startswith("note"):
+            kind = "instruction" if "/_agents/" in where else "member"
+        for rule in CNW.scan_line(text, kind):
+            hits.append((where, rule, text.strip()))
+        # Instruction files are the same file on both systems and carry the Mac command with the
+        # Windows one in brackets (row 19), so only what the programs print or write for the
+        # member is held to "Windows still reads python".
+        if kind == "instruction":
+            continue
+        if re.search(r"(?:^|&&|;|\|)\s*python3\s", text.strip()) or \
+                re.search(r"(?<![\w/.\-])python3\s+[\w./~\-]*\.py\b", text):
+            windows_python3.append((where, text.strip()))
+
+    print("%d printed or written lines read" % len(lines))
+    if MAC:
+        for h in hits:
+            print("MAC FAULT | %s | %s | %s" % h)
+        print("RESULT %s: %d line(s) a Mac member cannot follow" % ("FAIL" if hits else "PASS", len(hits)))
+        return 1 if hits else 0
+
+    # Windows (and any other system): the member still reads `python`, never `python3`.
+    for w in windows_python3:
+        print("WINDOWS CHANGED | %s | %s" % w)
+    print("%d line(s) tell a Windows member to type python (unchanged, correct on Windows)"
+          % sum(1 for h in hits if h[1].startswith("command")))
+    bad = windows_python3
+    print("RESULT %s" % ("FAIL" if bad else "PASS"))
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

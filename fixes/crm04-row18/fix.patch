@@ -1,0 +1,268 @@
+diff --git a/crm/collect.py b/crm/collect.py
+index 7aa222a..143f22b 100644
+--- a/crm/collect.py
++++ b/crm/collect.py
+@@ -60,6 +60,10 @@ import ledger                                              # noqa: E402
+ import settings                                            # noqa: E402
+ from safe_write import write_text                          # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ try:
+     import identity
+ except ImportError:                                        # Layer 2 not installed
+@@ -522,12 +526,12 @@ def main(argv):
+         results = run_all(dry_run=dry)
+         if not results:
+             print("No sources listed. Add one:")
+-            print("  python collect.py run messages <file.csv>")
++            print("  %s collect.py run messages <file.csv>" % PY)
+             return 0
+         for label, stats in results.items():
+             _report(label + ("   (dry run, nothing written)" if dry else ""), stats)
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/derive.py b/crm/derive.py
+index 4af28c8..21cc95c 100644
+--- a/crm/derive.py
++++ b/crm/derive.py
+@@ -45,6 +45,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import ledger                                              # noqa: E402
+ import settings                                            # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # Which events count as an exchange, for counting how much conversation there has
+ # been. One each way is a reply; ten each way is a relationship.
+ EXCHANGE_EVENTS = ("message_sent", "reply_received")
+@@ -233,7 +237,7 @@ def main(argv):
+             print("  ... and %d more" % (len(rows) - 50))
+         if not rows:
+             print("  Nobody, which either means you are on top of it or the log is")
+-            print("  empty. `python ledger.py stats` says which.")
++            print("  empty. `%s ledger.py stats` says which." % PY)
+     elif cmd == "summary":
+         s = summary()
+         total = sum(s["states"].values())
+@@ -248,7 +252,7 @@ def main(argv):
+         for k, v in sorted(s["tiers"].items(), key=lambda x: -x[1]):
+             print("  %-14s %d" % (k, v))
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/identity.py b/crm/identity.py
+index 6157b41..0ae777a 100644
+--- a/crm/identity.py
++++ b/crm/identity.py
+@@ -51,6 +51,10 @@ import sys
+ import unicodedata
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ _FRONT = re.compile(r"^\ufeff?---\s*\n(.*?)\n---", re.S)
+ _URL_IN = re.compile(r"(?:https?://)?(?:[\w-]+\.)?linkedin\.com/in/([^/?#\s\"']+)", re.I)
+ _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+@@ -478,7 +482,7 @@ def main(argv):
+             for f in files:
+                 print("      %s" % f)
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/ledger.py b/crm/ledger.py
+index e5677ac..99bc80d 100644
+--- a/crm/ledger.py
++++ b/crm/ledger.py
+@@ -52,6 +52,10 @@ from pathlib import Path
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import settings                                            # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # The base vocabulary. Deliberately small and closed. Your own additions come from
+ # `_engine/settings.json`, which the Layer 3 installer wrote from your answers.
+ BASE_TYPES = {
+@@ -251,7 +255,7 @@ def main(argv):
+         for k in sorted(known):
+             print("  %-18s %s" % (k, known[k]))
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/refresh.py b/crm/refresh.py
+index b229694..760451f 100644
+--- a/crm/refresh.py
++++ b/crm/refresh.py
+@@ -47,6 +47,10 @@ import derive                                              # noqa: E402
+ import ledger                                              # noqa: E402
+ import settings                                            # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ # Events that mean "their details were looked at on this date".
+ CHECK_EVENTS = ("checked", "details_changed")
+ 
+@@ -198,7 +202,7 @@ def main(argv):
+             print("  ... and %d more" % (len(rows) - 60))
+         if not rows:
+             print("  Nobody. Either everything is fresh, or the log is empty.")
+-            print("  `python ledger.py stats` says which.")
++            print("  `%s ledger.py stats` says which." % PY)
+     elif cmd == "tiers":
+         t = tiers()
+         total = sum(t.values())
+@@ -218,7 +222,7 @@ def main(argv):
+         mark_checked(pid, source="by hand", changed=changed)
+         print("recorded: %s %s" % (pid, "details changed" if changed else "checked"))
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/crm/schema.py b/crm/schema.py
+index ebf44bf..0cdf0dd 100644
+--- a/crm/schema.py
++++ b/crm/schema.py
+@@ -38,6 +38,10 @@ from pathlib import Path
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import identity                                    # noqa: E402
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ CONTRACT_PATH = Path(__file__).resolve().parent / "_schema" / "person.json"
+ 
+ _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+@@ -244,7 +248,7 @@ def main(argv):
+             lim = int(argv[argv.index("--limit") + 1])
+         _sweep(lim)
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/install.py b/install.py
+index 4f9dd2d..7f316ef 100644
+--- a/install.py
++++ b/install.py
+@@ -25,6 +25,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 4
+ LAYER_NAME = "Capture"
+ NEEDS_LAYER = 3
+@@ -222,8 +226,8 @@ def layer_note(answers, home):
+             "Nothing is capturing those, so anything that comes from them will be "
+             "missing from the log. That is worth knowing rather than discovering. "
+             "Either find an export for them, or record the important ones with "
+-            "`python _engine/ledger.py` yourself when they matter.\n"
+-            % ", ".join(missing))
++            "`%s _engine/ledger.py` yourself when they matter.\n"
++            % (", ".join(missing), PY))
+ 
+     return """# Layer {n} - {name}
+ 
+@@ -281,17 +285,17 @@ regardless of when their turn was due. A reply matters more than a rota.
+ 
+ Try it:
+ 
+-    python _engine/collect.py list
+-    python _engine/collect.py run messages <file.csv> --dry-run
+-    python _engine/collect.py run messages <file.csv>
+-    python _engine/collect.py all
+-    python _engine/refresh.py due
+-    python _engine/derive.py quiet 60
++    {py} _engine/collect.py list
++    {py} _engine/collect.py run messages <file.csv> --dry-run
++    {py} _engine/collect.py run messages <file.csv>
++    {py} _engine/collect.py all
++    {py} _engine/refresh.py due
++    {py} _engine/derive.py quiet 60
+ 
+ **What it leaves for Layer 5.** A program can record that something happened. It
+ cannot tell you whether this person is worth an hour of your week, whether a reply
+ is warm or merely polite, or what to say back. That is judgement, and it is next.
+-""".format(n=LAYER, name=LAYER_NAME, missing=missing_text)
++""".format(n=LAYER, name=LAYER_NAME, missing=missing_text, py=PY)
+ 
+ 
+ def staging_readme():
+@@ -365,8 +369,8 @@ def build(home, answers):
+             existing = []
+     write(p, json.dumps({
+         "_comment": [
+-            "The sources you capture from. `python _engine/collect.py all` runs each "
+-            "one in turn.",
++            "The sources you capture from. `%s _engine/collect.py all` runs each "
++            "one in turn." % PY,
+             "collector must be one of: messages, meetings, connections.",
+             "Running the same file twice is safe: rows already in the log are skipped.",
+         ],
+@@ -449,13 +453,13 @@ def point_it_at_something(home, answers):
+     raw = ask("Path to the file, or Enter to skip", default="")
+     if not raw.strip():
+         say(DIM + "  Skipped. When you have one:" + OFF)
+-        say(DIM + "    python _engine/collect.py run connections <file.csv> --dry-run" + OFF)
++        say(DIM + "    %s _engine/collect.py run connections <file.csv> --dry-run" % PY + OFF)
+         return None
+ 
+     path = Path(raw.strip().strip('"').strip("'")).expanduser()
+     if not path.exists():
+         say("  Cannot find that file. Skipping; you can run it later with:")
+-        say("    python _engine/collect.py run connections <file.csv>")
++        say("    %s _engine/collect.py run connections <file.csv>" % PY)
+         return None
+ 
+     kind = guess_collector(path)
+@@ -553,7 +557,7 @@ def read_a_history(home):
+     say("  nobody.")
+     who = ask("A name, a link or an email address (or Enter to skip)", default="")
+     if not who.strip():
+-        say(DIM + "  Skipped. Any time:  python _engine/ledger.py person \"a name\"" + OFF)
++        say(DIM + "  Skipped. Any time:  %s _engine/ledger.py person \"a name\"" % PY + OFF)
+         return
+     identity.forget()
+     pid = identity.resolve(who.strip(), vault=home)
+@@ -596,9 +600,9 @@ def finish(home, answers):
+         say("  rather than discovering later.")
+         say()
+     say("  Try:")
+-    say("    python _engine/collect.py all         re-run every source")
+-    say("    python _engine/refresh.py due         whose details need a look")
+-    say("    python _engine/derive.py quiet 60     who has gone quiet")
++    say("    %s _engine/collect.py all         re-run every source" % PY)
++    say("    %s _engine/refresh.py due         whose details need a look" % PY)
++    say("    %s _engine/derive.py quiet 60     who has gone quiet" % PY)
+     say()
+     say("  Read: _layers/Layer %d - %s.md" % (LAYER, LAYER_NAME))
+     say()

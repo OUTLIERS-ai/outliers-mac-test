@@ -1,0 +1,54 @@
+diff --git a/install.py b/install.py
+index adc9fb9..4dfb2f1 100644
+--- a/install.py
++++ b/install.py
+@@ -20,6 +20,7 @@ Needs: Python 3.8 or newer. Nothing else.
+ import json
+ import os
+ import re
++import subprocess
+ import sys
+ import unicodedata
+ from datetime import date
+@@ -462,21 +463,35 @@ tags: [crm, imported]
+     return made
+ 
+ 
++def git(home, *args, quiet=False):
++    """Run one git command in the CRM folder and return its exit code.
++
++    `quiet` throws the output away. This is done by Python, not by the shell: the
++    shell's way (`>nul` on Windows) makes a file called `nul` on a Mac. If git is
++    not installed, the answer is a failure, the same as git refusing.
++    """
++    out = subprocess.DEVNULL if quiet else None
++    try:
++        return subprocess.run(["git", "-C", str(home)] + list(args),
++                              stdout=out, stderr=out).returncode
++    except OSError:
++        return 1
++
++
+ def offer_git(home):
+     say()
+     if not ask_yes("Keep a dated history of every change? (recommended)", default=True):
+         say(DIM + "  Skipped. You can turn it on later." + OFF)
+         return
+-    rc = os.system('git -C "%s" rev-parse --git-dir >nul 2>&1' % home)
+-    if rc == 0:
++    if git(home, "rev-parse", "--git-dir", quiet=True) == 0:
+         say("  History is already on.")
+         return
+-    if os.system('git -C "%s" init -q' % home) != 0:
++    if git(home, "init", "-q") != 0:
+         say(DIM + "  Could not turn it on. Git may not be installed. This is optional; carry on." + OFF)
+         return
+-    os.system('git -C "%s" add -A >nul 2>&1' % home)
+-    os.system('git -C "%s" -c user.email=you@example.com -c user.name="You" '
+-              'commit -q -m "Layer 1: foundation" >nul 2>&1' % home)
++    git(home, "add", "-A", quiet=True)
++    git(home, "-c", "user.email=you@example.com", "-c", "user.name=You",
++        "commit", "-q", "-m", "Layer 1: foundation", quiet=True)
+     say("  History is on. You can now see what any record said on any past date.")
+ 
+ 
