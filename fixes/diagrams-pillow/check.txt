@@ -1,0 +1,1 @@
+$PY _regress/test_readme_installs_imports.py

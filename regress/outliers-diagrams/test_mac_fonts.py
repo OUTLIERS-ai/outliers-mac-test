@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Fault row 14 (build plan V3, section 6b), outliers-diagrams: every typeface list the drawings
+use must name at least 1 typeface this Mac has.
+
+The drawings were set in Microsoft typefaces (Consolas, Segoe UI, Constantia) that macOS does not
+ship. Where a list offered nothing else, a Mac drew the words in whatever the browser fell back
+to. The fix adds a Mac typeface AFTER the Windows ones, so Windows drawings do not change (that
+half is proved separately, by comparing Windows pictures pixel for pixel before and after).
+
+What is read: in every .py file of the repo, each `font-family:...` rule in the page styles,
+each `font-family="..."` in the drawings, and each module-level typeface constant (a string
+naming a CSS family keyword such as serif or monospace). Lists built from a placeholder (`{...}`)
+are covered by the constant they are built from.
+
+What passes a list: 1 of its named typefaces is installed on this Mac (asked of macOS itself,
+through CoreText), or it names a CSS system keyword Chrome maps to Apple's own faces on a Mac
+(`system-ui`, `-apple-system`, `ui-serif`, `ui-sans-serif`, `ui-monospace`, `ui-rounded`).
+The plain `serif`, `sans-serif` and `monospace` do not count: they are the fallback this row is
+about.
+
+Mac only; on any other system it prints that it did not run and exits 0 (so it is proved on the
+3 test Macs only).
+
+Run from the repo under test:   python3 _regress/test_mac_fonts.py
+Exit 0 = pass, 1 = fail (each failing list printed with file and line).
+"""
+import ctypes
+import ctypes.util
+import re
+import sys
+from pathlib import Path
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+ROOT = Path.cwd()
+GENERIC = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "math", "emoji", "fangsong",
+           "inherit", "initial", "unset"}
+APPLE_KEYWORDS = {"system-ui", "-apple-system", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded"}
+
+CSS_RULE = re.compile(r"font-family\s*:\s*([^;}\n]+)")
+SVG_ATTR = re.compile(r'font-family="([^"]+)"')
+CONSTANT = re.compile(r"""^\s*[A-Z][A-Z0-9_]*\s*=\s*(['"])(.*)\1\s*(?:#.*)?$""")
+FAMILY_WORD = re.compile(r"\b(serif|sans-serif|monospace)\b")
+
+
+def mac_families():
+    """Every font family macOS reports as available, lower case."""
+    cf = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreFoundation"))
+    ct = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreText"))
+    ct.CTFontManagerCopyAvailableFontFamilyNames.restype = ctypes.c_void_p
+    cf.CFArrayGetCount.restype = ctypes.c_long
+    cf.CFArrayGetCount.argtypes = [ctypes.c_void_p]
+    cf.CFArrayGetValueAtIndex.restype = ctypes.c_void_p
+    cf.CFArrayGetValueAtIndex.argtypes = [ctypes.c_void_p, ctypes.c_long]
+    cf.CFStringGetCString.restype = ctypes.c_bool
+    cf.CFStringGetCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_uint32]
+    arr = ct.CTFontManagerCopyAvailableFontFamilyNames()
+    buf = ctypes.create_string_buffer(1024)
+    names = set()
+    for i in range(cf.CFArrayGetCount(arr)):
+        s = cf.CFArrayGetValueAtIndex(arr, i)
+        if cf.CFStringGetCString(s, buf, 1024, 0x08000100):  # UTF-8
+            names.add(buf.value.decode("utf-8").lower())
+    return names
+
+
+def split_stack(stack):
+    return [p.strip().strip("'\"").strip() for p in stack.split(",") if p.strip()]
+
+
+def stacks():
+    """[(file, line, stack)] for every typeface list the programs use."""
+    out = []
+    for f in sorted(ROOT.rglob("*.py")):
+        if ".git" in f.parts or "_regress" in f.parts:
+            continue
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            found = [m.group(1) for m in CSS_RULE.finditer(line)] + [m.group(1) for m in SVG_ATTR.finditer(line)]
+            c = CONSTANT.match(line)
+            if c and FAMILY_WORD.search(c.group(2)):
+                found.append(c.group(2))
+            for s in found:
+                if "{" in s:
+                    continue
+                out.append((f.relative_to(ROOT).as_posix(), n, s.strip()))
+    return out
+
+
+def main():
+    if sys.platform != "darwin":
+        print("not a Mac: the Mac typeface check did not run")
+        return 0
+    have = mac_families()
+    print("macOS reports %d font families" % len(have))
+    found = stacks()
+    bad = 0
+    for rel, n, s in found:
+        names = split_stack(s)
+        lower = [x.lower() for x in names]
+        ok = [x for x in names if x.lower() in have] or [x for x in lower if x in APPLE_KEYWORDS]
+        if not ok:
+            bad += 1
+            named = [x for x in names if x.lower() not in GENERIC]
+            print("%s line %d: none of %s is on this Mac | %s" % (rel, n, named, s))
+    print("%d typeface list(s), %d with nothing this Mac has -> %s" % (len(found), bad, "FAIL" if bad else "PASS"))
+    if not found:
+        print("FAIL: no typeface lists found, so the test read nothing")
+        return 1
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

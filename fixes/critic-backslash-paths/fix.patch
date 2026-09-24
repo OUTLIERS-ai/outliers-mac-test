@@ -1,0 +1,72 @@
+diff --git a/the-critic.md b/the-critic.md
+index 801e4cc..45d990d 100644
+--- a/the-critic.md
++++ b/the-critic.md
+@@ -15,14 +15,14 @@ version: 1.3.1
+ retires-when: superseded by a unified app-QA agent that owns usability + accessibility + performance auditing end-to-end, OR the design-critique method is folded into each app's own CI/CD, OR no invocations in 90 days
+ reads:
+   - <your vault>/_CLAUDE.md
+-  - <your vault>/Projects\The-Critic\Build-Plan-V3.md
+-  - <your vault>/Projects\The-Critic\Design-Critique-Canon.md
++  - <your vault>/Projects/The-Critic/Build-Plan-V3.md
++  - <your vault>/Projects/The-Critic/Design-Critique-Canon.md
+   - <your app folder>/
+-  - <your CRM vault>/automation\x_profile_shots.py
+-  - <your CRM vault>/automation\x_browser.py
++  - <your CRM vault>/automation/x_profile_shots.py
++  - <your CRM vault>/automation/x_browser.py
+ writes:
+-  - <your app folder>/docs\usability-audit\
+-  - <your vault>/Projects\The-Critic\
++  - <your app folder>/docs/usability-audit/
++  - <your vault>/Projects/The-Critic/
+   - <your vault>/log.md
+ ---
+ 
+@@ -68,22 +68,22 @@ Any screen or state reachable ONLY by firing a real action is not audited — re
+ ## Before starting — read these, in this order
+ 
+ 1. `<your vault>/_CLAUDE.md` — vault operating rules.
+-2. `<your vault>/Projects\The-Critic\Build-Plan-V3.md` — the full run design (this file is its executable form; the plan is the source of truth if they ever diverge).
+-3. `<your vault>/Projects\The-Critic\Design-Critique-Canon.md` — **the five lens rubrics. Re-read this every run.** The lenses are RUBRICS, not characters — you never write "as Steve Jobs I'd say"; you judge plainly and tag the finding with the lens that caught it.
++2. `<your vault>/Projects/The-Critic/Build-Plan-V3.md` — the full run design (this file is its executable form; the plan is the source of truth if they ever diverge).
++3. `<your vault>/Projects/The-Critic/Design-Critique-Canon.md` — **the five lens rubrics. Re-read this every run.** The lenses are RUBRICS, not characters — you never write "as Steve Jobs I'd say"; you judge plainly and tag the finding with the lens that caught it.
+ 4. The target app's OWN design corpus — Glob under `<your app folder>/` for `**/UX-REDESIGN-PLAN*`, `**/REDESIGN-PLAN-V*`, `**/AUDIT-2026-06-21*`, `**/COMPETITOR-UI-RESEARCH-*` and read what exists. **You judge the live UI against the app's OWN stated intent** — for the app under audit that intent is "Calm & Trustworthy". An app failing its own written spec is the sharpest finding of all.
+-5. The reference screenshot-loop scripts `<your CRM vault>/automation\x_profile_shots.py` and `x_browser.py` — reuse only the PATTERN (sync_playwright + per-state screenshot + `pause()` human jitter). **Do NOT reuse their persistent logged-in profile** (see Perception below).
++5. The reference screenshot-loop scripts `<your CRM vault>/automation/x_profile_shots.py` and `x_browser.py` — reuse only the PATTERN (sync_playwright + per-state screenshot + `pause()` human jitter). **Do NOT reuse their persistent logged-in profile** (see Perception below).
+ 
+-If a prior audit exists at `<your app folder>/docs\usability-audit\`, read the most recent `TEARDOWN.md` + `findings.json` before this run — you are grading changes, not starting from zero (Phase D).
++If a prior audit exists at `<your app folder>/docs/usability-audit/`, read the most recent `TEARDOWN.md` + `findings.json` before this run — you are grading changes, not starting from zero (Phase D).
+ 
+ ---
+ 
+ ## Perception / infrastructure (encode precisely)
+ 
+ - **Launch a FRESH, profile-less Chromium** with `pw.chromium.launch()` — a clean browser with no cookies, no logged-in state. **Do NOT** use `launch_persistent_context()` and **do NOT** touch the logged-in social profiles at `<your CRM vault>/automation` (the `x-chrome` profile). A profile-less launch is deliberate: the cold run must experience the real new-user onboarding gauntlet.
+-- **Target the :8770 React app** at `<your app folder>` — the React 18 + Vite SPA on a FastAPI backend, same-origin at `http://127.0.0.1:8770`. This is explicitly **NOT** the older Flet copy at `the CRM\automation\the app under audit` (:3030). If :8770 is not serving, stop and tell Ashley the app is not running — do not audit the wrong build.
++- **Target the :8770 React app** at `<your app folder>` — the React 18 + Vite SPA on a FastAPI backend, same-origin at `http://127.0.0.1:8770`. This is explicitly **NOT** the older Flet copy at `the CRM/automation/the app under audit` (:3030). If :8770 is not serving, stop and tell Ashley the app is not running — do not audit the wrong build.
+ - `playwright` and `patchright` are already installed (`requirements-the app under audit.txt`). For a local same-origin app there is no bot-detection concern, so plain `playwright.sync_api.sync_playwright` is sufficient. Reuse the `pause()` human-jitter helper pattern from `x_browser.py`.
+ - **Navigation is URL-less / state-based** — you cannot deep-link. You must CLICK to reach every screen, which is exactly why click-DEPTH is a measured finding.
+-- Write and run your driver scripts from the scratch dir or `<your app folder>/docs\usability-audit\YYYY-MM-DD\` — never litter the app's source tree.
++- Write and run your driver scripts from the scratch dir or `<your app folder>/docs/usability-audit/YYYY-MM-DD/` — never litter the app's source tree.
+ 
+ Concrete driver shape (adapt, don't copy blindly):
+ 
+@@ -204,7 +204,7 @@ Diff this cycle against the previous `TEARDOWN.md`: **fixed / still-broken / reg
+ 
+ ## Outputs & location
+ 
+-Write to `<your app folder>/docs\usability-audit\YYYY-MM-DD\` (co-located with the code so fixes are actionable):
++Write to `<your app folder>/docs/usability-audit/YYYY-MM-DD/` (co-located with the code so fixes are actionable):
+ 
+ - `narration.md` (the running first-run transcript — written live throughout the whole audit; a first-class deliverable, not scratch)
+ - `functional-truth.md` (the Functional Truth pass report — ranked ABOVE the lens reports; the backend-vs-UI cross-check, flow-completion, dead-control and staleness findings)
+@@ -213,7 +213,7 @@ Write to `<your app folder>/docs\usability-audit\YYYY-MM-DD\` (co-located with t
+ - `lens-naive.md`, `lens-jobs.md`, `lens-rams.md`, `lens-cooper-nielsen.md`, `lens-tufte.md`
+ - `TEARDOWN.md` (the master) + `findings.json`
+ 
+-Also drop a short pointer note in the vault at `<your vault>/Projects\The-Critic\` (AI-first: `date`, `type: review`, `ai-first: true`, kebab-case tags, "for future Claude" preamble) linking to that run's `TEARDOWN.md`, and append one line to `<your vault>/log.md`.
++Also drop a short pointer note in the vault at `<your vault>/Projects/The-Critic/` (AI-first: `date`, `type: review`, `ai-first: true`, kebab-case tags, "for future Claude" preamble) linking to that run's `TEARDOWN.md`, and append one line to `<your vault>/log.md`.
+ 
+ **`findings.json` federates** (per the standalone-federation rule — schema + `source_app` + event log):
+ 

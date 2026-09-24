@@ -1,0 +1,21 @@
+diff --git a/.claude/agents/fathom-meeting-triage.md b/.claude/agents/fathom-meeting-triage.md
+index 20f14db..2621619 100644
+--- a/.claude/agents/fathom-meeting-triage.md
++++ b/.claude/agents/fathom-meeting-triage.md
+@@ -27,12 +27,11 @@ nothing is done twice.
+ 
+ ## Setup, once
+ 
+-This agent drives a real browser, because Fathom has no free API. That needs Playwright:
++This agent drives a real browser, because Fathom has no free API. That needs Playwright,
++installed with these 2 commands:
+ 
+-```
+-pip install playwright
+-playwright install chromium
+-```
++- `python3 -m pip install playwright` (on Windows: `python -m pip install playwright`)
++- `python3 -m playwright install chromium` (on Windows: `python -m playwright install chromium`)
+ 
+ The owner logs into Fathom **once, by hand**, in that browser profile. You never handle their
+ password and you never log in for them. If the session has expired, say so and ask them to log in

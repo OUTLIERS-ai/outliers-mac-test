@@ -1,0 +1,1 @@
+$PY _regress/test_readme_installs_imports.py && $PY _regress/test_mac_fonts.py && $PY _regress/test_open_result.py

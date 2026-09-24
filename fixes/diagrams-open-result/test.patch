@@ -1,0 +1,131 @@
+diff --git a/_regress/test_open_result.py b/_regress/test_open_result.py
+new file mode 100644
+--- /dev/null
++++ b/_regress/test_open_result.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Fault row 13 (build plan V3, section 6b), outliers-diagrams: each of the 4 labs builds a result
++page and must open it in the member's own browser, on a Mac as on Windows.
++
++Before the fix each lab looked for Firefox only at `C:\\Program Files\\...`: on a Mac, and on a
++Windows PC without Firefox, the page was built, its path printed, and nothing opened.
++
++How it is tested, without ever opening a real window:
++  - each lab runs in its own child Python, exactly as a member starts it (`python labs/<lab>.py`),
++    with Python's `webbrowser.open` replaced by a recorder that writes the address it was given
++    to a file;
++  - in that child, any path naming Firefox reports "not there", so the old code can never start a
++    real Firefox either (on this PC or a test machine);
++  - the lab passes when the recorder got exactly 1 `file://` address and that address is the
++    result page the lab printed ("sheet -> <path>" or "gallery -> <path>"), which exists.
++
++Needs Playwright with its Chromium, and Pillow (phone_width.py). If this Python lacks them, the
++test makes a private Python folder beside the checkout (`../_venv-diagrams`, reused between the
++red and the green run) and runs itself again from there.
++
++Run from the repo under test:   python3 _regress/test_open_result.py
++Exit 0 = pass, 1 = fail.
++"""
++import os
++import re
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++from urllib.parse import unquote, urlparse
++from urllib.request import url2pathname
++
++sys.stdout.reconfigure(encoding="utf-8", errors="replace")
++ROOT = Path.cwd()
++LABS = ["labs/colour_measure.py", "labs/phone_width.py", "labs/ten_design_systems.py",
++        "labs/what_a_background_is_for.py"]
++NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++
++RUNNER = r'''
++import os, pathlib, runpy, sys, webbrowser
++LOG = os.environ["OPEN_LOG"]
++def record(url, *a, **k):
++    with open(LOG, "a", encoding="utf-8") as f:
++        f.write(url + "\n")
++    return True
++webbrowser.open = webbrowser.open_new = webbrowser.open_new_tab = record
++_exists = pathlib.Path.exists
++def exists(self, *a, **k):
++    if "firefox" in str(self).lower():
++        return False
++    return _exists(self, *a, **k)
++pathlib.Path.exists = exists
++lab = sys.argv[1]
++sys.argv = [lab]
++sys.path.insert(0, os.path.dirname(os.path.abspath(lab)))
++runpy.run_path(lab, run_name="__main__")
++'''
++
++
++def have_deps():
++    try:
++        import PIL  # noqa: F401
++        import playwright  # noqa: F401
++        return True
++    except ImportError:
++        return False
++
++
++def reexec_in_venv():
++    venv = ROOT.parent / "_venv-diagrams"
++    py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
++    if not py.exists():
++        print("making a private Python folder for the test at %s" % venv, flush=True)
++        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
++        subprocess.run([str(py), "-m", "pip", "install", "-q", "pillow", "playwright"], check=True)
++        subprocess.run([str(py), "-m", "playwright", "install", "chromium"], check=True)
++    return subprocess.run([str(py), os.path.abspath(__file__)], cwd=str(ROOT)).returncode
++
++
++def uri_to_path(uri):
++    u = urlparse(uri)
++    return Path(url2pathname(unquote(u.path)) if os.name == "nt" else unquote(u.path))
++
++
++def run_lab(lab):
++    log = Path(tempfile.mkdtemp(prefix="diagrams-row13-")) / "opened.txt"
++    env = dict(os.environ, OPEN_LOG=str(log), PYTHONIOENCODING="utf-8")
++    p = subprocess.run([sys.executable, "-c", RUNNER, lab], cwd=str(ROOT), env=env, capture_output=True,
++                       text=True, encoding="utf-8", errors="replace", timeout=900, creationflags=NOWIN)
++    out = (p.stdout or "") + (p.stderr or "")
++    opened = log.read_text(encoding="utf-8").split() if log.exists() else []
++    m = re.findall(r"(?:sheet|gallery) -> (.+)", out)
++    problems = []
++    if p.returncode not in (0, 1):
++        problems.append("exit %d" % p.returncode)
++    if len(opened) != 1:
++        problems.append("the browser was asked to open %d page(s), not 1" % len(opened))
++    else:
++        if not opened[0].startswith("file:"):
++            problems.append("opened %r, not a file:// address" % opened[0])
++        page = uri_to_path(opened[0])
++        if not page.exists():
++            problems.append("the opened page %s does not exist" % page)
++        if m and Path(m[-1].strip()).resolve() != page.resolve():
++            problems.append("opened %s, but the lab printed %s" % (page, m[-1].strip()))
++    return problems, out, opened
++
++
++def main():
++    if not have_deps():
++        return reexec_in_venv()
++    failed = 0
++    for lab in LABS:
++        problems, out, opened = run_lab(lab)
++        if problems:
++            failed += 1
++            print("FAIL %s: %s" % (lab, "; ".join(problems)))
++            print("  last output: " + " | ".join(out.strip().splitlines()[-4:])[:600])
++        else:
++            print("PASS %s: opened %s" % (lab, opened[0]))
++    print("%d lab(s), %d failed -> %s" % (len(LABS), failed, "FAIL" if failed else "PASS"))
++    return 1 if failed else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())

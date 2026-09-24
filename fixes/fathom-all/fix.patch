@@ -1,0 +1,89 @@
+diff --git a/.claude/agents/fathom-meeting-triage.md b/.claude/agents/fathom-meeting-triage.md
+index 20f14db..f0b869e 100644
+--- a/.claude/agents/fathom-meeting-triage.md
++++ b/.claude/agents/fathom-meeting-triage.md
+@@ -27,16 +27,17 @@ nothing is done twice.
+ 
+ ## Setup, once
+ 
+-This agent drives a real browser, because Fathom has no free API. That needs Playwright:
++This agent drives a real browser, because Fathom has no free API. That needs Playwright,
++installed with these 2 commands:
+ 
+-```
+-pip install playwright
+-playwright install chromium
+-```
++- `python3 -m pip install playwright` (on Windows: `python -m pip install playwright`)
++- `python3 -m playwright install chromium` (on Windows: `python -m playwright install chromium`)
+ 
+-The owner logs into Fathom **once, by hand**, in that browser profile. You never handle their
+-password and you never log in for them. If the session has expired, say so and ask them to log in
+-again — do not attempt to work around it.
++The owner logs into Fathom **once, by hand**, in that browser profile: the `.browser-profile`
++folder beside `README.md`, which README Step 3 opens. Always open the browser on that folder
++(Playwright's `launch_persistent_context(".browser-profile")`); a fresh browser has no login.
++You never handle their password and you never log in for them. If the session has expired, say
++so and ask them to log in again — do not attempt to work around it.
+ 
+ ## The run
+ 
+diff --git a/.gitignore b/.gitignore
+index 18b8141..1d47acc 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -2,5 +2,6 @@ __pycache__/
+ *.pyc
+ .DS_Store
+ .claude/settings.local.json
++.browser-profile/
+ guide/png/
+ guide/guide.html
+diff --git a/BROWSER.md b/BROWSER.md
+index b44437b..caf1b8d 100644
+--- a/BROWSER.md
++++ b/BROWSER.md
+@@ -22,8 +22,15 @@ one. Around 200MB, five minutes.
+ 
+ ## Then log in yourself, once
+ 
+-Open the browser Playwright installed, go to the service, and **log in by hand.** The session is
+-remembered in that browser profile, and your agents work inside it from then on.
++Open the browser Playwright installed, from inside this folder, with the address of the service
++at the end. For Fathom, that is:
++
++```
++python -m playwright open --user-data-dir=.browser-profile https://fathom.video
++```
++
++Then **log in by hand.** The login is kept in the `.browser-profile` folder, and your agents
++open the browser on that folder from then on.
+ 
+ **Your agent never sees your password.** It never types one, never stores one, and never asks for
+ one. If you are ever prompted to give a password to an agent, something is wrong — stop.
+diff --git a/README.md b/README.md
+index a98d845..15da138 100644
+--- a/README.md
++++ b/README.md
+@@ -46,9 +46,18 @@ About 200MB, about 5 minutes. Playwright is free and made by Microsoft.
+ 
+ **Step 3 — log into Fathom yourself, by hand. Once.** This is the step everyone misses.
+ 
+-Open the browser Playwright just installed, go to fathom.video, and log in as you normally would.
+-Take as long as you need — nothing is counting down, and nothing will give up on you while you go
+-and find your password. The session is remembered in that browser profile from then on.
++Open the browser Playwright just installed, at Fathom's address, from inside the folder you
++downloaded in Step 1:
++
++```
++cd fathom-meeting-agent
++python -m playwright open --user-data-dir=.browser-profile https://fathom.video
++```
++
++Log in as you normally would. Take as long as you need — nothing is counting down, and nothing
++will give up on you while you go and find your password. Close the browser when you are in.
++The login is kept in the `.browser-profile` folder inside the download, and the agent opens the
++browser on that folder from then on.
+ 
+ **Your agent never sees your password.** It never types one, never stores one, and never asks for
+ one. If anything ever asks you to give a password to an agent, stop — something is wrong.

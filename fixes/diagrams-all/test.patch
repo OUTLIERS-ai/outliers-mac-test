@@ -1,0 +1,330 @@
+diff --git a/_regress/test_readme_installs_imports.py b/_regress/test_readme_installs_imports.py
+new file mode 100644
+--- /dev/null
++++ b/_regress/test_readme_installs_imports.py
+@@ -0,0 +1,77 @@
++#!/usr/bin/env python3
++"""Fault row 15 (build plan V3, section 6b), outliers-diagrams: the install line in README.md must
++install every add-on the repo's programs import.
++
++Before the fix the README installed Playwright only, and `labs/phone_width.py` stopped with
++"No module named 'PIL'" (baseline run, both test Macs). It is not a Mac fault: any fresh machine
++following the README fails the same way.
++
++What is read: every `import x` and `from x import` line in every .py file of the repo. An add-on
++is any top-level name that is neither part of Python itself (`sys.stdlib_module_names`) nor a
++file or folder of the repo. Each must appear in a `pip install ...` line (any of the command
++forms) inside a code block of README.md, under its install name (`PIL` installs as `pillow`).
++
++Run from the repo under test:   python3 _regress/test_readme_installs_imports.py
++Exit 0 = pass, 1 = fail.
++"""
++import re
++import sys
++from pathlib import Path
++
++sys.stdout.reconfigure(encoding="utf-8", errors="replace")
++ROOT = Path.cwd()
++IMPORT = re.compile(r"^\s*(?:import|from)\s+([A-Za-z_][\w]*)")
++PIP = re.compile(r"\bpip3?\s+install\s+(.+)$")
++INSTALL_NAME = {"PIL": "pillow", "cv2": "opencv-python", "yaml": "pyyaml", "bs4": "beautifulsoup4",
++                "fitz": "pymupdf", "sklearn": "scikit-learn"}
++
++
++def readme_installs():
++    text = (ROOT / "README.md").read_text(encoding="utf-8")
++    names, inside = set(), False
++    for line in text.splitlines():
++        if line.strip().startswith("```"):
++            inside = not inside
++            continue
++        m = PIP.search(line) if inside else None
++        if m:
++            for w in m.group(1).split():
++                if not w.startswith("-"):
++                    names.add(re.split(r"[<>=\[]", w)[0].lower())
++    return names
++
++
++def repo_imports():
++    local = {p.stem for p in ROOT.rglob("*.py")} | {p.name for p in ROOT.rglob("*") if p.is_dir()}
++    found = {}
++    for f in sorted(ROOT.rglob("*.py")):
++        if ".git" in f.parts or "_regress" in f.parts:
++            continue
++        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
++            m = IMPORT.match(line)
++            if not m:
++                continue
++            top = m.group(1)
++            if top in sys.stdlib_module_names or top in local or top == "__future__":
++                continue
++            found.setdefault(top, "%s line %d" % (f.relative_to(ROOT).as_posix(), n))
++    return found
++
++
++def main():
++    installs = readme_installs()
++    print("README install lines add: %s" % (sorted(installs) or "nothing"))
++    missing = 0
++    for top, where in sorted(repo_imports().items()):
++        want = INSTALL_NAME.get(top, top).lower()
++        if want in installs:
++            print("ok      %-12s (installed as %s; first used at %s)" % (top, want, where))
++        else:
++            missing += 1
++            print("MISSING %-12s (install name %s; first used at %s)" % (top, want, where))
++    print("%d add-on(s) the README does not install -> %s" % (missing, "FAIL" if missing else "PASS"))
++    return 1 if missing else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/_regress/test_mac_fonts.py b/_regress/test_mac_fonts.py
+new file mode 100644
+--- /dev/null
++++ b/_regress/test_mac_fonts.py
+@@ -0,0 +1,112 @@
++#!/usr/bin/env python3
++"""Fault row 14 (build plan V3, section 6b), outliers-diagrams: every typeface list the drawings
++use must name at least 1 typeface this Mac has.
++
++The drawings were set in Microsoft typefaces (Consolas, Segoe UI, Constantia) that macOS does not
++ship. Where a list offered nothing else, a Mac drew the words in whatever the browser fell back
++to. The fix adds a Mac typeface AFTER the Windows ones, so Windows drawings do not change (that
++half is proved separately, by comparing Windows pictures pixel for pixel before and after).
++
++What is read: in every .py file of the repo, each `font-family:...` rule in the page styles,
++each `font-family="..."` in the drawings, and each module-level typeface constant (a string
++naming a CSS family keyword such as serif or monospace). Lists built from a placeholder (`{...}`)
++are covered by the constant they are built from.
++
++What passes a list: 1 of its named typefaces is installed on this Mac (asked of macOS itself,
++through CoreText), or it names a CSS system keyword Chrome maps to Apple's own faces on a Mac
++(`system-ui`, `-apple-system`, `ui-serif`, `ui-sans-serif`, `ui-monospace`, `ui-rounded`).
++The plain `serif`, `sans-serif` and `monospace` do not count: they are the fallback this row is
++about.
++
++Mac only; on any other system it prints that it did not run and exits 0 (so it is proved on the
++3 test Macs only).
++
++Run from the repo under test:   python3 _regress/test_mac_fonts.py
++Exit 0 = pass, 1 = fail (each failing list printed with file and line).
++"""
++import ctypes
++import ctypes.util
++import re
++import sys
++from pathlib import Path
++
++sys.stdout.reconfigure(encoding="utf-8", errors="replace")
++ROOT = Path.cwd()
++GENERIC = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "math", "emoji", "fangsong",
++           "inherit", "initial", "unset"}
++APPLE_KEYWORDS = {"system-ui", "-apple-system", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded"}
++
++CSS_RULE = re.compile(r"font-family\s*:\s*([^;}\n]+)")
++SVG_ATTR = re.compile(r'font-family="([^"]+)"')
++CONSTANT = re.compile(r"""^\s*[A-Z][A-Z0-9_]*\s*=\s*(['"])(.*)\1\s*(?:#.*)?$""")
++FAMILY_WORD = re.compile(r"\b(serif|sans-serif|monospace)\b")
++
++
++def mac_families():
++    """Every font family macOS reports as available, lower case."""
++    cf = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreFoundation"))
++    ct = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreText"))
++    ct.CTFontManagerCopyAvailableFontFamilyNames.restype = ctypes.c_void_p
++    cf.CFArrayGetCount.restype = ctypes.c_long
++    cf.CFArrayGetCount.argtypes = [ctypes.c_void_p]
++    cf.CFArrayGetValueAtIndex.restype = ctypes.c_void_p
++    cf.CFArrayGetValueAtIndex.argtypes = [ctypes.c_void_p, ctypes.c_long]
++    cf.CFStringGetCString.restype = ctypes.c_bool
++    cf.CFStringGetCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_uint32]
++    arr = ct.CTFontManagerCopyAvailableFontFamilyNames()
++    buf = ctypes.create_string_buffer(1024)
++    names = set()
++    for i in range(cf.CFArrayGetCount(arr)):
++        s = cf.CFArrayGetValueAtIndex(arr, i)
++        if cf.CFStringGetCString(s, buf, 1024, 0x08000100):  # UTF-8
++            names.add(buf.value.decode("utf-8").lower())
++    return names
++
++
++def split_stack(stack):
++    return [p.strip().strip("'\"").strip() for p in stack.split(",") if p.strip()]
++
++
++def stacks():
++    """[(file, line, stack)] for every typeface list the programs use."""
++    out = []
++    for f in sorted(ROOT.rglob("*.py")):
++        if ".git" in f.parts or "_regress" in f.parts:
++            continue
++        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
++            found = [m.group(1) for m in CSS_RULE.finditer(line)] + [m.group(1) for m in SVG_ATTR.finditer(line)]
++            c = CONSTANT.match(line)
++            if c and FAMILY_WORD.search(c.group(2)):
++                found.append(c.group(2))
++            for s in found:
++                if "{" in s:
++                    continue
++                out.append((f.relative_to(ROOT).as_posix(), n, s.strip()))
++    return out
++
++
++def main():
++    if sys.platform != "darwin":
++        print("not a Mac: the Mac typeface check did not run")
++        return 0
++    have = mac_families()
++    print("macOS reports %d font families" % len(have))
++    found = stacks()
++    bad = 0
++    for rel, n, s in found:
++        names = split_stack(s)
++        lower = [x.lower() for x in names]
++        ok = [x for x in names if x.lower() in have] or [x for x in lower if x in APPLE_KEYWORDS]
++        if not ok:
++            bad += 1
++            named = [x for x in names if x.lower() not in GENERIC]
++            print("%s line %d: none of %s is on this Mac | %s" % (rel, n, named, s))
++    print("%d typeface list(s), %d with nothing this Mac has -> %s" % (len(found), bad, "FAIL" if bad else "PASS"))
++    if not found:
++        print("FAIL: no typeface lists found, so the test read nothing")
++        return 1
++    return 1 if bad else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/_regress/test_open_result.py b/_regress/test_open_result.py
+new file mode 100644
+--- /dev/null
++++ b/_regress/test_open_result.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Fault row 13 (build plan V3, section 6b), outliers-diagrams: each of the 4 labs builds a result
++page and must open it in the member's own browser, on a Mac as on Windows.
++
++Before the fix each lab looked for Firefox only at `C:\\Program Files\\...`: on a Mac, and on a
++Windows PC without Firefox, the page was built, its path printed, and nothing opened.
++
++How it is tested, without ever opening a real window:
++  - each lab runs in its own child Python, exactly as a member starts it (`python labs/<lab>.py`),
++    with Python's `webbrowser.open` replaced by a recorder that writes the address it was given
++    to a file;
++  - in that child, any path naming Firefox reports "not there", so the old code can never start a
++    real Firefox either (on this PC or a test machine);
++  - the lab passes when the recorder got exactly 1 `file://` address and that address is the
++    result page the lab printed ("sheet -> <path>" or "gallery -> <path>"), which exists.
++
++Needs Playwright with its Chromium, and Pillow (phone_width.py). If this Python lacks them, the
++test makes a private Python folder beside the checkout (`../_venv-diagrams`, reused between the
++red and the green run) and runs itself again from there.
++
++Run from the repo under test:   python3 _regress/test_open_result.py
++Exit 0 = pass, 1 = fail.
++"""
++import os
++import re
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++from urllib.parse import unquote, urlparse
++from urllib.request import url2pathname
++
++sys.stdout.reconfigure(encoding="utf-8", errors="replace")
++ROOT = Path.cwd()
++LABS = ["labs/colour_measure.py", "labs/phone_width.py", "labs/ten_design_systems.py",
++        "labs/what_a_background_is_for.py"]
++NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++
++RUNNER = r'''
++import os, pathlib, runpy, sys, webbrowser
++LOG = os.environ["OPEN_LOG"]
++def record(url, *a, **k):
++    with open(LOG, "a", encoding="utf-8") as f:
++        f.write(url + "\n")
++    return True
++webbrowser.open = webbrowser.open_new = webbrowser.open_new_tab = record
++_exists = pathlib.Path.exists
++def exists(self, *a, **k):
++    if "firefox" in str(self).lower():
++        return False
++    return _exists(self, *a, **k)
++pathlib.Path.exists = exists
++lab = sys.argv[1]
++sys.argv = [lab]
++sys.path.insert(0, os.path.dirname(os.path.abspath(lab)))
++runpy.run_path(lab, run_name="__main__")
++'''
++
++
++def have_deps():
++    try:
++        import PIL  # noqa: F401
++        import playwright  # noqa: F401
++        return True
++    except ImportError:
++        return False
++
++
++def reexec_in_venv():
++    venv = ROOT.parent / "_venv-diagrams"
++    py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
++    if not py.exists():
++        print("making a private Python folder for the test at %s" % venv, flush=True)
++        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
++        subprocess.run([str(py), "-m", "pip", "install", "-q", "pillow", "playwright"], check=True)
++        subprocess.run([str(py), "-m", "playwright", "install", "chromium"], check=True)
++    return subprocess.run([str(py), os.path.abspath(__file__)], cwd=str(ROOT)).returncode
++
++
++def uri_to_path(uri):
++    u = urlparse(uri)
++    return Path(url2pathname(unquote(u.path)) if os.name == "nt" else unquote(u.path))
++
++
++def run_lab(lab):
++    log = Path(tempfile.mkdtemp(prefix="diagrams-row13-")) / "opened.txt"
++    env = dict(os.environ, OPEN_LOG=str(log), PYTHONIOENCODING="utf-8")
++    p = subprocess.run([sys.executable, "-c", RUNNER, lab], cwd=str(ROOT), env=env, capture_output=True,
++                       text=True, encoding="utf-8", errors="replace", timeout=900, creationflags=NOWIN)
++    out = (p.stdout or "") + (p.stderr or "")
++    opened = log.read_text(encoding="utf-8").split() if log.exists() else []
++    m = re.findall(r"(?:sheet|gallery) -> (.+)", out)
++    problems = []
++    if p.returncode not in (0, 1):
++        problems.append("exit %d" % p.returncode)
++    if len(opened) != 1:
++        problems.append("the browser was asked to open %d page(s), not 1" % len(opened))
++    else:
++        if not opened[0].startswith("file:"):
++            problems.append("opened %r, not a file:// address" % opened[0])
++        page = uri_to_path(opened[0])
++        if not page.exists():
++            problems.append("the opened page %s does not exist" % page)
++        if m and Path(m[-1].strip()).resolve() != page.resolve():
++            problems.append("opened %s, but the lab printed %s" % (page, m[-1].strip()))
++    return problems, out, opened
++
++
++def main():
++    if not have_deps():
++        return reexec_in_venv()
++    failed = 0
++    for lab in LABS:
++        problems, out, opened = run_lab(lab)
++        if problems:
++            failed += 1
++            print("FAIL %s: %s" % (lab, "; ".join(problems)))
++            print("  last output: " + " | ".join(out.strip().splitlines()[-4:])[:600])
++        else:
++            print("PASS %s: opened %s" % (lab, opened[0]))
++    print("%d lab(s), %d failed -> %s" % (len(LABS), failed, "FAIL" if failed else "PASS"))
++    return 1 if failed else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())

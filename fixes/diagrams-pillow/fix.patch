@@ -1,0 +1,18 @@
+diff --git a/README.md b/README.md
+index f0b8931..5637385 100644
+--- a/README.md
++++ b/README.md
+@@ -58,10 +58,11 @@ A check removes the part you can automate. It does not remove looking.
+ 
+ ## Running it
+ 
+-Needs Python, Playwright and a browser Playwright can drive.
++Needs Python, Playwright and a browser Playwright can drive. 1 of the 4 programs in `labs/`
++also needs Pillow, which reads and shrinks pictures; the first line below installs it.
+ 
+ ```
+-pip install playwright
++pip install pillow playwright
+ python -m playwright install chromium
+ python make_diagrams.py
+ ```

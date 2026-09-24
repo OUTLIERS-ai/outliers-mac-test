@@ -1,0 +1,114 @@
+diff --git a/labs/colour_measure.py b/labs/colour_measure.py
+index f60ec7d..e6df1a4 100644
+--- a/labs/colour_measure.py
++++ b/labs/colour_measure.py
+@@ -27,8 +27,8 @@ from __future__ import annotations
+ import html
+ import json
+ import math
+-import subprocess
+ import sys
++import webbrowser
+ from pathlib import Path
+ 
+ from playwright.sync_api import sync_playwright
+@@ -399,9 +399,6 @@ if __name__ == "__main__":
+     for n, p, s in rows:
+         print(f"{n:12} {s['pop']:5.0f} {s['legible']:6.1f} {s['acc_legible']:7.1f}  {s['verdict']}")
+     print(f"\nsheet -> {out}")
+-    for ff in [r"C:\Program Files\Mozilla Firefox\firefox.exe",
+-               r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"]:
+-        if Path(ff).exists():
+-            subprocess.Popen([ff, out.as_uri()])
+-            print("opened in Firefox")
+-            break
++    # Opens in the member's own default browser, on Windows and on a Mac.
++    if webbrowser.open(out.as_uri()):
++        print("opened in your browser")
+diff --git a/labs/phone_width.py b/labs/phone_width.py
+index 3c7ac06..3781271 100644
+--- a/labs/phone_width.py
++++ b/labs/phone_width.py
+@@ -17,8 +17,8 @@ from __future__ import annotations
+ import html
+ import importlib.util
+ import json
+-import subprocess
+ import sys
++import webbrowser
+ from pathlib import Path
+ 
+ from PIL import Image
+@@ -142,12 +142,9 @@ def main():
+     out.write_text(sheet, encoding="utf-8")
+     print(f"sheet -> {out}")
+ 
+-    for ff in [r"C:\Program Files\Mozilla Firefox\firefox.exe",
+-               r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"]:
+-        if Path(ff).exists():
+-            subprocess.Popen([ff, out.as_uri()])
+-            print("opened in Firefox")
+-            break
++    # Opens in the member's own default browser, on Windows and on a Mac.
++    if webbrowser.open(out.as_uri()):
++        print("opened in your browser")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/labs/ten_design_systems.py b/labs/ten_design_systems.py
+index d7b65bb..8bbd19a 100644
+--- a/labs/ten_design_systems.py
++++ b/labs/ten_design_systems.py
+@@ -22,8 +22,8 @@ import re
+ import json
+ import math
+ import random
+-import subprocess
+ import sys
++import webbrowser
+ from pathlib import Path
+ 
+ HERE = Path(__file__).resolve().parent
+@@ -442,9 +442,6 @@ if __name__ == "__main__":
+     cmd = sys.argv[1] if len(sys.argv) > 1 else "gallery"
+     if cmd == "gallery":
+         p = gallery()
+-        for ff in [r"C:\Program Files\Mozilla Firefox\firefox.exe",
+-                   r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"]:
+-            if Path(ff).exists():
+-                subprocess.Popen([ff, p.as_uri()])
+-                print("opened in Firefox")
+-                break
++        # Opens in the member's own default browser, on Windows and on a Mac.
++        if webbrowser.open(p.as_uri()):
++            print("opened in your browser")
+diff --git a/labs/what_a_background_is_for.py b/labs/what_a_background_is_for.py
+index a230a94..1f49baf 100644
+--- a/labs/what_a_background_is_for.py
++++ b/labs/what_a_background_is_for.py
+@@ -39,8 +39,8 @@ from __future__ import annotations
+ import html
+ import json
+ import math
+-import subprocess
+ import sys
++import webbrowser
+ from pathlib import Path
+ 
+ from playwright.sync_api import sync_playwright
+@@ -323,12 +323,9 @@ def main():
+     out = OUT / "background-x-text.html"
+     out.write_text(doc, encoding="utf-8")
+     print(f"\nsheet -> {out}")
+-    for ff in [r"C:\Program Files\Mozilla Firefox\firefox.exe",
+-               r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"]:
+-        if Path(ff).exists():
+-            subprocess.Popen([ff, out.as_uri()])
+-            print("opened in Firefox")
+-            break
++    # Opens in the member's own default browser, on Windows and on a Mac.
++    if webbrowser.open(out.as_uri()):
++        print("opened in your browser")
+ 
+ 
+ if __name__ == "__main__":
