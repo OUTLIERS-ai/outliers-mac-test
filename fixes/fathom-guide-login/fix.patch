@@ -1,0 +1,21 @@
+diff --git a/guide/build_guide.py b/guide/build_guide.py
+index 8c45dde..445d12a 100644
+--- a/guide/build_guide.py
++++ b/guide/build_guide.py
+@@ -257,10 +257,12 @@ page("install", """
+   <h3>Step 4 &nbsp;/&nbsp; Log into Fathom yourself, by hand, once</h3>
+   <div class="box">
+     <span class="mono">THIS IS THE STEP EVERYONE MISSES</span>
+-    <p>Open the browser Playwright just installed, go to fathom.video, and log in exactly as you
+-       normally would. <strong>Take as long as you need.</strong> Nothing is counting down.
+-       Nothing. Go and find your password, wait for a code, make a cup of tea. The session is
+-       remembered from then on and you will not do this again.</p>
++    <p>From the folder you downloaded in Step 2, open the browser Playwright just installed:</p>
++    <div class="cmd">cd fathom-meeting-agent<br>python -m playwright open --user-data-dir=.browser-profile https://fathom.video</div>
++    <p>Log in exactly as you normally would. <strong>Take as long as you need.</strong> Nothing is
++       counting down. Nothing. Go and find your password, wait for a code, make a cup of tea.
++       Then close the browser. The login stays in the <strong>.browser-profile</strong> folder
++       and you will not do this again.</p>
+   </div>
+   <p><strong>Your agent never sees your password.</strong> It never types one and it never
+      stores one. If anything ever asks you to hand a password to an agent, stop, because

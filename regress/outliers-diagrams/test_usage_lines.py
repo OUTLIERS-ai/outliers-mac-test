@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Wave 1 leftover (review/wave1-singles.md, "Not fixed" 2), outliers-diagrams: the usage lines at
+the top of each program must name a program that exists and give the command for each system.
+
+Before the fix, 5 usage lines in 4 files named files that are not in the repo
+(`generator/make_collateral_diagrams.py`, `feed_lab.py`, `themes.py`, `interaction_lab.py`) and
+said `python`, which a Mac does not have. `labs/README.md` tells members to read the top of each
+file, so both Mac and Windows members met the wrong names.
+
+What passes, for every .py file in the repo, in the text at the top of the file (its docstring):
+  1. every `python`/`python3` command names a .py file that is in the same folder as the file
+     (each usage line says it is run from that folder);
+  2. every command that starts with plain `python` sits inside "(on Windows: ...)", beside a
+     `python3` command for a Mac, the both-systems form of plan 7c rule 5.
+
+Run from the repo under test:   python3 _regress/test_usage_lines.py
+Exit 0 = pass, 1 = fail.
+"""
+import ast
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path.cwd()
+CMD = re.compile(r"(?<![\w/.\-])(python3?)\s+([\w./\-]+\.py)\b")
+
+
+def main():
+    faults, seen = [], 0
+    for f in sorted(ROOT.rglob("*.py")):
+        if any(p.startswith(("_regress", ".git", "_mac_regress")) for p in f.relative_to(ROOT).parts):
+            continue
+        try:
+            doc = ast.get_docstring(ast.parse(f.read_text(encoding="utf-8")), clean=False) or ""
+        except SyntaxError:
+            continue
+        for line in doc.splitlines():
+            for m in CMD.finditer(line):
+                seen += 1
+                rel = f.relative_to(ROOT).as_posix()
+                if not (f.parent / m.group(2)).is_file():
+                    faults.append("%s: %r names %s, which is not in %s/" % (
+                        rel, line.strip(), m.group(2), f.parent.relative_to(ROOT).as_posix() or "."))
+                if m.group(1) == "python":
+                    before = line[:m.start()]
+                    if "(on Windows:" not in before:
+                        faults.append("%s: %r says python without a python3 command for a Mac" % (rel, line.strip()))
+    print("%d usage commands read" % seen)
+    for x in faults:
+        print("FAULT " + x)
+    print("RESULT %s" % ("FAIL" if faults or not seen else "PASS"))
+    return 1 if faults or not seen else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
