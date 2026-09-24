@@ -1,0 +1,48 @@
+diff --git a/tests/sessions.test.js b/tests/sessions.test.js
+index dbc47ac..8607982 100644
+--- a/tests/sessions.test.js
++++ b/tests/sessions.test.js
+@@ -159,17 +159,40 @@ test('reading a big log hands control back between pieces, so the page keeps ans
+   // a reader that kept the thread would let it run once at most. Counted in turns, not in
+   // milliseconds: a test machine busy with the other test files stretches every piece's time
+   // (about 10 ms of work was measured taking up to 619 ms on a shared Intel Mac), but it cannot
+-  // change the order the turns come in. How much work 1 piece may do is held by its size.
+-  let turns = 0, reading = true;
+-  const other = () => { if (!reading) return; turns++; setImmediate(other); };
++  // change the order the turns come in.
++  // How long 1 piece keeps the thread is measured in processor time, not clock time: the
++  // processor time Node itself used between 2 turns of the other work. A busy machine that
++  // pauses Node stretches clock time only (1.4 ms of processor time was measured inside
++  // 23.5 ms of clock time on that Intel Mac), so this limit cannot be stretched by the
++  // machine, while a piece that does too much work fails it. 250 ms is about 5 times the most
++  // measured on this kit's Windows PC (47 ms, in the 15.6 ms steps Windows counts in), and
++  // under half of a piece that freezes the page for 600 ms, which must fail.
++  const PIECE_CPU_MS = 250;
++  let turns = 0, reading = true, worstCpuMs = 0, lastCpu = process.cpuUsage();
++  const cpuSinceLastTurn = () => {
++    const used = process.cpuUsage(lastCpu);
++    lastCpu = process.cpuUsage();
++    return (used.user + used.system) / 1000;
++  };
++  const other = () => {
++    if (!reading) return;
++    worstCpuMs = Math.max(worstCpuMs, cpuSinceLastTurn());
++    turns++;
++    setImmediate(other);
++  };
+   setImmediate(other);
+   await new Promise((resolve) => store.processFileAsync(f, resolve));
++  worstCpuMs = Math.max(worstCpuMs, cpuSinceLastTurn());
+   reading = false;
+   const pieces = Math.ceil(fs.statSync(f).size / chunk);
+   assert.equal(store.view(store.sessions.get('chunky')).tokensOut, 20000, 'the whole file was read');
+   assert.ok(store.maxReadBytes <= chunk, 'no piece is bigger than ' + chunk + ' bytes (read ' + store.maxReadBytes + ' at once)');
+   assert.ok(turns >= pieces - 1, 'other work ran ' + turns + ' times while at least ' + pieces +
+     ' pieces were read; it must get a turn between every 2 pieces');
++  assert.ok(worstCpuMs < PIECE_CPU_MS, '1 piece kept the thread for ' + worstCpuMs.toFixed(1) +
++    ' ms of processor time; the limit is ' + PIECE_CPU_MS + ' ms per ' + chunk + '-byte piece');
++  console.log('big log: ' + pieces + ' pieces, other work ran ' + turns + ' times, most processor time between 2 turns ' +
++    worstCpuMs.toFixed(1) + ' ms');
+ });
+ 
+ test('a very large log file is read in pieces, not in 1 string', () => {

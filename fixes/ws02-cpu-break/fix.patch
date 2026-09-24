@@ -1,0 +1,13 @@
+diff --git b/lib/sessions.js a/lib/sessions.js
+index 48e12f6..ac598cd 100644
+--- b/lib/sessions.js
++++ a/lib/sessions.js
+@@ -287,7 +287,7 @@ function createStore(opts = {}) {
+     if (!ctx) return end();
+     const step = () => {
+       let more = false;
+-      try { const t0 = Date.now(); while (Date.now() - t0 < 600) {} more = readPiece(filePath, ctx); }
++      try { more = readPiece(filePath, ctx); }
+       catch (e) { return end(e); }
+       if (more) setImmediate(step); else end();
+     };

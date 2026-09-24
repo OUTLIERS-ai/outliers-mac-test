@@ -1,0 +1,786 @@
+diff --git a/common.py b/common.py
+index 2edde0c..35c08d3 100644
+--- a/common.py
++++ b/common.py
+@@ -20,6 +20,8 @@ from pathlib import Path
+ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+ IS_WIN = sys.platform == "win32"
+ IS_MAC = sys.platform == "darwin"
++# The command a member types to run Python: a Mac has python3 and no plain python.
++PY = "python3" if IS_MAC else "python"
+ 
+ # The package version this kit was checked against on 2026-09-22.
+ DEFAULT_PACKAGE = "agent-flow-app@0.9.1"
+@@ -221,19 +223,19 @@ def why_it_stopped(tail: str) -> str:
+     low = (tail or "").lower()
+     if any(w in low for w in _ADDRESS_IN_USE):
+         return ("The port agent-flow needed was taken by another program a moment before it "
+-                "started. Run python start.py again.")
++                f"started. Run {PY} start.py again.")
+     if any(w in low for w in _OLD_NODE):
+         return (f"The Node.js on this computer is older than {MIN_NODE}. Install Node.js {MIN_NODE} "
+-                "or newer from nodejs.org, open a NEW terminal, then run python start.py again.")
++                f"or newer from nodejs.org, open a NEW terminal, then run {PY} start.py again.")
+     if any(w in low for w in _NO_NODE):
+         return ("Node.js was not found on this computer. Install it from nodejs.org, open a NEW "
+-                "terminal, then run python start.py again.")
++                f"terminal, then run {PY} start.py again.")
+     if any(w in low for w in _NOT_ON_NPM):
+         return (f"npm has no package with the name in config.json. Put it back to {DEFAULT_PACKAGE}, "
+-                "then run python start.py again.")
++                f"then run {PY} start.py again.")
+     if any(w in low for w in _NO_INTERNET):
+         return ("This computer could not reach npm, the store agent-flow is downloaded from, and "
+-                "agent-flow is not saved on it yet. Connect to the internet, then run python "
++                f"agent-flow is not saved on it yet. Connect to the internet, then run {PY} "
+                 "start.py again.")
+     last = [ln.strip() for ln in (tail or "").splitlines() if ln.strip()]
+     if last:
+@@ -262,22 +264,22 @@ def settings_fault(path: Path | None = None, point_at_check: bool = True) -> str
+     raw = path.read_bytes()
+     if not raw.strip():
+         return (f"{path} is empty. agent-flow cannot read an empty file, so at its next start it "
+-                "would replace it with a file that has only its own 9 hooks in it. Run: python install.py")
++                f"would replace it with a file that has only its own 9 hooks in it. Run: {PY} install.py")
+     if raw.startswith(BOM):
+         return (f"{path} starts with an invisible byte-order mark (some editors and PowerShell add it). "
+-                "agent-flow cannot read a file like that and would replace it. Run: python install.py "
++                f"agent-flow cannot read a file like that and would replace it. Run: {PY} install.py "
+                 "(it removes the mark after a backup).")
+     try:
+         data = strict_loads(raw.decode("utf-8"))
+     except UnicodeDecodeError:
+-        return f"{path} is not plain UTF-8 text. Fix it, then run: python install.py"
++        return f"{path} is not plain UTF-8 text. Fix it, then run: {PY} install.py"
+     except ValueError as exc:
+         return (f"{path} cannot be read ({json_error_in_words(exc)}). agent-flow would replace the "
+                 "whole file. Open it at that line, fix it and save"
+-                + (", then run: python check_hooks.py" if point_at_check else "."))
++                + (f", then run: {PY} check_hooks.py" if point_at_check else "."))
+     if not isinstance(data, dict):
+         return (f"{path} does not start with {{ and end with }}, so it is not a settings file. "
+-                "Fix it, then run: python install.py")
++                f"Fix it, then run: {PY} install.py")
+     return None
+ 
+ 
+@@ -290,12 +292,12 @@ def settings_problem() -> str | None:
+     same, keeping your other settings, if it cannot find its own hook in the file.
+     So we only start it when it will find everything in order and leave the file alone."""
+     if not hook_script().exists():
+-        return f"agent-flow's hook script is missing ({hook_script()}). Run: python install.py"
++        return f"agent-flow's hook script is missing ({hook_script()}). Run: {PY} install.py"
+     path = agent_flow_settings_path()
+     is_claudes = norm_path(path) == norm_path(settings_path())
+     if not path.exists():
+         return ("Claude Code's settings.json does not exist yet, so agent-flow would write its own. "
+-                "Run: python install.py") if is_claudes else None
++                f"Run: {PY} install.py") if is_claudes else None
+     fault = settings_fault(path)
+     if fault:
+         return fault
+@@ -303,9 +305,9 @@ def settings_problem() -> str | None:
+     try:
+         counts = count_agent_flow(data)
+     except (AttributeError, TypeError):
+-        return f"{path} has a 'hooks' block in a shape agent-flow does not expect. Run: python install.py"
++        return f"{path} has a 'hooks' block in a shape agent-flow does not expect. Run: {PY} install.py"
+     if not any(counts.values()) and is_claudes:
+-        return "The agent-flow hooks are not in settings.json. Run: python install.py"
++        return f"The agent-flow hooks are not in settings.json. Run: {PY} install.py"
+     return None
+ 
+ 
+@@ -526,19 +528,57 @@ def http_answers(port: int, timeout: float = 1.5) -> bool:
+         return False
+ 
+ 
++def _descendants(pid: int) -> list[int]:
++    """Every process started by this one, and by those, and so on (Mac and Linux)."""
++    try:
++        out = subprocess.run(["ps", "-A", "-o", "pid=,ppid="], capture_output=True, text=True,
++                             timeout=10, creationflags=NO_WINDOW).stdout or ""
++    except (OSError, subprocess.TimeoutExpired):
++        return []
++    children: dict[int, list[int]] = {}
++    for line in out.splitlines():
++        parts = line.split()
++        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
++            children.setdefault(int(parts[1]), []).append(int(parts[0]))
++    found, todo = [], [pid]
++    while todo:
++        for kid in children.get(todo.pop(), []):
++            if kid not in found:
++                found.append(kid)
++                todo.append(kid)
++    return found
++
++
+ def kill_tree(pid: int) -> None:
++    """End this program and every program it started.
++
++    On a Mac the quick way is to end the program's whole process group. That group is
++    only safe to end when the program was started in a group of its own: if it shares
++    the group of the program calling kill_tree, ending the group ends the caller too
++    (found on GitHub's test Macs 2026-09-24: the test run itself was ended). So the
++    caller's own group is never ended; the program and its children are ended one by one."""
+     if IS_WIN:
+         subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, creationflags=NO_WINDOW)
+-    else:
+-        import signal
++        return
++    import signal
+ 
++    try:
++        group = os.getpgid(pid)
++    except (ProcessLookupError, PermissionError):
++        group = None
++    if group is not None and group != os.getpgrp():
+         try:
+-            os.killpg(os.getpgid(pid), signal.SIGTERM)
++            os.killpg(group, signal.SIGTERM)
++            return
+         except (ProcessLookupError, PermissionError):
+-            try:
+-                os.kill(pid, signal.SIGTERM)
+-            except ProcessLookupError:
+-                pass
++            pass
++    for p in _descendants(pid) + [pid]:
++        if p == os.getpid():
++            continue
++        try:
++            os.kill(p, signal.SIGTERM)
++        except (ProcessLookupError, PermissionError):
++            pass
+ 
+ 
+ def norm_path(p) -> str:
+diff --git a/guard.py b/guard.py
+index eb95467..93b96bf 100644
+--- a/guard.py
++++ b/guard.py
+@@ -28,6 +28,7 @@ import datetime as _dt
+ import http.client
+ import os
+ import socket
++import socketserver
+ import subprocess
+ import sys
+ import threading
+@@ -83,6 +84,9 @@ def start_child(workspace: str, package: str, out, attempts: int = 3, on_tick=No
+                   stderr=subprocess.STDOUT)
+     if common.IS_WIN:
+         kwargs["creationflags"] = common.NO_WINDOW
++    else:
++        # A process group of its own, so kill_tree ends agent-flow and its children, never us.
++        kwargs["start_new_session"] = True
+     port = 0
+     for attempt in range(1, attempts + 1):
+         port = free_port()
+@@ -107,6 +111,21 @@ def start_child(workspace: str, package: str, out, attempts: int = 3, on_tick=No
+     return None, port
+ 
+ 
++class PageServer(ThreadingHTTPServer):
++    """The standard server with no name look-up when it starts."""
++
++    def server_bind(self):
++        # http.server's own server_bind also asks for this address's name
++        # (socket.getfqdn), only to fill in server_name, which nothing here uses.
++        # On GitHub's test Macs that look-up took 35 seconds on every start
++        # (measured 2026-09-24), so the page answered 35 seconds late and the
++        # checks that wait 15 or 20 seconds for it failed. The name is now the
++        # address as given, with no look-up.
++        socketserver.TCPServer.server_bind(self)
++        host, port = self.server_address[:2]
++        self.server_name, self.server_port = str(host), port
++
++
+ def allowed_hosts(port: int) -> set[str]:
+     return {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+ 
+@@ -217,7 +236,7 @@ def run(workspace: str, package: str, port: int, wait_s: float) -> int:
+             log(f"agent-flow stopped straight away (exit code {child.returncode}). {why}")
+             return 4
+         try:
+-            server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(port, private))
++            server = PageServer(("127.0.0.1", port), make_handler(port, private))
+         except OSError as exc:
+             log(f"could not serve the page on port {port}: {exc}")
+             return 3
+diff --git a/install.py b/install.py
+index ccc6e53..7a2e9be 100644
+--- a/install.py
++++ b/install.py
+@@ -85,10 +85,20 @@ def find_vaults() -> list[Path]:
+     return uniq
+ 
+ 
++def mac_second_brain_homes() -> list[Path]:
++    """On a Mac, where a Second Brain is looked for first, in this order. ~/Second Brain comes
++    before ~/Documents/Second Brain: macOS may refuse a program that starts by itself access to
++    the Documents folder, so the Mac guides put the vault outside it (build plan V3, row 23)."""
++    return [common.home() / "Second Brain", common.home() / "Documents" / "Second Brain"]
++
++
+ def guess_paths() -> tuple[str | None, str | None]:
+     sb = _pointer(".outliers-sb")
+     crm = _pointer(".outliers-crm")
+     vaults = find_vaults()
++    if common.IS_MAC:
++        firsts = [p for p in mac_second_brain_homes() if (p / ".obsidian").is_dir()]
++        vaults = firsts + [v for v in vaults if v not in firsts]
+     if not crm:
+         for v in vaults:
+             if any(w in v.name.lower() for w in ("crm", "pipeline", "sales", "clients")):
+@@ -101,8 +111,10 @@ def guess_paths() -> tuple[str | None, str | None]:
+             if str(v) != crm:
+                 sb = str(v)
+                 break
+-        if not sb and (common.home() / "Documents" / "Second Brain").is_dir():
+-            sb = str(common.home() / "Documents" / "Second Brain")
++        homes = mac_second_brain_homes() if common.IS_MAC else [common.home() / "Documents" / "Second Brain"]
++        for p in homes:
++            if not sb and p.is_dir():
++                sb = str(p)
+     return sb, crm
+ 
+ 
+@@ -314,8 +326,9 @@ def python_help() -> str:
+     return (f"This kit needs Python {want} or newer. This terminal is running Python {have}.\n"
+             "Python 3.10 gets security fixes only until 2026-10-31, and older versions get none.\n"
+             "Install a current Python from https://python.org (on a Mac, python.org or "
+-            "`brew install python`), open a NEW terminal, check with:  python --version\n"
+-            "(on a Mac:  python3 --version) and run install.py again.")
++            "`brew install python`), open a NEW terminal, check with:  "
++            + ("python3 --version" if common.IS_MAC else "python --version\n(on a Mac:  python3 --version)")
++            + " and run install.py again.")
+ 
+ 
+ def want_autostart(args, cfg: dict) -> bool:
+@@ -353,8 +366,10 @@ def do_install(args) -> int:
+     if not args.watch_folder:
+         sb = ask("Where is your second brain vault?", sb, args.yes)
+         crm = ask("Where is your CRM vault?", crm, args.yes)
++    # With no vault found, a Mac watches the home folder: the Mac guides keep the vaults
++    # outside Documents, which a program that starts by itself may be refused.
+     default_watch = args.watch_folder or cfg.get("watch_folder") or common_parent([sb, crm]) \
+-        or str(common.home() / "Documents")
++        or str(common.home() if common.IS_MAC else common.home() / "Documents")
+     watch = ask("Which folder should agent-flow watch? It must CONTAIN every vault you run Claude Code in",
+                 default_watch, args.yes or bool(args.watch_folder))
+     if not watch or not Path(watch).is_dir():
+@@ -423,9 +438,9 @@ def do_install(args) -> int:
+             print(f"\nRemoved the file that starts agent-flow when the computer starts ({how}): {lp}")
+         else:
+             print(f"\nagent-flow will not start by itself when the computer starts ({how}).")
+-        print("Running python install.py again keeps this choice. "
+-              "To switch it back on: python install.py --autostart")
+-        print("Start it by hand with: python start.py")
++        print(f"Running {common.PY} install.py again keeps this choice. "
++              f"To switch it back on: {common.PY} install.py --autostart")
++        print(f"Start it by hand with: {common.PY} start.py")
+     else:
+         lp = launcher_path(args.startup_dir)
+         text = launcher_text()
+@@ -447,10 +462,10 @@ def do_install(args) -> int:
+         print(f"\nDone. Open http://127.0.0.1:{new_cfg['port']} and start a NEW "
+               "Claude Code session inside the watch folder.")
+     else:
+-        print("\nDone. Start it now with:  python start.py")
++        print(f"\nDone. Start it now with:  {common.PY} start.py")
+         print(f"Then open http://127.0.0.1:{new_cfg['port']} and start a NEW Claude Code session "
+               "inside the watch folder.")
+-    print("Check your hooks any time with:  python check_hooks.py")
++    print(f"Check your hooks any time with:  {common.PY} check_hooks.py")
+     return 0
+ 
+ 
+@@ -495,7 +510,9 @@ def main(argv=None) -> int:
+     ap.add_argument("--package", help=f"npm package to run (default {common.DEFAULT_PACKAGE})")
+     ap.add_argument("--port", type=int, help=f"web page port (default {common.UI_PORT})")
+     ap.add_argument("--node-path", help="node program to put in the hook (default: the one on PATH)")
+-    ap.add_argument("--startup-dir", help="Windows Startup folder override (for testing)")
++    # A Mac has no Startup folder, so the option is hidden from --help there.
++    ap.add_argument("--startup-dir", help="Windows Startup folder override (for testing)" if common.IS_WIN
++                    else argparse.SUPPRESS)
+     when = ap.add_mutually_exclusive_group()
+     when.add_argument("--no-autostart", action="store_true", help="do not add the file that starts agent-flow by itself each time you switch on your computer and sign in (removes it if you have it); saved, so later runs keep this choice")
+     when.add_argument("--autostart", action="store_true", help="put that file back after an earlier --no-autostart")
+diff --git a/start.py b/start.py
+index 74718b0..4d5dde0 100644
+--- a/start.py
++++ b/start.py
+@@ -122,7 +122,7 @@ def start(workspace: str, package: str, port: int, wait_s: float, foreground: bo
+         log_line(f"[start.py] ended {n} agent-flow server(s) left behind for {workspace}")
+     if common.port_answers(port):
+         say(f"Port {port} is already in use by another program. "
+-            f"Pick another with:  python install.py --port {port + 1}   then:  python start.py")
++            f"Pick another with:  {common.PY} install.py --port {port + 1}   then:  {common.PY} start.py")
+         log_line(f"{REFUSED} port {port} is already in use by another program")
+         return 3
+     proc = launch(workspace, package, port, foreground, wait_s)
+diff --git a/tests/fake_agent_flow.py b/tests/fake_agent_flow.py
+index 8d828a1..255bc1c 100644
+--- a/tests/fake_agent_flow.py
++++ b/tests/fake_agent_flow.py
+@@ -104,7 +104,18 @@ class UI(BaseHTTPRequestHandler):
+         pass
+ 
+ 
+-ui = ThreadingHTTPServer(("127.0.0.1", port), UI)
++class QuickServer(ThreadingHTTPServer):
++    """No name look-up when it starts. The real agent-flow (Node.js) does none; Python's
++    server looks up the name of 127.0.0.1, which took 35 seconds on GitHub's test Macs
++    (2026-09-24), so this stand-in answered later than the checks wait."""
++
++    def server_bind(self):
++        import socketserver
++        socketserver.TCPServer.server_bind(self)
++        self.server_name, self.server_port = self.server_address[0], self.server_address[1]
++
++
++ui = QuickServer(("127.0.0.1", port), UI)
+ threading.Thread(target=ui.serve_forever, daemon=True).start()
+ 
+ hk = socket.socket()
+diff --git a/tests/mac/mac_guard_stop_signals.py b/tests/mac/mac_guard_stop_signals.py
+new file mode 100644
+index 0000000..d85e282
+--- /dev/null
++++ b/tests/mac/mac_guard_stop_signals.py
+@@ -0,0 +1,157 @@
++"""Mac only (wave 1 second read, after fault row 3): when the guard is stopped, agent-flow stops too.
++
++Row 3 gave agent-flow a process group of its own (guard.start_child), so that stopping agent-flow
++never stops the program that asked. The cost: agent-flow is no longer ended together with the
++guard's group. The guard ends agent-flow in its own clean-up, but Python skips that clean-up
++when the program is ended by SIGTERM or SIGHUP, which is what a Mac sends when:
++- the login job is switched off (`python3 install.py --no-autostart` or `--uninstall` run
++  `launchctl unload`, and the Mac's job manager sends SIGTERM), or
++- the Terminal window running `python3 start.py --foreground` is closed (SIGHUP).
++Before this fix agent-flow kept running after either, still taking Claude Code's events.
++
++Each check starts the real guard.py (or start.py --foreground) with the tests' stand-in for
++agent-flow, in a throwaway home and kit folder, waits for the page, stops it the way the Mac
++does, and requires the stand-in's own process to be gone.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_guard_stop_signals.py
++(pytest never collects this file in a plain run, so the counts the guides print stay true.)
++"""
++import json
++import os
++import shutil
++import signal
++import socket
++import subprocess
++import sys
++import textwrap
++import time
++from pathlib import Path
++
++import pytest
++
++KIT = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SIGTERM and SIGHUP stop signals are a Mac and Linux idea")
++
++
++def free_port() -> int:
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    p = s.getsockname()[1]
++    s.close()
++    return p
++
++
++def alive(pid: int) -> bool:
++    try:
++        os.kill(pid, 0)
++    except ProcessLookupError:
++        return False
++    except PermissionError:
++        return True
++    # A finished child nobody has collected yet still answers kill(pid, 0); ps shows it as Z.
++    st = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
++    return bool(st) and not st.startswith("Z")
++
++
++def setup(tmp_path: Path):
++    home = tmp_path / "home"
++    (home / ".claude").mkdir(parents=True)
++    kit = tmp_path / "kit"
++    kit.mkdir()
++    ws = tmp_path / "watch"
++    ws.mkdir()
++    env = {"HOME": str(home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
++           "AGENT_FLOW_NPX_CMD": json.dumps([sys.executable, str(KIT / "tests" / "fake_agent_flow.py")])}
++    return home, kit, ws, env
++
++
++def wait_for_agent_flow(home: Path, kit: Path, proc: subprocess.Popen) -> int:
++    """The stand-in's process number, read from the discovery file it writes, once the page is ready."""
++    log = kit / "logs" / "start.log"
++    end = time.time() + 90
++    while time.time() < end:
++        if proc.poll() is not None:
++            break
++        ready = log.exists() and "page ready" in log.read_text(encoding="utf-8", errors="replace")
++        found = sorted((home / ".claude" / "agent-flow").glob("*-*.json"))
++        if ready and found:
++            return int(json.loads(found[-1].read_text(encoding="utf-8"))["pid"])
++        time.sleep(0.2)
++    text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else "(no start.log)"
++    raise AssertionError(f"agent-flow's page never became ready (exit {proc.poll()}):\n{text}")
++
++
++def gone_within(pid: int, seconds: float) -> bool:
++    end = time.time() + seconds
++    while time.time() < end:
++        if not alive(pid):
++            return True
++        time.sleep(0.2)
++    return not alive(pid)
++
++
++def start_guard(tmp_path: Path):
++    home, kit, ws, env = setup(tmp_path)
++    cmd = [sys.executable, str(KIT / "guard.py"), "--kit-dir", str(kit), "--workspace", str(ws),
++           "--package", "x", "--port", str(free_port()), "--wait", "60"]
++    # A session of its own, as the login job gives it, so the signal below reaches the guard's
++    # group and never pytest's.
++    proc = subprocess.Popen(cmd, cwd=str(ws), env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
++                            stderr=subprocess.DEVNULL, start_new_session=True)
++    return home, kit, proc
++
++
++@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP], ids=["SIGTERM", "SIGHUP"])
++def test_stopping_the_guard_stops_agent_flow(tmp_path, sig):
++    home, kit, guard = start_guard(tmp_path)
++    af = None
++    try:
++        af = wait_for_agent_flow(home, kit, guard)
++        os.killpg(guard.pid, sig)  # the guard's own group only: agent-flow is in a group of its own
++        guard.wait(timeout=30)
++        assert gone_within(af, 15), (
++            f"the guard was stopped with {sig.name} but agent-flow (process {af}) is still running")
++    finally:
++        for pid in ([af] if af else []):
++            try:
++                os.killpg(os.getpgid(pid), signal.SIGKILL)
++            except (ProcessLookupError, PermissionError):
++                pass
++        if guard.poll() is None:
++            guard.kill()
++
++
++def test_stopping_a_foreground_start_py_stops_agent_flow(tmp_path):
++    """The login job runs `start.py --foreground`. Switching the job off sends SIGTERM to
++    start.py; whatever the Mac then does to the rest of the job, agent-flow must end."""
++    home, kit, ws, env = setup(tmp_path)
++    kit_copy = tmp_path / "kitcode"
++    shutil.copytree(KIT, kit_copy, ignore=shutil.ignore_patterns(".git", "tests", "logs", "__pycache__"))
++    script = tmp_path / "job.py"
++    script.write_text(textwrap.dedent(f"""
++        import sys
++        sys.path.insert(0, {str(kit_copy)!r})
++        import common, start
++        common.KIT_DIR = __import__("pathlib").Path({str(kit)!r})
++        common.settings_problem = lambda: None  # settings.json safety is checked elsewhere
++        sys.exit(start.start({str(ws)!r}, "x", {free_port()}, 60.0, True, True))
++    """), encoding="utf-8")
++    job = subprocess.Popen([sys.executable, str(script)], cwd=str(ws), env=env, stdin=subprocess.DEVNULL,
++                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
++    af = None
++    try:
++        af = wait_for_agent_flow(home, kit, job)
++        os.kill(job.pid, signal.SIGTERM)  # start.py alone, as the job manager does first
++        job.wait(timeout=30)
++        assert gone_within(af, 15), (
++            f"start.py --foreground was stopped with SIGTERM but agent-flow (process {af}) is still running")
++    finally:
++        for pid in ([af] if af else []):
++            try:
++                os.killpg(os.getpgid(pid), signal.SIGKILL)
++            except (ProcessLookupError, PermissionError):
++                pass
++        try:
++            os.killpg(job.pid, signal.SIGKILL)
++        except (ProcessLookupError, PermissionError):
++            pass
+diff --git a/tests/mac/mac_printed_commands_python3.py b/tests/mac/mac_printed_commands_python3.py
+new file mode 100644
+index 0000000..d7af765
+--- /dev/null
++++ b/tests/mac/mac_printed_commands_python3.py
+@@ -0,0 +1,81 @@
++"""Mac only (fault row 18, build plan V3): what agent-flow prints must never tell a Mac member to type `python`.
++
++A Mac has `python3` and no plain `python`, so a line such as "Start it now with:  python start.py"
++fails with "command not found" when a Mac member types it (measured on GitHub's test Macs,
++2026-09-24, wave 0a M7). Windows keeps printing `python`, which is right there.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_printed_commands_python3.py
++"""
++import re
++import subprocess
++import sys
++
++import pytest
++
++import common
++import install
++import start
++from conftest import KIT, free_port
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++
++# `python` or `pip` typed as a command: not python3, not python.org, not "Python 3.14".
++COMMAND = re.compile(r"(?<![\w/.\-])(python|pip)(?![\w.\-])")
++
++
++def bad_lines(text: str) -> list[str]:
++    return [ln for ln in text.splitlines() if COMMAND.search(ln)]
++
++
++def test_install_prints_python3(vaults, temp_home, capsys):
++    port = free_port()
++    assert install.main(["--yes", "--port", str(port), "--wait", "30", "--node-path", "node", "--no-autostart"]) == 0
++    out = capsys.readouterr().out
++    assert "python3 start.py" in out and "python3 check_hooks.py" in out
++    assert bad_lines(out) == []
++
++
++def test_help_names_no_windows_folder():
++    r = subprocess.run([sys.executable, str(KIT / "install.py"), "--help"], capture_output=True, text=True, timeout=60)
++    assert r.returncode == 0
++    assert "Windows" not in r.stdout and "Startup folder" not in r.stdout
++    assert bad_lines(r.stdout) == []
++
++
++def test_every_reason_it_stopped_says_python3():
++    for tail in ("EADDRINUSE", "npm warn EBADENGINE", "npx: command not found", "npm error E404",
++                 "getaddrinfo ENOTFOUND registry.npmjs.org"):
++        why = common.why_it_stopped(tail)
++        assert bad_lines(why) == [], why
++
++
++def test_settings_messages_say_python3(temp_home):
++    sp = common.settings_path()
++    for raw in (b"", b"\xef\xbb\xbf{}", b"{,}", b"[]"):
++        sp.write_bytes(raw)
++        msg = common.settings_fault(sp) or ""
++        assert msg and bad_lines(msg) == [], msg
++    msg = common.settings_problem() or ""
++    assert msg and bad_lines(msg) == [], msg
++
++
++def test_port_in_use_message_says_python3(temp_home, tmp_path, capsys):
++    import socket
++
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    s.listen(1)
++    port = s.getsockname()[1]
++    try:
++        watch = tmp_path / "watch"
++        watch.mkdir()
++        common.hook_script().parent.mkdir(parents=True, exist_ok=True)
++        common.hook_script().write_text("//", encoding="utf-8")
++        common.settings_path().write_text(common.dump_settings(
++            common.install_agent_flow({}, common.hook_command("node"))[0]), encoding="utf-8")
++        assert start.start(str(watch), "x", port, 5, False, False) == 3
++    finally:
++        s.close()
++    out = capsys.readouterr().out
++    assert "python3 install.py --port" in out
++    assert bad_lines(out) == []
+diff --git a/tests/mac/mac_server_starts_quickly.py b/tests/mac/mac_server_starts_quickly.py
+new file mode 100644
+index 0000000..823d196
+--- /dev/null
++++ b/tests/mac/mac_server_starts_quickly.py
+@@ -0,0 +1,36 @@
++"""Fault found while proving row 3 (build plan V3), same cause as row 9: agent-flow's page must not wait 35 seconds for a name look-up.
++
++Measured 2026-09-24 on all 3 of GitHub's test Macs: Python's socket.getfqdn("127.0.0.1") took
++35 seconds on every call, and Python's web server calls it once when it starts, only to fill in a
++name nothing here uses. So agent-flow's page on port 3001 answered 35 seconds after it started, and the checks that wait
++20 or 30 seconds for it failed (4 checks in tests/test_safety.py and tests/test_reliability.py on all 3 test Macs). The server now starts with no name look-up.
++
++This check makes the look-up slow on purpose (30 seconds), so it shows the fault on any computer,
++then times how long the server takes to start. It is kept in tests/mac/ and named mac_*.py so a
++plain `python -m pytest -q` never runs it and the counts the guides print stay true. Run by name:
++  python3 -m pytest -q tests/mac/mac_server_starts_quickly.py
++"""
++import subprocess
++import sys
++import textwrap
++from pathlib import Path
++
++KIT = Path(__file__).resolve().parents[2]
++
++
++def test_the_server_starts_without_waiting_for_a_name_look_up():
++    code = textwrap.dedent('''
++        import socket, sys, time
++        sys.path.insert(0, {kit!r})
++        socket.getfqdn = lambda *a, **k: (time.sleep(30), "slow.example")[1]
++        t = time.time()
++        import guard
++        srv = getattr(guard, "PageServer", guard.ThreadingHTTPServer)(("127.0.0.1", 0), guard.make_handler(1, 2))
++        print("started in %.1f seconds" % (time.time() - t))
++        srv.server_close()
++    ''').format(kit=str(KIT))
++    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
++                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    assert r.returncode == 0, r.stdout + r.stderr
++    took = float(r.stdout.split("started in ")[1].split()[0])
++    assert took < 5, "the server took %.1f seconds to start: it waited for the name look-up" % took
+diff --git a/tests/mac/mac_stop_spares_caller.py b/tests/mac/mac_stop_spares_caller.py
+new file mode 100644
+index 0000000..f9f1a43
+--- /dev/null
++++ b/tests/mac/mac_stop_spares_caller.py
+@@ -0,0 +1,84 @@
++"""Mac only (fault row 3, build plan V3): stopping agent-flow must never stop the program that asked.
++
++On GitHub's test Macs on 2026-09-24 the whole test run died with SIGTERM straight after the
++first test that started agent-flow: guard.start_child did not give agent-flow a process group
++of its own, and common.kill_tree ends the whole group of the program it is given, which was
++the caller's group. Each check below runs in a separate Python program, so a wrong kill_tree
++ends that program and the check reports it, instead of ending the test run.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_stop_spares_caller.py
++(pytest never collects this file in a plain run, so the counts the guides print stay true.)
++"""
++import json
++import subprocess
++import sys
++import textwrap
++from pathlib import Path
++
++import pytest
++
++KIT = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="process groups are a Mac and Linux idea")
++
++
++def run_script(body: str, tmp_path: Path) -> subprocess.CompletedProcess:
++    home = tmp_path / "home"
++    (home / ".claude").mkdir(parents=True)
++    script = tmp_path / "caller.py"
++    script.write_text(textwrap.dedent(f"""
++        import json, os, subprocess, sys, time
++        sys.path.insert(0, {str(KIT)!r})
++        import common, guard
++        common.KIT_DIR = __import__("pathlib").Path({str(tmp_path / "kit")!r})
++        common.logs_dir().mkdir(parents=True, exist_ok=True)
++    """) + textwrap.dedent(body) + "\nprint('CALLER SURVIVED', flush=True)\n", encoding="utf-8")
++    env = {"HOME": str(home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
++           "AGENT_FLOW_NPX_CMD": json.dumps([sys.executable, str(KIT / "tests" / "fake_agent_flow.py")])}
++    # The caller runs in a session of its own, so a wrong kill_tree ends only the caller and
++    # what it started, never pytest or the terminal pytest runs in.
++    return subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=120, env=env,
++                          start_new_session=True)
++
++
++def test_ending_agent_flow_started_by_the_guard_spares_the_caller(tmp_path):
++    r = run_script("""
++        out = open(common.logs_dir() / "agent-flow.log", "ab")
++        child, port = guard.start_child(os.getcwd(), "x", out)
++        assert child is not None, "the stand-in agent-flow did not start"
++        common.kill_tree(child.pid)
++        child.wait(timeout=20)
++        print("child ended with", child.returncode, flush=True)
++    """, tmp_path)
++    assert "CALLER SURVIVED" in r.stdout, f"kill_tree ended its caller (exit {r.returncode}): {r.stdout}{r.stderr}"
++    assert "child ended with" in r.stdout
++
++
++def test_ending_a_program_that_shares_our_group_spares_the_caller(tmp_path):
++    """kill_tree is also handed programs it did not start (cleanup.py, start.py --stop):
++    whatever group they are in, the caller's own group is never ended."""
++    r = run_script("""
++        kid = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
++        common.kill_tree(kid.pid)
++        kid.wait(timeout=20)
++        print("child ended with", kid.returncode, flush=True)
++    """, tmp_path)
++    assert "CALLER SURVIVED" in r.stdout, f"kill_tree ended its caller (exit {r.returncode}): {r.stdout}{r.stderr}"
++    assert "child ended with" in r.stdout
++
++
++def test_children_of_a_program_in_our_group_are_ended_too(tmp_path):
++    """Without the group, the program's own children must still be ended (npx starts node)."""
++    r = run_script("""
++        kid = subprocess.Popen([sys.executable, "-c",
++            "import subprocess, sys, time; g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']);"
++            "print(g.pid, flush=True); time.sleep(60)"], stdout=subprocess.PIPE, text=True)
++        grandkid = int(kid.stdout.readline())
++        common.kill_tree(kid.pid)
++        kid.wait(timeout=20)
++        end = time.time() + 10
++        while time.time() < end and common.pid_alive(grandkid):
++            time.sleep(0.2)
++        print("grandchild alive:", common.pid_alive(grandkid), flush=True)
++    """, tmp_path)
++    assert "CALLER SURVIVED" in r.stdout, f"kill_tree ended its caller (exit {r.returncode}): {r.stdout}{r.stderr}"
++    assert "grandchild alive: False" in r.stdout, r.stdout + r.stderr
+diff --git a/tests/mac/mac_vault_lookup.py b/tests/mac/mac_vault_lookup.py
+new file mode 100644
+index 0000000..bb7bb8a
+--- /dev/null
++++ b/tests/mac/mac_vault_lookup.py
+@@ -0,0 +1,51 @@
++"""Mac only (fault row 23, build plan V3): on a Mac the Second Brain is looked for at ~/Second Brain first.
++
++macOS may refuse a program that starts by itself (a LaunchAgent) access to ~/Documents, so the
++Mac guides put the Second Brain at ~/Second Brain. The installer must find it there first, then
++at ~/Documents/Second Brain, and with no vault at all it must not pick ~/Documents as the folder
++agent-flow watches. Windows keeps its own look-ups, unchanged.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_vault_lookup.py
++"""
++import json
++import sys
++
++import pytest
++
++import common
++import install
++from conftest import free_port
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac look-up order")
++
++
++def make_vault(path):
++    (path / ".obsidian").mkdir(parents=True)
++    return path
++
++
++def test_second_brain_outside_documents_comes_first(temp_home):
++    outside = make_vault(temp_home / "Second Brain")
++    make_vault(temp_home / "Documents" / "Second Brain")
++    sb, _ = install.guess_paths()
++    assert sb == str(outside)
++
++
++def test_a_plain_second_brain_folder_outside_documents_is_found(temp_home):
++    """No vault anywhere yet, only the folder the Mac guide makes: it is the guess."""
++    (temp_home / "Second Brain").mkdir()
++    sb, _ = install.guess_paths()
++    assert sb == str(temp_home / "Second Brain")
++
++
++def test_documents_is_still_found_when_it_is_the_only_one(temp_home):
++    inside = make_vault(temp_home / "Documents" / "Second Brain")
++    sb, _ = install.guess_paths()
++    assert sb == str(inside)
++
++
++def test_with_no_vault_the_watch_folder_is_home_not_documents(temp_home):
++    port = free_port()
++    assert install.main(["--yes", "--port", str(port), "--wait", "30", "--node-path", "node", "--no-autostart"]) == 0
++    watch = json.loads(common.config_path().read_text())["watch_folder"]
++    assert watch == str(temp_home.resolve())
