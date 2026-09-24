@@ -1,0 +1,61 @@
+name: Mac member test
+
+# Runs every public Outliers member repo on 2 real Macs, the way a Mac member would:
+# the steps exactly as the repo prints them first, then the obvious Mac substitute.
+# No secrets are used or needed. Nothing here logs in to anything.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Repos to test, comma separated (blank = all)"
+        required: false
+        default: ""
+      macs:
+        description: "Mac runners, comma separated"
+        required: false
+        default: "macos-15,macos-15-intel"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: |
+          MACS="${{ github.event.inputs.macs }}"
+          [ -z "$MACS" ] && MACS="macos-15,macos-15-intel"
+          echo "matrix=$(cd harness && python3 specs.py "${{ github.event.inputs.only }}" "$MACS")" >> "$GITHUB_OUTPUT"
+
+  member:
+    needs: plan
+    name: ${{ matrix.repo }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 5          # a Free-plan account may run at most 5 Mac jobs at once
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - name: Walk through the repo as a Mac member
+        env:
+          MAC_LABEL: ${{ matrix.os }}
+        # Apple's own Python runs the test tool, so the tool never depends on the Python being tested.
+        run: /usr/bin/python3 _mactest/harness/mactest.py "${{ matrix.repo }}" "$RUNNER_TEMP/out"
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-${{ matrix.repo }}--${{ matrix.os }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
