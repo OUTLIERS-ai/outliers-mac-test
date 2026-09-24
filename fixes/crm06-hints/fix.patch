@@ -1,0 +1,126 @@
+diff --git a/engine/holds.py b/engine/holds.py
+index e37f488..da65af0 100644
+--- a/engine/holds.py
++++ b/engine/holds.py
+@@ -32,9 +32,9 @@ held, never fewer. A leading symbol cannot tell two different people apart, so
+ nothing is lost by ignoring it.
+ 
+ CLI:
+-    python holds.py status
+-    python holds.py hold "<link-or-name>" "reason" [other identifier ...]
+-    python holds.py release "<link-or-name>"
++    python _engine/holds.py status
++    python _engine/holds.py hold "<link-or-name>" "reason" [other identifier ...]
++    python _engine/holds.py release "<link-or-name>"
+ 
+ Needs: Python 3.8 or newer. Nothing else.
+ """
+@@ -46,6 +46,25 @@ from datetime import datetime, timezone
+ import crm_paths
+ import safe_write
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
++
++def _typed(name):
++    """The program `name` (it sits beside this file) as the member types it from the folder
++    they are in: `_engine/<name>` from the CRM folder, `<name>` from inside `_engine`."""
++    import os
++    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
++    try:
++        typed = os.path.relpath(path)
++    except ValueError:                      # the member is on another drive
++        typed = path
++    if typed.startswith(".."):
++        typed = path
++    typed = typed.replace("\\", "/")
++    return '"%s"' % typed if " " in typed else typed
++
+ 
+ def state_path():
+     return crm_paths.state_dir() / "holds.json"
+@@ -258,7 +277,8 @@ def main(argv):
+         print("released %s." % args[1] if release(args[1])
+               else "%s was not held." % args[1])
+     else:
+-        print(__doc__)
++        print(__doc__.replace("    python _engine/holds.py", "    python " + _typed("holds.py"))
++              .replace("    python ", "    %s " % PY))
+         return 2
+     return 0
+ 
+diff --git a/install.py b/install.py
+index 83da05d..b731178 100644
+--- a/install.py
++++ b/install.py
+@@ -24,6 +24,10 @@ import sys
+ from datetime import date
+ from pathlib import Path
+ 
++# The command a member types to start Python: `python3` on a Mac, which has no plain
++# `python` command, and `python` everywhere else, as the Windows guides print it.
++PY = "python3" if sys.platform == "darwin" else "python"
++
+ LAYER = 6
+ LAYER_NAME = "Order and Safety"
+ NEEDS_LAYER = 5
+@@ -248,18 +252,18 @@ hope about what something will choose and this is a fact about what it can do.
+ 
+ Put someone on hold:
+ 
+-    python _engine/holds.py hold "Their Name" "picked it up myself"
++    {py} _engine/holds.py hold "Their Name" "picked it up myself"
+ 
+ Then ask the gate about them:
+ 
+-    python _engine/sendgate.py "Their Name"
++    {py} _engine/sendgate.py "Their Name"
+ 
+ Watch it refuse. You are not reading a promise, you are watching a refusal, and
+ that is the difference between trusting the system and hoping about it.
+ 
+ Release them again when you want to:
+ 
+-    python _engine/holds.py release "Their Name"
++    {py} _engine/holds.py release "Their Name"
+ 
+ ## Why the limit is shared
+ 
+@@ -268,7 +272,7 @@ running on the same account. Every part behaves. The total is three times what
+ you agreed to, and there is nothing in any single log to notice. So there is one
+ counter, and everything asks the same one.
+ 
+-    python _engine/limits.py
++    {py} _engine/limits.py
+ 
+ ## Why the writer never approves its own work
+ 
+@@ -282,7 +286,7 @@ tasks. Its review of its own work reads exactly like an independent one.
+ 
+ Nothing here writes to them. This layer only ever reads the people folder, and
+ only to work out whether somebody is held.
+-""".format(w=w)
++""".format(w=w, py=PY)
+ 
+ 
+ def layer_note(answers, cfg):
+@@ -388,14 +392,14 @@ def finish(home, answers, cfg, held_count):
+     say()
+     say("  Prove it to yourself. From inside %s:" % home)
+     say()
+-    say("      python _engine/holds.py hold \"Someone You Know\" \"testing\"")
+-    say("      python _engine/sendgate.py \"Someone You Know\"")
++    say("      %s _engine/holds.py hold \"Someone You Know\" \"testing\"" % PY)
++    say("      %s _engine/sendgate.py \"Someone You Know\"" % PY)
+     say()
+     say("  Watch it refuse. Two minutes, and it is the only way to actually")
+     say("  trust the thing: you are not reading a promise, you are watching a")
+     say("  refusal. Release them again with:")
+     say()
+-    say("      python _engine/holds.py release \"Someone You Know\"")
++    say("      %s _engine/holds.py release \"Someone You Know\"" % PY)
+     say()
+     say("  One thing worth being clear about: nothing installed here can send")
+     say("  anything. Not behind a setting, not behind a confirmation. There is")
