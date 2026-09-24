@@ -90,6 +90,24 @@ def main():
     return run_on_test_machine(args, prof)
 
 
+def stop_tree(p):
+    """Stop the command and every process it started (the Playwright driver and the browser)."""
+    if p.poll() is None:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True,
+                           creationflags=NOWIN)
+        else:
+            import signal
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    try:
+        p.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        p.kill()
+
+
 def run_on_test_machine(args, prof):
     venv = Path(tempfile.mkdtemp(prefix="fathom-row22-")) / "v"
     subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
@@ -105,19 +123,29 @@ def run_on_test_machine(args, prof):
                 return fail("playwright open does not accept %s" % opt)
     work = Path(tempfile.mkdtemp(prefix="fathom-row22-run-"))
     run_args = ["about:blank" if "fathom.video" in a else a for a in args]
-    p = subprocess.Popen([str(py), "-m", "playwright", "open"] + run_args, cwd=str(work),
-                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    made = False
-    for _ in range(50):
-        time.sleep(0.5)
-        if (work / prof).is_dir() and any((work / prof).iterdir()):
-            made = True
-            time.sleep(3)
-            break
-        if p.poll() is not None:
-            break
-    p.kill()
-    out = p.communicate()[0] or ""
+    # Output goes to a file, not a pipe: the browser the command starts would hold a pipe open
+    # after its parent is stopped, and reading it would never end. The whole process tree is
+    # stopped at the end (its own session on a Mac, taskkill /T on Windows).
+    log = work.parent / (work.name + "-open.log")
+    with open(log, "w", encoding="utf-8") as lf:
+        if os.name == "nt":
+            p = subprocess.Popen([str(py), "-m", "playwright", "open"] + run_args, cwd=str(work),
+                                 stdout=lf, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        else:
+            p = subprocess.Popen([str(py), "-m", "playwright", "open"] + run_args, cwd=str(work),
+                                 stdout=lf, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                 start_new_session=True)
+        made = False
+        for _ in range(50):
+            time.sleep(0.5)
+            if (work / prof).is_dir() and any((work / prof).iterdir()):
+                made = True
+                time.sleep(3)
+                break
+            if p.poll() is not None:
+                break
+        stop_tree(p)
+    out = log.read_text(encoding="utf-8", errors="replace")
     print("playwright open output (last 800 chars):\n" + out[-800:])
     if not made:
         return fail("running the line did not create the profile folder %r" % prof)
