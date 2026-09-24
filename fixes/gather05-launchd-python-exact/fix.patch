@@ -1,0 +1,29 @@
+diff --git a/engine/timetable_platform.py b/engine/timetable_platform.py
+index 0b9dafe..2c42253 100644
+--- a/engine/timetable_platform.py
++++ b/engine/timetable_platform.py
+@@ -130,10 +130,23 @@ def windowless_command(parts):
+     the Windows task scheduler by hand, and fired from there with no flag in
+     sight. Belt and braces, because the failure it prevents is the one that makes
+     people switch a timetable off.
++
++    On a Mac the rewrite has a different job. Started at login, the timetable gets
++    launchd's short list of folders to look in, where a plain `python` does not
++    exist and `python3` is Apple's own older copy, without the add-ons you
++    installed. So a command that starts with a bare Python name is pointed at the
++    Python running the timetable, which is the one you installed them into. A full
++    path you typed yourself is left exactly as you wrote it.
+     """
+-    if not parts or not IS_WINDOWS:
++    if not parts:
+         return list(parts)
+     head = str(parts[0])
++    if IS_MAC:
++        if head in PYTHON_NAMES and "/" not in head:
++            return [sys.executable] + [str(p) for p in parts[1:]]
++        return list(parts)
++    if not IS_WINDOWS:
++        return list(parts)
+     if Path(head).name.lower() not in PYTHON_NAMES:
+         return list(parts)
+     quiet = quiet_python()
