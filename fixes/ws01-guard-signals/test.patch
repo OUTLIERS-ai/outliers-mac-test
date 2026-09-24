@@ -347,10 +347,10 @@ index 8d828a1..255bc1c 100644
  hk = socket.socket()
 diff --git a/tests/mac/mac_guard_stop_signals.py b/tests/mac/mac_guard_stop_signals.py
 new file mode 100644
-index 0000000..d85e282
+index 0000000..8cdef6b
 --- /dev/null
 +++ b/tests/mac/mac_guard_stop_signals.py
-@@ -0,0 +1,157 @@
+@@ -0,0 +1,158 @@
 +"""Mac only (wave 1 second read, after fault row 3): when the guard is stopped, agent-flow stops too.
 +
 +Row 3 gave agent-flow a process group of its own (guard.start_child), so that stopping agent-flow
@@ -454,8 +454,9 @@ index 0000000..d85e282
 +    return home, kit, proc
 +
 +
-+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP], ids=["SIGTERM", "SIGHUP"])
-+def test_stopping_the_guard_stops_agent_flow(tmp_path, sig):
++@pytest.mark.parametrize("name", ["SIGTERM", "SIGHUP"])  # by name: Windows has no SIGHUP to collect
++def test_stopping_the_guard_stops_agent_flow(tmp_path, name):
++    sig = getattr(signal, name)
 +    home, kit, guard = start_guard(tmp_path)
 +    af = None
 +    try:
