@@ -1,0 +1,254 @@
+diff --git a/common.py b/common.py
+index 2edde0c..35c08d3 100644
+--- a/common.py
++++ b/common.py
+@@ -21,4 +21,6 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+ IS_WIN = sys.platform == "win32"
+ IS_MAC = sys.platform == "darwin"
++# The command a member types to run Python: a Mac has python3 and no plain python.
++PY = "python3" if IS_MAC else "python"
+ 
+ # The package version this kit was checked against on 2026-09-22.
+@@ -222,17 +224,17 @@ def why_it_stopped(tail: str) -> str:
+     if any(w in low for w in _ADDRESS_IN_USE):
+         return ("The port agent-flow needed was taken by another program a moment before it "
+-                "started. Run python start.py again.")
++                f"started. Run {PY} start.py again.")
+     if any(w in low for w in _OLD_NODE):
+         return (f"The Node.js on this computer is older than {MIN_NODE}. Install Node.js {MIN_NODE} "
+-                "or newer from nodejs.org, open a NEW terminal, then run python start.py again.")
++                f"or newer from nodejs.org, open a NEW terminal, then run {PY} start.py again.")
+     if any(w in low for w in _NO_NODE):
+         return ("Node.js was not found on this computer. Install it from nodejs.org, open a NEW "
+-                "terminal, then run python start.py again.")
++                f"terminal, then run {PY} start.py again.")
+     if any(w in low for w in _NOT_ON_NPM):
+         return (f"npm has no package with the name in config.json. Put it back to {DEFAULT_PACKAGE}, "
+-                "then run python start.py again.")
++                f"then run {PY} start.py again.")
+     if any(w in low for w in _NO_INTERNET):
+         return ("This computer could not reach npm, the store agent-flow is downloaded from, and "
+-                "agent-flow is not saved on it yet. Connect to the internet, then run python "
++                f"agent-flow is not saved on it yet. Connect to the internet, then run {PY} "
+                 "start.py again.")
+     last = [ln.strip() for ln in (tail or "").splitlines() if ln.strip()]
+@@ -263,20 +265,20 @@ def settings_fault(path: Path | None = None, point_at_check: bool = True) -> str
+     if not raw.strip():
+         return (f"{path} is empty. agent-flow cannot read an empty file, so at its next start it "
+-                "would replace it with a file that has only its own 9 hooks in it. Run: python install.py")
++                f"would replace it with a file that has only its own 9 hooks in it. Run: {PY} install.py")
+     if raw.startswith(BOM):
+         return (f"{path} starts with an invisible byte-order mark (some editors and PowerShell add it). "
+-                "agent-flow cannot read a file like that and would replace it. Run: python install.py "
++                f"agent-flow cannot read a file like that and would replace it. Run: {PY} install.py "
+                 "(it removes the mark after a backup).")
+     try:
+         data = strict_loads(raw.decode("utf-8"))
+     except UnicodeDecodeError:
+-        return f"{path} is not plain UTF-8 text. Fix it, then run: python install.py"
++        return f"{path} is not plain UTF-8 text. Fix it, then run: {PY} install.py"
+     except ValueError as exc:
+         return (f"{path} cannot be read ({json_error_in_words(exc)}). agent-flow would replace the "
+                 "whole file. Open it at that line, fix it and save"
+-                + (", then run: python check_hooks.py" if point_at_check else "."))
++                + (f", then run: {PY} check_hooks.py" if point_at_check else "."))
+     if not isinstance(data, dict):
+         return (f"{path} does not start with {{ and end with }}, so it is not a settings file. "
+-                "Fix it, then run: python install.py")
++                f"Fix it, then run: {PY} install.py")
+     return None
+ 
+@@ -291,10 +293,10 @@ def settings_problem() -> str | None:
+     So we only start it when it will find everything in order and leave the file alone."""
+     if not hook_script().exists():
+-        return f"agent-flow's hook script is missing ({hook_script()}). Run: python install.py"
++        return f"agent-flow's hook script is missing ({hook_script()}). Run: {PY} install.py"
+     path = agent_flow_settings_path()
+     is_claudes = norm_path(path) == norm_path(settings_path())
+     if not path.exists():
+         return ("Claude Code's settings.json does not exist yet, so agent-flow would write its own. "
+-                "Run: python install.py") if is_claudes else None
++                f"Run: {PY} install.py") if is_claudes else None
+     fault = settings_fault(path)
+     if fault:
+@@ -304,7 +306,7 @@ def settings_problem() -> str | None:
+         counts = count_agent_flow(data)
+     except (AttributeError, TypeError):
+-        return f"{path} has a 'hooks' block in a shape agent-flow does not expect. Run: python install.py"
++        return f"{path} has a 'hooks' block in a shape agent-flow does not expect. Run: {PY} install.py"
+     if not any(counts.values()) and is_claudes:
+-        return "The agent-flow hooks are not in settings.json. Run: python install.py"
++        return f"The agent-flow hooks are not in settings.json. Run: {PY} install.py"
+     return None
+ 
+@@ -527,17 +529,55 @@ def http_answers(port: int, timeout: float = 1.5) -> bool:
+ 
+ 
++def _descendants(pid: int) -> list[int]:
++    """Every process started by this one, and by those, and so on (Mac and Linux)."""
++    try:
++        out = subprocess.run(["ps", "-A", "-o", "pid=,ppid="], capture_output=True, text=True,
++                             timeout=10, creationflags=NO_WINDOW).stdout or ""
++    except (OSError, subprocess.TimeoutExpired):
++        return []
++    children: dict[int, list[int]] = {}
++    for line in out.splitlines():
++        parts = line.split()
++        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
++            children.setdefault(int(parts[1]), []).append(int(parts[0]))
++    found, todo = [], [pid]
++    while todo:
++        for kid in children.get(todo.pop(), []):
++            if kid not in found:
++                found.append(kid)
++                todo.append(kid)
++    return found
++
++
+ def kill_tree(pid: int) -> None:
++    """End this program and every program it started.
++
++    On a Mac the quick way is to end the program's whole process group. That group is
++    only safe to end when the program was started in a group of its own: if it shares
++    the group of the program calling kill_tree, ending the group ends the caller too
++    (found on GitHub's test Macs 2026-09-24: the test run itself was ended). So the
++    caller's own group is never ended; the program and its children are ended one by one."""
+     if IS_WIN:
+         subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, creationflags=NO_WINDOW)
+-    else:
+-        import signal
++        return
++    import signal
+ 
++    try:
++        group = os.getpgid(pid)
++    except (ProcessLookupError, PermissionError):
++        group = None
++    if group is not None and group != os.getpgrp():
+         try:
+-            os.killpg(os.getpgid(pid), signal.SIGTERM)
++            os.killpg(group, signal.SIGTERM)
++            return
+         except (ProcessLookupError, PermissionError):
+-            try:
+-                os.kill(pid, signal.SIGTERM)
+-            except ProcessLookupError:
+-                pass
++            pass
++    for p in _descendants(pid) + [pid]:
++        if p == os.getpid():
++            continue
++        try:
++            os.kill(p, signal.SIGTERM)
++        except (ProcessLookupError, PermissionError):
++            pass
+ 
+ 
+diff --git a/guard.py b/guard.py
+index eb95467..26b4671 100644
+--- a/guard.py
++++ b/guard.py
+@@ -84,4 +84,7 @@ def start_child(workspace: str, package: str, out, attempts: int = 3, on_tick=No
+     if common.IS_WIN:
+         kwargs["creationflags"] = common.NO_WINDOW
++    else:
++        # A process group of its own, so kill_tree ends agent-flow and its children, never us.
++        kwargs["start_new_session"] = True
+     port = 0
+     for attempt in range(1, attempts + 1):
+diff --git a/install.py b/install.py
+index ccc6e53..7a2e9be 100644
+--- a/install.py
++++ b/install.py
+@@ -86,8 +86,18 @@ def find_vaults() -> list[Path]:
+ 
+ 
++def mac_second_brain_homes() -> list[Path]:
++    """On a Mac, where a Second Brain is looked for first, in this order. ~/Second Brain comes
++    before ~/Documents/Second Brain: macOS may refuse a program that starts by itself access to
++    the Documents folder, so the Mac guides put the vault outside it (build plan V3, row 23)."""
++    return [common.home() / "Second Brain", common.home() / "Documents" / "Second Brain"]
++
++
+ def guess_paths() -> tuple[str | None, str | None]:
+     sb = _pointer(".outliers-sb")
+     crm = _pointer(".outliers-crm")
+     vaults = find_vaults()
++    if common.IS_MAC:
++        firsts = [p for p in mac_second_brain_homes() if (p / ".obsidian").is_dir()]
++        vaults = firsts + [v for v in vaults if v not in firsts]
+     if not crm:
+         for v in vaults:
+@@ -102,6 +112,8 @@ def guess_paths() -> tuple[str | None, str | None]:
+                 sb = str(v)
+                 break
+-        if not sb and (common.home() / "Documents" / "Second Brain").is_dir():
+-            sb = str(common.home() / "Documents" / "Second Brain")
++        homes = mac_second_brain_homes() if common.IS_MAC else [common.home() / "Documents" / "Second Brain"]
++        for p in homes:
++            if not sb and p.is_dir():
++                sb = str(p)
+     return sb, crm
+ 
+@@ -315,6 +327,7 @@ def python_help() -> str:
+             "Python 3.10 gets security fixes only until 2026-10-31, and older versions get none.\n"
+             "Install a current Python from https://python.org (on a Mac, python.org or "
+-            "`brew install python`), open a NEW terminal, check with:  python --version\n"
+-            "(on a Mac:  python3 --version) and run install.py again.")
++            "`brew install python`), open a NEW terminal, check with:  "
++            + ("python3 --version" if common.IS_MAC else "python --version\n(on a Mac:  python3 --version)")
++            + " and run install.py again.")
+ 
+ 
+@@ -354,6 +367,8 @@ def do_install(args) -> int:
+         sb = ask("Where is your second brain vault?", sb, args.yes)
+         crm = ask("Where is your CRM vault?", crm, args.yes)
++    # With no vault found, a Mac watches the home folder: the Mac guides keep the vaults
++    # outside Documents, which a program that starts by itself may be refused.
+     default_watch = args.watch_folder or cfg.get("watch_folder") or common_parent([sb, crm]) \
+-        or str(common.home() / "Documents")
++        or str(common.home() if common.IS_MAC else common.home() / "Documents")
+     watch = ask("Which folder should agent-flow watch? It must CONTAIN every vault you run Claude Code in",
+                 default_watch, args.yes or bool(args.watch_folder))
+@@ -424,7 +439,7 @@ def do_install(args) -> int:
+         else:
+             print(f"\nagent-flow will not start by itself when the computer starts ({how}).")
+-        print("Running python install.py again keeps this choice. "
+-              "To switch it back on: python install.py --autostart")
+-        print("Start it by hand with: python start.py")
++        print(f"Running {common.PY} install.py again keeps this choice. "
++              f"To switch it back on: {common.PY} install.py --autostart")
++        print(f"Start it by hand with: {common.PY} start.py")
+     else:
+         lp = launcher_path(args.startup_dir)
+@@ -448,8 +463,8 @@ def do_install(args) -> int:
+               "Claude Code session inside the watch folder.")
+     else:
+-        print("\nDone. Start it now with:  python start.py")
++        print(f"\nDone. Start it now with:  {common.PY} start.py")
+         print(f"Then open http://127.0.0.1:{new_cfg['port']} and start a NEW Claude Code session "
+               "inside the watch folder.")
+-    print("Check your hooks any time with:  python check_hooks.py")
++    print(f"Check your hooks any time with:  {common.PY} check_hooks.py")
+     return 0
+ 
+@@ -496,5 +511,7 @@ def main(argv=None) -> int:
+     ap.add_argument("--port", type=int, help=f"web page port (default {common.UI_PORT})")
+     ap.add_argument("--node-path", help="node program to put in the hook (default: the one on PATH)")
+-    ap.add_argument("--startup-dir", help="Windows Startup folder override (for testing)")
++    # A Mac has no Startup folder, so the option is hidden from --help there.
++    ap.add_argument("--startup-dir", help="Windows Startup folder override (for testing)" if common.IS_WIN
++                    else argparse.SUPPRESS)
+     when = ap.add_mutually_exclusive_group()
+     when.add_argument("--no-autostart", action="store_true", help="do not add the file that starts agent-flow by itself each time you switch on your computer and sign in (removes it if you have it); saved, so later runs keep this choice")
+diff --git a/start.py b/start.py
+index 74718b0..4d5dde0 100644
+--- a/start.py
++++ b/start.py
+@@ -123,5 +123,5 @@ def start(workspace: str, package: str, port: int, wait_s: float, foreground: bo
+     if common.port_answers(port):
+         say(f"Port {port} is already in use by another program. "
+-            f"Pick another with:  python install.py --port {port + 1}   then:  python start.py")
++            f"Pick another with:  {common.PY} install.py --port {port + 1}   then:  {common.PY} start.py")
+         log_line(f"{REFUSED} port {port} is already in use by another program")
+         return 3

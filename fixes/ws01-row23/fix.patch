@@ -1,0 +1,44 @@
+diff --git a/install.py b/install.py
+index ccc6e53..7a2e9be 100644
+--- a/install.py
++++ b/install.py
+@@ -86,8 +86,18 @@ def find_vaults() -> list[Path]:
+ 
+ 
++def mac_second_brain_homes() -> list[Path]:
++    """On a Mac, where a Second Brain is looked for first, in this order. ~/Second Brain comes
++    before ~/Documents/Second Brain: macOS may refuse a program that starts by itself access to
++    the Documents folder, so the Mac guides put the vault outside it (build plan V3, row 23)."""
++    return [common.home() / "Second Brain", common.home() / "Documents" / "Second Brain"]
++
++
+ def guess_paths() -> tuple[str | None, str | None]:
+     sb = _pointer(".outliers-sb")
+     crm = _pointer(".outliers-crm")
+     vaults = find_vaults()
++    if common.IS_MAC:
++        firsts = [p for p in mac_second_brain_homes() if (p / ".obsidian").is_dir()]
++        vaults = firsts + [v for v in vaults if v not in firsts]
+     if not crm:
+         for v in vaults:
+@@ -102,6 +112,8 @@ def guess_paths() -> tuple[str | None, str | None]:
+                 sb = str(v)
+                 break
+-        if not sb and (common.home() / "Documents" / "Second Brain").is_dir():
+-            sb = str(common.home() / "Documents" / "Second Brain")
++        homes = mac_second_brain_homes() if common.IS_MAC else [common.home() / "Documents" / "Second Brain"]
++        for p in homes:
++            if not sb and p.is_dir():
++                sb = str(p)
+     return sb, crm
+ 
+@@ -354,6 +367,8 @@ def do_install(args) -> int:
+         sb = ask("Where is your second brain vault?", sb, args.yes)
+         crm = ask("Where is your CRM vault?", crm, args.yes)
++    # With no vault found, a Mac watches the home folder: the Mac guides keep the vaults
++    # outside Documents, which a program that starts by itself may be refused.
+     default_watch = args.watch_folder or cfg.get("watch_folder") or common_parent([sb, crm]) \
+-        or str(common.home() / "Documents")
++        or str(common.home() if common.IS_MAC else common.home() / "Documents")
+     watch = ask("Which folder should agent-flow watch? It must CONTAIN every vault you run Claude Code in",
+                 default_watch, args.yes or bool(args.watch_folder))

@@ -7,6 +7,10 @@ name: Fix check (red, then green)
 #   3. apply fix.patch, run the check again: it must PASS (green)
 # on the 3 test Macs and on windows-latest. Nothing is pushed anywhere.
 # The check line uses $PY: python3 on a Mac, python on Windows.
+# green_only: machines where the fault cannot happen (a Mac-only fault on windows-latest). There
+# the red result is recorded but not required; green after fix.patch still is (plan 6a rule 5).
+# suite.txt (optional): the repo's own plain test run after fix.patch, recorded only, so the
+# counts the guides print can be read off each machine.
 # Only the 25 public repos in harness/public_repos.txt may be named; the private content engine
 # is fixed and checked on Ashley's PC only (plan 6a rule 3). fixes/_selftest proves this workflow.
 
@@ -21,6 +25,10 @@ on:
         description: "Machines, comma separated"
         required: false
         default: "macos-15,macos-26,macos-15-intel,windows-latest"
+      green_only:
+        description: "Machines where only green is required, comma separated"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -58,6 +66,8 @@ jobs:
       - name: Red, then green
         env:
           FIX: ${{ inputs.fix }}
+          GREEN_ONLY: ${{ inputs.green_only }}
+          MACHINE: ${{ matrix.os }}
         run: |
           set -u
           D="_mactest/fixes/$FIX"
@@ -78,4 +88,18 @@ jobs:
           ( eval "$CHECK" ); GREEN=$?
           set -e
           echo "RESULT after fix.patch: exit $GREEN (must be 0)"
-          if [ "$RED" != "0" ] && [ "$GREEN" = "0" ]; then echo "RESULT red then green: PROVED"; else echo "RESULT NOT PROVED"; exit 1; fi
+          if [ -f "../$D/suite.txt" ]; then
+            SUITE="$(tr -d '\r' < "../$D/suite.txt" | head -1)"
+            set +e
+            ( eval "$SUITE" ) > ../suite.log 2>&1; SUITE_EXIT=$?
+            set -e
+            tail -25 ../suite.log
+            echo "SUITE after fix.patch (record only): exit $SUITE_EXIT"
+          fi
+          case ",$GREEN_ONLY," in
+            *",$MACHINE,"*)
+              echo "($MACHINE is green-only: the fault cannot happen here; red was exit $RED)"
+              if [ "$GREEN" = "0" ]; then echo "RESULT green on a green-only machine: PASSED"; else echo "RESULT NOT PASSED"; exit 1; fi ;;
+            *)
+              if [ "$RED" != "0" ] && [ "$GREEN" = "0" ]; then echo "RESULT red then green: PROVED"; else echo "RESULT NOT PROVED"; exit 1; fi ;;
+          esac
