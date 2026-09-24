@@ -122,12 +122,29 @@ SPECS["outliers-sb-03-capture"] = {"steps": [
         not_testable=CLAUDE_NOT_TESTABLE),
 ] + tests(["python tests/test_youtube_words.py"], "README prints no test command; tests/ holds one file")}
 
-SB04_CRON = ("H=$(date +%-H); M=$(date +%-M); M=$(( M + 2 )); if [ $M -ge 60 ]; then M=$(( M - 60 )); H=$(( (H + 1) % 24 )); fi; "
-             "LINE=$(grep -m1 -o 'cd .*today.py' \"$HOME/sb04-install.log\"); echo \"line printed by the installer: $LINE\"; "
-             "printf '%s %s * * * %s >> /tmp/cron-today.log 2>&1\n* * * * * echo cron-is-running >> /tmp/cron-alive.log\n' \"$M\" \"$H\" \"$LINE\" | crontab - && crontab -l; "
-             "sleep 170; echo '--- control job (proves cron runs at all):'; cat /tmp/cron-alive.log; "
-             "echo '--- output of the printed line:'; cat /tmp/cron-today.log; crontab -r; "
-             "test -s /tmp/cron-today.log && ! grep -q -i -E 'Traceback|not found|No such file|too many' /tmp/cron-today.log")
+def cron_test(fixed):
+    """Put the crontab line the installer printed into the real cron, due 2 minutes from now,
+    wrapped only so its output (errors included) lands in a file. `fixed` = the obvious Mac
+    repair: quote the folder name (it has a space) and say python3."""
+    log = "/tmp/cron-today-%s.log" % ("fixed" if fixed else "printed")
+    fix = (" LINE=$(echo \"$LINE\" | sed -E 's#^cd (.*) && python #cd \"\\1\" \\&\\& python3 #'); "
+           "echo \"line after the Mac repair: $LINE\"; ") if fixed else ""
+    return ("rm -f %s /tmp/cron-alive.log; H=$(date +%%-H); M=$(date +%%-M); M=$(( M + 2 )); "
+            "if [ $M -ge 60 ]; then M=$(( M - 60 )); H=$(( (H + 1) %% 24 )); fi; "
+            "LINE=$(grep -m1 -o 'cd .*today.py' \"$HOME/sb04-install.log\"); echo \"line printed by the installer: $LINE\"; %s"
+            "printf '%%s %%s * * * { %%s ; } >> %s 2>&1\\n* * * * * echo cron-is-running >> /tmp/cron-alive.log\\n' \"$M\" \"$H\" \"$LINE\" | crontab - && crontab -l; "
+            "sleep 170; echo '--- control job (proves cron itself runs):'; cat /tmp/cron-alive.log; "
+            "echo '--- what the line printed when cron ran it:'; cat %s; crontab -r; "
+            "test -s %s && ! grep -q -i -E 'Traceback|not found|No such file|too many|Operation not permitted' %s"
+            % (log, fix, log, log, log, log))
+
+
+def cron_steps():
+    return [check("crontab-line-as-printed", cron_test(False),
+                  "the crontab line the installer prints for a Mac, run by the real cron 2 minutes later", cwd="~", timeout=260),
+            dict(check("crontab-line-mac-repair", cron_test(True),
+                       "the same line with the folder name quoted and python3: does cron then make the morning list?",
+                       cwd="~", timeout=260), counts=False)]
 
 SPECS["outliers-sb-04-operations"] = {"steps": [
     prereq("outliers-sb-01-memory"), prereq("outliers-sb-02-standards"), prereq("outliers-sb-03-capture"),
@@ -138,9 +155,7 @@ SPECS["outliers-sb-04-operations"] = {"steps": [
      "what": "does the installer put the morning list on a Mac clock (a LaunchAgent)?"},
     run("today", "python _engine/today.py", "README, 'Then:'", cwd=VAULT),
     run("ledger", "python _engine/ledger.py", "README, 'Then:'", cwd=VAULT),
-    check("crontab-line-as-printed", SB04_CRON,
-          "the crontab line the installer prints for a Mac, run by the real cron one minute from now",
-          cwd="~", timeout=240),
+] + cron_steps() + [
 ]}
 
 SPECS["outliers-second-brain"] = {"steps": [
@@ -153,9 +168,7 @@ SPECS["outliers-second-brain"] = {"steps": [
     run("doctor", "python _engine/doctor.py", "Part 2 guide", cwd=VAULT, ok=[0, 1]),
     run("today", "python _engine/today.py", "Part 4 guide", cwd=VAULT),
     run("ledger", "python _engine/ledger.py", "Part 4 guide", cwd=VAULT),
-    check("crontab-line-as-printed", SB04_CRON,
-          "the crontab line the installer prints for a Mac, run by the real cron one minute from now",
-          cwd="~", timeout=240),
+] + cron_steps() + [
 ] + tests(["python parts/02-standards/tests/test_check_does_not_cry_wolf.py",
            "python parts/02-standards/tests/test_repair_only_when_certain.py",
            "python parts/03-capture/tests/test_youtube_words.py"], "parts/*/tests (no command printed)")}
@@ -370,14 +383,19 @@ SPECS["outliers-ws-02-fleetview"] = {"steps": WS_VAULTS + [
         check="curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3010/graph.html | grep -E '^2'"),
     {"id": "page-3010", "kind": "shot", "url": "http://localhost:3010/graph.html", "desktop": True, "wait": 30,
      "what": "FleetView started by the installer"},
-    check("token-panel-from-terminal", "sleep 20; curl -s http://127.0.0.1:3010/api/usage; echo; curl -s http://127.0.0.1:3010/api/usage | grep -v -i 'could not run'",
-          "the token panel when FleetView was started from Terminal (npx on PATH)", timeout=120),
+    dict(check("token-panel-as-installer-started-it", "sleep 20; curl -s http://127.0.0.1:3010/api/usage; echo; ! curl -s http://127.0.0.1:3010/api/usage | grep -i 'could not run'",
+               "the token panel of the FleetView the installer started (no Claude Code sessions exist on this machine)", timeout=120), counts=False),
+    check("ccusage-with-terminal-path", "npx -y ccusage@20.0.24 claude daily --json; echo \"exit $?\"; command -v npx",
+          "the token panel's command, with the PATH a Terminal window has", timeout=300),
+    check("ccusage-with-login-job-path", "env -i HOME=$HOME PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/sh -c 'npx -y ccusage@20.0.24 claude daily --json'",
+          "the same command with the PATH launchd gives a login job (/usr/bin:/bin:/usr/sbin:/sbin), which the FleetView LaunchAgent does not change",
+          timeout=300),
     run("stop", "python install.py --stop", "README, top", ok=[0, 1]),
     {"id": "start-at-login", "kind": "launchd", "wait": 15,
      "what": "the login job: bootstrap it; the page should answer and the token panel should run",
      "check": "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3010/graph.html | grep -E '^2' && sleep 25 && "
-              "curl -s http://127.0.0.1:3010/api/usage && ! curl -s http://127.0.0.1:3010/api/usage | grep -i 'could not run'",
-     "check_tries": 4, "log_glob": "fleetview.log"},
+              "echo 'token panel under launchd:' && curl -s http://127.0.0.1:3010/api/usage",
+     "check_tries": 6, "log_glob": "fleetview.log"},
     run("start", "python install.py --start", "README, top", ok=[0, 1]),
     run("stop-2", "python install.py --stop", "README, top", ok=[0, 1]),
     run("npm-install", "npm install", "README, 'see it before your own sessions exist'", timeout=600),

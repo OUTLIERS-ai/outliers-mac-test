@@ -60,7 +60,9 @@ def expand(path, ctx):
 def env_for_step(extra=None):
     env = dict(os.environ)
     # The member's shell does not carry GitHub's own settings. Keep PATH as the runner has it.
-    if STATE["venv"]:
+    # The command as printed always runs in a fresh Terminal: no virtual environment the
+    # test tool made earlier. Only the Mac substitutes may use one.
+    if STATE["venv"] and not STATE.get("as_printed"):
         env["PATH"] = str(VENV / "bin") + ":" + env["PATH"]
         env["VIRTUAL_ENV"] = str(VENV)
     if extra:
@@ -141,8 +143,12 @@ def run_check(step, ctx):
 
 
 def attempt(cmd, step, ctx, label):
-    code, out, secs = run_shell(cmd, expand(step.get("cwd"), ctx), step.get("stdin", "\n" * 60),
-                                step.get("timeout", 600), step.get("env"))
+    STATE["as_printed"] = (label == "as printed")
+    try:
+        code, out, secs = run_shell(cmd, expand(step.get("cwd"), ctx), step.get("stdin", "\n" * 60),
+                                    step.get("timeout", 600), step.get("env"))
+    finally:
+        STATE["as_printed"] = False
     failed = looks_failed(code, out, step)
     chk_note = ""
     if not failed:
@@ -164,8 +170,6 @@ def do_member_step(step, ctx):
     a = attempt(printed, step, ctx, "as printed")
     attempts.append(a)
     if a["ok"]:
-        if venv_on_before and uses_python_tooling(printed):
-            return attempts, "WORKS-WITH-SUBSTITUTE", "only inside the virtual environment made earlier (%s)" % VENV
         return attempts, "WORKS", ""
 
     subs = list(step.get("subs") or [])
@@ -342,7 +346,9 @@ def run_bg(step, ctx):
     """Start a server the way the guide says, wait for its page, photograph it, stop it."""
     attempts = []
     for label, cmd in [("as printed", step["cmd"])] + [("Mac substitute", s) for s in (step.get("subs") or [mac_substitute(step["cmd"])]) if s != step["cmd"]]:
+        STATE["as_printed"] = (label == "as printed")
         env = env_for_step(step.get("env"))
+        STATE["as_printed"] = False
         logf = ctx["out"] / ("bg-%s-%s.log" % (step["id"], len(attempts)))
         fh = open(logf, "w")
         proc = subprocess.Popen(["/bin/zsh", "-c", cmd], cwd=expand(step.get("cwd"), ctx), stdin=subprocess.PIPE,
@@ -368,8 +374,7 @@ def run_bg(step, ctx):
         rec["ok"] = bool(up) and rec.get("check_passed", True)
         attempts.append(rec)
         if rec["ok"]:
-            return attempts, ("WORKS" if label == "as printed" and not (STATE["venv"] and uses_python_tooling(cmd))
-                              else "WORKS-WITH-SUBSTITUTE"), ("" if label == "as printed" else cmd)
+            return attempts, ("WORKS" if label == "as printed" else "WORKS-WITH-SUBSTITUTE"), ("" if label == "as printed" else cmd)
     return attempts, "FAILS", ""
 
 
@@ -383,8 +388,14 @@ def run_interactive(step, ctx):
     for label, cmd in cands:
         logf = ctx["out"] / ("int-%s-%s.log" % (step["id"], len(attempts)))
         fh = open(logf, "w")
-        proc = subprocess.Popen(["/bin/zsh", "-c", cmd], cwd=expand(step.get("cwd"), ctx), stdin=subprocess.PIPE,
-                                stdout=fh, stderr=subprocess.STDOUT, text=True, env=env_for_step(step.get("env")),
+        STATE["as_printed"] = (label == "as printed")
+        env = env_for_step(step.get("env"))
+        STATE["as_printed"] = False
+        # `script` gives the command a real terminal, as Terminal.app does; without one the
+        # sign-in commands refuse ("needs you at the keyboard").
+        proc = subprocess.Popen(["/usr/bin/script", "-q", "/dev/null", "/bin/zsh", "-c", cmd],
+                                cwd=expand(step.get("cwd"), ctx), stdin=subprocess.PIPE,
+                                stdout=fh, stderr=subprocess.STDOUT, text=True, env=env,
                                 start_new_session=True)
         time.sleep(step.get("wait", 25))
         alive = proc.poll() is None
@@ -414,8 +425,7 @@ def run_interactive(step, ctx):
         rec["ok"] = ok
         attempts.append(rec)
         if ok:
-            return attempts, ("WORKS" if label == "as printed" and not (STATE["venv"] and uses_python_tooling(cmd))
-                              else "WORKS-WITH-SUBSTITUTE"), ("" if label == "as printed" else cmd)
+            return attempts, ("WORKS" if label == "as printed" else "WORKS-WITH-SUBSTITUTE"), ("" if label == "as printed" else cmd)
     return attempts, "FAILS", ""
 
 
@@ -474,6 +484,28 @@ def environment(ctx):
         "launchctl print gui/$(id -u) >/dev/null 2>&1 && echo 'gui domain: present' || echo 'gui domain: missing'"
         .replace("CHROME_PATH", CHROME), str(HOME), "", 60)
     return tail(out, 6000)
+
+
+def make_it_a_member_mac():
+    """GitHub's Macs carry a `python` and a `pip` command that a member's Mac does not have
+    (macOS has had no `python` since 12.3; python.org and Homebrew install only `python3`/`pip3`).
+    Take them away, so a command printed as `python` fails here exactly as it does for a member."""
+    notes = []
+    keep = []
+    for d in os.environ.get("PATH", "").split(":"):
+        has = [n for n in ("python", "pip") if os.path.lexists(os.path.join(d, n))]
+        if has and ("Python.framework" in d or "hostedtoolcache" in d):
+            notes.append("removed from PATH (runner-only Python folder): %s" % d)
+            continue
+        for n in has:
+            p = os.path.join(d, n)
+            code, out, _ = run_shell("sudo mv '%s' '%s.hidden-by-mactest'" % (p, p), "/tmp", "", 30)
+            notes.append("hid %s (exit %s)" % (p, code))
+        keep.append(d)
+    os.environ["PATH"] = ":".join(keep)
+    code, out, _ = run_shell("command -v python pip || echo 'python and pip: not found, as on a member Mac'", "/tmp", "", 10)
+    notes.append(out.strip())
+    return notes
 
 
 def remote_head(repo):
@@ -556,7 +588,11 @@ def main():
     meta["commit"] = head
     if repo.startswith("outliers-ws-"):
         meta["commit_status"] = "old commit (the 2026-09-23 push; re-push not landed yet)" if head in OLD_WS_COMMITS else "new commit (re-pushed)"
-    report = {"meta": meta, "environment": environment(ctx), "spec_notes": spec.get("notes", []), "steps": []}
+    runner_env = environment(ctx)
+    meta["made_like_a_member_mac"] = make_it_a_member_mac()
+    report = {"meta": meta, "environment": "BEFORE (runner as GitHub gives it):\n" + runner_env
+              + "\n\nCHANGES: " + "; ".join(meta["made_like_a_member_mac"])
+              + "\n\nAFTER (what the member steps see):\n" + environment(ctx), "spec_notes": spec.get("notes", []), "steps": []}
     for step in spec["steps"]:
         rec = run_step(step, ctx)
         report["steps"].append(rec)
