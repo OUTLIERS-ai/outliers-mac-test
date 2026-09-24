@@ -1,0 +1,15 @@
+diff --git a/_mac_regress/sb_tests.txt b/_mac_regress/sb_tests.txt
+new file mode 100644
+--- /dev/null
++++ b/_mac_regress/sb_tests.txt
+@@ -0,0 +1,10 @@
++# Second Brain wave 1: the regress tests this fix is proved with (regress/sb/run.py)
++sb-01/test_mac_default_home.py@parts/01-memory
++sb-02/test_mac_vault_lookup.py@parts/02-standards
++sb-02/test_doctor_reports_morning_job.py@parts/02-standards
++sb-03/test_mac_vault_lookup.py@parts/03-capture
++sb-03/test_skill_says_python3.py@parts/03-capture
++sb-04/test_mac_vault_lookup.py@parts/04-operations
++sb-04/test_morning_job_asks.py@parts/04-operations
++sb-04/test_mac_morning_job.py@parts/04-operations
++sb-04/test_refusal_is_reported.py@parts/04-operations

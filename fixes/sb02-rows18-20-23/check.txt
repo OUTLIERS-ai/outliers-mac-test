@@ -1,0 +1,1 @@
+$PY ../_mactest/regress/sb/run.py --list _mac_regress/sb_tests.txt

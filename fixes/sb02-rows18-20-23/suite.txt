@@ -1,0 +1,1 @@
+$PY tests/test_check_does_not_cry_wolf.py && $PY tests/test_repair_only_when_certain.py

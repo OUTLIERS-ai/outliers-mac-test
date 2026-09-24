@@ -1,0 +1,1 @@
+$PY parts/02-standards/tests/test_check_does_not_cry_wolf.py && $PY parts/02-standards/tests/test_repair_only_when_certain.py && $PY -m unittest discover parts/03-capture/tests
