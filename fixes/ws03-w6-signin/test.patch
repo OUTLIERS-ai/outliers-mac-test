@@ -1,13 +1,14 @@
 diff --git a/tests/mac/mac_signin_wording.py b/tests/mac/mac_signin_wording.py
 new file mode 100644
-index 0000000..4e5ebcb
+index 0000000..c2c4d05
 --- /dev/null
 +++ b/tests/mac/mac_signin_wording.py
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,60 @@
 +# -*- coding: utf-8 -*-
 +"""Wave 6 (2026-09-25): on a Mac the installer says when its start-up file runs in the words Ashley
 +ruled on 2026-09-24, "when you switch on your Mac and sign in". "Log in" alone reads as needing an
-+account, and "when the computer starts" is the other system's wording. Windows keeps its words.
++account, and "when the computer starts" is the other system's wording. The Mac key is
++labelled Return, so a Mac prompt says Return where Windows says Enter. Windows keeps its words.
 +
 +Run by name only:  python3 -m pytest -q tests/mac/mac_signin_wording.py
 +(pytest never collects tests/mac/ in a plain run, so the counts the guides print stay true.)
@@ -53,3 +54,13 @@ index 0000000..4e5ebcb
 +    assert changed, sentence
 +    flat = " ".join(sentence.split())
 +    assert "each time you " + MAC_WORDS in flat and "logging out" not in flat, flat
++
++
++def test_on_a_mac_the_key_is_called_return():
++    """The Mac key is labelled Return. Every prompt takes the key's name from 1 setting, KEY."""
++    text = (ROOT / "install.py").read_text(encoding="utf-8")
++    assert re.search(r'^KEY = "Return" if _MAC else "Enter"', text, re.M)
++    for l in text.splitlines():
++        if l.lstrip().startswith("#"):
++            continue
++        assert not re.search(r"\b[Pp]ress Enter\b|\bEnter on its own\b|\(Enter to finish\)", l), l

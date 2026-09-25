@@ -1,8 +1,8 @@
 diff --git a/install.py b/install.py
-index b86ce70..43c2e63 100644
+index b86ce70..986c178 100644
 --- a/install.py
 +++ b/install.py
-@@ -48,6 +48,15 @@ MAC_LABEL = "com.outliers.fleetview"
+@@ -48,6 +48,17 @@ MAC_LABEL = "com.outliers.fleetview"
  # The command a member types to run Python: a Mac has python3 and no plain python.
  PY = "python3" if sys.platform == "darwin" else "python"
  
@@ -14,11 +14,13 @@ index b86ce70..43c2e63 100644
 +EACH_TIME = ("each time you switch on your Mac and sign in" if _MAC
 +             else "each time you switch on this computer and sign in")
 +WITH_COMPUTER = "when you switch on your Mac and sign in" if _MAC else "with the computer"
++# The key a member presses to accept a suggestion: labelled Return on a Mac.
++KEY = "Return" if _MAC else "Enter"
 +
  
  def say(msg=""):
      print(msg, flush=True)
-@@ -361,7 +370,7 @@ def install_launcher(node):
+@@ -361,7 +372,7 @@ def install_launcher(node):
      path = launcher_path()
      text = launcher_text(node)
      if not path or text is None:
@@ -27,7 +29,7 @@ index b86ce70..43c2e63 100644
          say("  Start it yourself with:  node \"%s\"" % (HERE / "watcher.js"))
          return "skipped"
      if path.exists():
-@@ -372,15 +381,15 @@ def install_launcher(node):
+@@ -372,15 +383,15 @@ def install_launcher(node):
              say("  %s already exists and was not made by this installer. Leaving it alone." % path)
              return "skipped"
          if points_elsewhere(old):
@@ -46,7 +48,7 @@ index b86ce70..43c2e63 100644
      return "written"
  
  
-@@ -589,15 +598,15 @@ def uninstall():
+@@ -589,15 +600,15 @@ def uninstall():
                  r = subprocess.run(["launchctl", "unload", "-w", str(path)], capture_output=True, text=True,
                                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                  if r.returncode == 0:
@@ -65,7 +67,7 @@ index b86ce70..43c2e63 100644
      say("  If you started FleetView by hand with node watcher.js in a terminal you can see, close that terminal.")
      say("  Your config.json and this folder are left as they are. Delete the folder yourself if you want it gone.")
      return 0
-@@ -606,7 +615,7 @@ def uninstall():
+@@ -606,7 +617,7 @@ def uninstall():
  # ---------- main ----------
  def main(argv=None):
      ap = argparse.ArgumentParser(description="Install FleetView.")
@@ -74,7 +76,7 @@ index b86ce70..43c2e63 100644
      ap.add_argument("--stop", action="store_true", help="stop a FleetView this installer started")
      ap.add_argument("--yes", action="store_true", help="no questions; use the flags and the defaults found")
      ap.add_argument("--second-brain", help="path to your second brain vault")
-@@ -615,8 +624,8 @@ def main(argv=None):
+@@ -615,8 +626,8 @@ def main(argv=None):
      ap.add_argument("--port", type=int, help="web page port (default 3010)")
      ap.add_argument("--projects-dir", help="where Claude Code keeps its logs (default ~/.claude/projects)")
      ap.add_argument("--no-ccusage", action="store_true", help="switch off the 5-hour and 7-day token panel")
@@ -85,7 +87,28 @@ index b86ce70..43c2e63 100644
      ap.add_argument("--start", dest="start", action="store_true", default=None,
                      help="on its own: only start FleetView, no questions. With other flags: start it after installing")
      ap.add_argument("--no-start", dest="start", action="store_false", help="do not start it now")
-@@ -758,19 +767,19 @@ def main(argv=None):
+@@ -681,7 +692,7 @@ def main(argv=None):
+ 
+     say("")
+     say("  FleetView groups your sessions by the folder they ran in. Tell it your folders.")
+-    say("  Press Enter to accept the suggestion in brackets, or type '-' to skip one.")
++    say("  Press %s to accept the suggestion in brackets, or type '-' to skip one." % KEY)
+     sb = ask("Where is your second brain vault?", sb_default, interactive)
+     crm = ask("Where is your CRM vault?", crm_default, interactive)
+ 
+@@ -704,9 +715,9 @@ def main(argv=None):
+         if extra:
+             say("  Keeping your other folders from last time: " + ", ".join(n for n, _ in extra))
+         say("")
+-        say("  Any other project folders? For example the folder where you write your posts. One at a time; Enter on its own to finish.")
++        say("  Any other project folders? For example the folder where you write your posts. One at a time; %s on its own to finish." % KEY)
+         while True:
+-            p = ask("Folder path (Enter to finish):", None, True)
++            p = ask("Folder path (%s to finish):" % KEY, None, True)
+             if not p:
+                 break
+             n = ask("Short name for it:", Path(p).name, True)
+@@ -758,19 +769,19 @@ def main(argv=None):
      # 5
      want = a.launcher
      if want is None:

@@ -1,8 +1,8 @@
 diff --git a/install.py b/install.py
-index 876547c..d532ceb 100644
+index 876547c..5c44948 100644
 --- a/install.py
 +++ b/install.py
-@@ -198,14 +198,26 @@ def on_mac():
+@@ -198,14 +198,28 @@ def on_mac():
  
  def sign_in_words():
      """The computer's own sign-in, in the words each system uses. No
@@ -26,12 +26,14 @@ index 876547c..d532ceb 100644
 +EACH_TIME = ("each time you switch on your Mac and sign in" if _MAC
 +             else "each time you switch on the computer and sign in")
 +MACHINE = "Mac" if _MAC else "computer"
++# The key a member presses to accept a suggestion: labelled Return on a Mac.
++KEY = "Return" if _MAC else "Enter"
 +
 +
  def ours(text):
      return any(m in text for m in (LOGON_MARK,) + OLD_LOGON_MARKS)
  
-@@ -285,7 +297,8 @@ def install_logon(port):
+@@ -285,7 +299,8 @@ def install_logon(port):
      if on_windows():
          return True, ("the board will start by itself, with no window, each "
                        "time you switch on the computer and sign in: %s" % path)
@@ -41,7 +43,36 @@ index 876547c..d532ceb 100644
                    "     launchctl load -w %s" % (path, path))
  
  
-@@ -498,23 +511,23 @@ def interview(args, ask, existing):
+@@ -439,7 +454,7 @@ def interview(args, ask, existing):
+ 
+     say("\n4. Managers: which agents may OPEN new cards? Everyone else may "
+         "only add work reports.\n   Names separated by commas. No default: "
+-        "press Enter for none (then only you open cards).")
++        "press %s for none (then only you open cards)." % KEY)
+     mgr_default = args.managers if args.managers is not None else \
+         ",".join(existing.get("managers", []))
+     managers = split_names(ask.ask("   Managers", mgr_default))
+@@ -450,7 +465,7 @@ def interview(args, ask, existing):
+ 
+     say("\n5. Which agents' work reaches other people (posts, emails, "
+         "messages)?\n   Their finished cards stop in Review for you to check. "
+-        "Commas. No default: press Enter for none.")
++        "Commas. No default: press %s for none." % KEY)
+     out_default = args.outward if args.outward is not None else \
+         ",".join(existing.get("outward_owners", []))
+     outward = split_names(ask.ask("   Agents whose work reaches other people", out_default))
+@@ -480,8 +495,8 @@ def interview(args, ask, existing):
+ 
+     if sb:
+         say("\n8. A board summary note in your second brain (a markdown copy "
+-            "of the board,\n   rewritten after every change). Press Enter to "
+-            "write it at the path shown,\n   or type 'none' for no note.")
++            "of the board,\n   rewritten after every change). Press %s to "
++            "write it at the path shown,\n   or type 'none' for no note." % KEY)
+         note_default = args.summary_note \
+             if args.summary_note is not None else \
+             (existing.get("summary_note") or
+@@ -498,23 +513,23 @@ def interview(args, ask, existing):
  
      port = int(args.port or existing.get("port") or 3020)
  
@@ -71,7 +102,7 @@ index 876547c..d532ceb 100644
  
      answers = {
          "second_brain": sb, "crm_vault": crm, "agents_dirs": agents_dirs,
-@@ -591,7 +604,7 @@ def do_install(args):
+@@ -591,7 +606,7 @@ def do_install(args):
      if answers["summary_note"]:
          say(f"  write   {answers['summary_note']}  (only if it does not exist)")
      if answers["_start_at_logon"] and logon_path():
@@ -80,7 +111,7 @@ index 876547c..d532ceb 100644
      if not ask.confirm("Go ahead?"):
          say("Nothing changed.")
          return 1
-@@ -866,8 +879,7 @@ def main(argv=None):
+@@ -866,8 +881,7 @@ def main(argv=None):
      ap.add_argument("--start-with-computer", dest="start_with_computer",
                      action="store_true",
                      help="answer yes to question 9: start the board by itself "
