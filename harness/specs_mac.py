@@ -372,6 +372,7 @@ SPECS[M4] = {"steps": prereqs() + [
         not_testable="it is a pattern, not a line to type as printed: you type your own folders where each <folder> is"),
     run("config", "", "guide, 'Every command and setting'", printed="python3 start.py --config <file>",
         not_testable="it is a pattern, not a line to type as printed: you type your own settings file where <file> is"),
+    run("cd-crm", "cd ~/CRM", "guide, 'Today'", cwd="~", check="test -d ~/CRM"),
     run("today", "", "guide, 'Today'", printed="python3 _engine/today.py --write",
         not_testable="it runs inside your CRM folder and only once your CRM has the program _engine/today.py, which builds your daily Today.md list and comes with a later CRM session; the test Macs' CRM came from the first CRM session and does not have it"),
     run("word-git-clone", "", "guide, history", printed="git clone",
