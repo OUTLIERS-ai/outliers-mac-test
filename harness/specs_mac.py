@@ -70,7 +70,7 @@ def fresh_copies():
     """Harness only: a practice copy or private Python folder left by an earlier member test on the
     same Mac (Homebrew order A, then B) is moved aside, so each order starts as a new member does."""
     return check("fresh-copies", "mkdir -p /tmp/earlier-copies; for d in ~/agent-flow-test ~/fleetview-test "
-                 "~/projectforge-practice ~/jeeves-trial ~/jeeves-demo ~/outliers-checks ~/fleetview-busy-day ~/my-screen; do "
+                 "~/projectforge-practice ~/jeeves-trial ~/jeeves-demo ~/outliers-checks ~/fleetview-busy-day ~/my-screen ~/.local/lib/node_modules/ccusage; do "
                  "[ -e \"$d\" ] && mv \"$d\" /tmp/earlier-copies/$(basename \"$d\")-$$; done; true",
                  "harness only: move aside copies an earlier member test on this Mac left", cwd="~")
 
@@ -310,7 +310,7 @@ SPECS[M3] = {"steps": prereqs() + [
 ]}
 
 # ------------------------------------------------------------------ Jeeves
-# Every printed command line of the Jeeves Mac PDF (commands/ws-04.json, checked by check_specs.py).
+# Every printed command line of the Jeeves Mac PDF, inside sentences too (commands/ws-04.json, round 2).
 M4 = "outliers-ws-04-jeeves-mac"
 JV = "curl -s --max-time 5 http://127.0.0.1:%d/api/health"
 
@@ -324,49 +324,68 @@ def jeeves_serve(id_, cmd, port, source, **kw):
 
 SPECS[M4] = {"steps": prereqs() + [
     fresh_copies(),
-    run("python-version", "python3 --version", "guide, 'What you need'", cwd="~", expect=r"Python 3"),
     run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
         what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+    run("node-version", "node --version", "guide, 'What you need'", cwd="~", expect=r"^v(2[2-9]|[3-9][0-9])[.]"),
     run("claude-path", "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc", "guide, 'Before you start on a Mac'", cwd="~"),
     run("claude-version", "claude --version", "guide, 'What you need'", cwd="~", expect=r"Claude Code"),
+    run("python-version", "python3 --version", "guide, 'What you need'", cwd="~", expect=r"Python 3"),
     run("git-version", "git --version", "guide, 'What you need'", cwd="~", expect=r"git version"),
+    run("ccusage-install", "npm install -g --prefix ~/.local ccusage", "guide, 'What you need'", cwd="~", timeout=600,
+        expect=r"added [0-9]+ package"),
+    run("ccusage-version", "ccusage --version", "guide, 'What you need'", cwd="~", expect=r"[0-9]+[.][0-9]+"),
+    run("ccusage-plain", "", "guide, 'What you need'", printed="npm install -g ccusage",
+        not_testable="the guide prints it only to say a Mac refuses it (\"EACCES: permission denied\", seen on a test Mac)"),
     clone(M4, "guide, 'Install it', step 2")] + harness_steps(M4) + [
     cd(M4),
-    run("install", "python3 install.py", "guide, 'Install it', step 3 (Enter for each default)", stdin=ENTER, timeout=600,
+    run("install", "python3 install.py", "guide, 'Install it', step 3 (Return for each default)", stdin=ENTER, timeout=600,
         expect=r"Wrote config[.]json|Nothing changed", check="test -f config.json && cat config.json"),
     jeeves_serve("jeeves-page", "python3 start.py", 4040, "guide, 'Install it', step 8", desktop=True),
     run("stop", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
     jeeves_serve("no-open", "python3 start.py --no-open", 4040, "guide, 'Every command and setting'"),
     run("stop-2", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
-    run("install-yes", "python3 install.py --yes", "guide, 'Every command and setting'", timeout=300),
     {"id": "demo-page", "kind": "serve", "cmd": "python3 tools/demo.py ../jeeves-demo --serve --port 4099",
      "url": "http://127.0.0.1:4099/", "wait": 60, "source": "guide, 'Try it on made-up data first'",
      "what": "Sam the bookkeeper", "counts": True},
+    run("install-yes", "python3 install.py --yes", "guide, 'Every command and setting'", timeout=300),
     run("launcher", "python3 install.py --launcher --yes", "guide, 'Every command and setting'", stdin=ENTER, timeout=300,
         expect=r"LaunchAgents/ai[.]outliers[.]jeeves[.]plist"),
     {"id": "start-at-login", "kind": "launchd", "wait": 15, "counts": True,
-     "what": "the LaunchAgent: loaded and started as your Mac would at log-in; Jeeves must answer on 4040",
+     "what": "the LaunchAgent: switched on and started as your Mac does when you sign in; Jeeves must answer on 4040",
      "check": JV % 4040, "check_tries": 12},
-    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Every command and setting'", cwd="~", expect=r"ai[.]outliers[.]jeeves"),
+    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Every command and setting'", cwd="~",
+        expect=r"ai[.]outliers[.]jeeves"),
     run("stop-3", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
     run("copy", "python3 install.py --copy ../jeeves-trial", "guide, 'The safe way to change it'", timeout=300,
         expect=r"Made a copy of Jeeves to experiment on"),
     run("cd-copy", "cd ../jeeves-trial", "guide, 'The safe way to change it'", check="test -d ~/jeeves-trial"),
     run("venv", VENV_MAKE, "guide, 'The safe way to change it'", cwd="~", timeout=300),
-    run("pip-pytest", VENV_PIP, "guide, 'The safe way to change it'", cwd="~", timeout=600),
-    run("tests", VENV_TEST, "guide, 'The safe way to change it'", cwd="~/jeeves-trial", timeout=1200, expect=r"64 passed, 13 skipped"),
+    run("pip-pytest", VENV_PIP, "guide, 'The safe way to change it'", cwd="~", timeout=600,
+        expect=r"Successfully installed|already satisfied"),
+    run("tests", VENV_TEST, "guide, 'The safe way to change it' (in the copy)", cwd="~/jeeves-trial", timeout=1200,
+        expect=r"64 passed, 13 skipped"),
+    run("cd-copy-home", "cd jeeves-trial", "guide, 'Fit it to your own AI system'", cwd="~", check="test -d ~/jeeves-trial"),
+    run("claude", "", "guide, 'Fit it to your own AI system'", printed="claude",
+        not_testable="it opens Claude Code, which needs your own Claude Code login"),
     run("port-install", "python3 install.py --port 4041", "guide, 'When it goes wrong'", stdin=ENTER, timeout=300),
     jeeves_serve("port-start", "python3 start.py --port 4041", 4041, "guide, 'When it goes wrong'"),
     run("stop-4", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
     run("folders", "", "guide, 'Every command and setting'", printed="python3 install.py --vault <folder> --crm <folder> --agents <folder>",
-        not_testable="a pattern, not a line to type as printed: you put your own folders where <folder> is"),
+        not_testable="it is a pattern, not a line to type as printed: you type your own folders where each <folder> is"),
     run("config", "", "guide, 'Every command and setting'", printed="python3 start.py --config <file>",
-        not_testable="a pattern, not a line to type as printed: you put your own settings file where <file> is"),
+        not_testable="it is a pattern, not a line to type as printed: you type your own settings file where <file> is"),
     run("today", "", "guide, 'Today'", printed="python3 _engine/today.py --write",
-        not_testable="run in your CRM folder; _engine/today.py comes with CRM layer 7, and this test's CRM has layer 1 only"),
-    run("chat", "", "guide, the Chat panel", not_testable=CLAUDE_NOT_TESTABLE),
+        not_testable="it runs inside your CRM folder and only once your CRM has the program _engine/today.py, which builds your daily Today.md list and comes with a later CRM session; the test Macs' CRM came from the first CRM session and does not have it"),
+    run("word-git-clone", "", "guide, history", printed="git clone",
+        not_testable="the name of a step inside a sentence of Ashley's history, not a whole line to type"),
+    run("word-claude-p", "", "guide, history", printed="claude -p",
+        not_testable="the name of the way Jeeves calls Claude Code, inside a sentence of the history, not a line to type"),
+    run("chat-echo", "", "guide, 'Chat'", printed="echo hello",
+        not_testable="part of a message typed into Jeeves's chat in a test on Ashley's own PC, not a Terminal line"),
+    run("word-venv", "", "guide, 'The safe way to change it'", printed="python3 -m venv",
+        not_testable="the start of the line python3 -m venv ~/outliers-checks, named in the sentence that explains it"),
     run("uninstall", "python3 install.py --uninstall", "guide, 'Every command and setting'", stdin=ENTER,
-        expect=r"removed|Nothing was set", check="! ls ~/Library/LaunchAgents/ | grep -i jeeves"),
+        expect=r"removed", check="! launchctl list | grep -i jeeves && ! ls ~/Library/LaunchAgents/ | grep -i jeeves"),
 ]}
 
 
