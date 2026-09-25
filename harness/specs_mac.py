@@ -149,7 +149,10 @@ SPECS[M2] = {"steps": prereqs() + [
     {"id": "demo", "kind": "serve", "cmd": "npm run demo", "url": "http://localhost:3011/graph.html", "wait": 60,
      "source": "guide, 'See it before your own sessions exist'", "desktop": False, "what": "made-up sessions on 3011",
      "counts": True},
-    run("npm-test", "npm test", "guide, 'The safe way to change it'", timeout=900, expect=r"(?:#|ℹ) pass 60"),
+    run("npm-test", "npm test", "guide, 'The safe way to change it'", timeout=900,
+        # Node's own test runner prints "# pass 60" (no terminal) or an information sign then
+        # "pass 60" (nodejs.org's Node): both mean the same, and "fail 0" must follow.
+        expect=r"^\S pass 60\s*$.*^\S fail 0\s*$"),
 ] + pytest_steps(r"27 passed, 3 skipped") + [
     run("uninstall", "python3 install.py --uninstall", "guide, 'Every command and setting'", stdin=ENTER,
         check="! ls ~/Library/LaunchAgents/ | grep -i fleet"),
