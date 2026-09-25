@@ -1,0 +1,30 @@
+diff --git a/jeeves/vaults.py b/jeeves/vaults.py
+index 185e027..f8327e1 100644
+--- a/jeeves/vaults.py
++++ b/jeeves/vaults.py
+@@ -237,9 +237,10 @@ def today(cfg, now=None):
+             out["crm"] = {"found": False, "exists": False, "vault": str(root),
+                           "hint": "Your CRM folder does not exist: %s . Check \"crm_vault\" "
+                                   "in config.json." % root}
+-        elif sys.platform == "darwin" and not (root / "_engine" / "today.py").is_file():
++        elif not (root / "_engine" / "today.py").is_file():
+             # A CRM from the first CRM sessions has no program that writes Today.md; it comes with
+-            # part 7. Telling the member to run it only gives them an error (wave 6, 2026-09-25).
++            # part 7. Telling the member to run it only gives them an error (wave 6, 2026-09-25:
++            # the Mac first, then every system, Ashley's "Make It So").
+             out["crm"] = {"found": False, "exists": True, "vault": str(root), "no_today_tool": True,
+                           "hint": "No Today.md yet. Your CRM gets its Today list in part 7 of the CRM "
+                                   "sessions, which adds the program that writes it."}
+diff --git a/tests/mac/mac_today_without_tool.py b/tests/mac/mac_today_without_tool.py
+index dde36a1..83eb705 100644
+--- a/tests/mac/mac_today_without_tool.py
++++ b/tests/mac/mac_today_without_tool.py
+@@ -6,7 +6,7 @@ the CRM sessions. Yet the Today panel and the overview card told every member wi
+ run `python3 _engine/today.py --write` in the CRM folder, which then fails (GitHub's test Macs,
+ run 36154211225). With the program there, the old instruction stays.
+ 
+-Mac only in this wave: the Windows guide's pictures show today's Windows text, which is unchanged.
++The same now holds on every system: tests/mac/mac_today_without_tool_every_system.py.
+ 
+ Run by name only:  python3 -m pytest -q tests/mac/mac_today_without_tool.py
+ """

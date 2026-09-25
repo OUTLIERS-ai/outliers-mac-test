@@ -1,0 +1,55 @@
+diff --git a/tests/mac/mac_today_without_tool_every_system.py b/tests/mac/mac_today_without_tool_every_system.py
+new file mode 100644
+index 0000000..c0ffa82
+--- /dev/null
++++ b/tests/mac/mac_today_without_tool_every_system.py
+@@ -0,0 +1,49 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (2026-09-25, Ashley: "Make It So"): on EVERY system, a CRM with no Today list builder is
++not told to run it.
++
++A CRM made in the first CRM sessions has no `_engine/today.py`: that program comes with part 7 of
++the CRM sessions. The Mac already said so (tests/mac/mac_today_without_tool.py); Windows still told
++the member to run `python _engine/today.py --write`, which then fails. With the program there, the
++instruction stays, in each system's own words.
++
++Runs on every system. Run by name only:
++    python -m pytest -q tests/mac/mac_today_without_tool_every_system.py
++(pytest never collects tests/mac/ in a plain run, so the counts the guides print stay true.)
++"""
++import sys
++
++from conftest import ROOT
++
++PY = "python3" if sys.platform == "darwin" else "python"
++
++
++def _today(tmp_path, with_tool):
++    from jeeves import vaults
++    crm = tmp_path / "CRM"
++    crm.mkdir()
++    if with_tool:
++        (crm / "_engine").mkdir()
++        (crm / "_engine" / "today.py").write_text("print('today')\n", encoding="utf-8")
++    brain = tmp_path / "Second Brain"
++    brain.mkdir()
++    return vaults.today({"crm_vault": str(crm), "second_brain": str(brain)})["crm"]
++
++
++def test_a_crm_without_the_builder_is_not_told_to_run_it_on_any_system(tmp_path):
++    crm = _today(tmp_path, with_tool=False)
++    assert crm["found"] is False and crm.get("no_today_tool") is True, crm
++    assert "--write" not in crm["hint"], crm["hint"]
++    assert crm["hint"] == ("No Today.md yet. Your CRM gets its Today list in part 7 of the CRM sessions, "
++                           "which adds the program that writes it."), crm["hint"]
++
++
++def test_a_crm_with_the_builder_keeps_the_instruction_in_this_systems_words(tmp_path):
++    crm = _today(tmp_path, with_tool=True)
++    assert crm["hint"] == "No Today.md yet. In your CRM folder run: %s _engine/today.py --write" % PY, crm["hint"]
++    assert not crm.get("no_today_tool")
++
++
++def test_the_page_uses_the_servers_words_when_the_builder_is_missing():
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "td.crm.no_today_tool" in js
