@@ -1,0 +1,49 @@
+diff --git a/public/cards.html b/public/cards.html
+index 4e1511d..ffd0234 100644
+--- a/public/cards.html
++++ b/public/cards.html
+@@ -207,7 +207,7 @@
+           ' Until it is fixed none of your folder names are in use. FleetView kept port ' + (cfg.port || '') +
+           ', the port it last ran on.') : null,
+         e('div', { className: 'note' }, '$ = what these tokens would cost if you paid per token, not money taken from your subscription. Same sessions and totals as the graph page. The sessions that asked you something come first, newest first.'),
+-        stopped ? e('div', { className: 'stopped' }, e('b', null, 'FleetView stopped. '), 'This page is not getting updates any more' + (lastOk ? ' (last update ' + new Date(lastOk).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) + ')' : '') + '. Start it again with ', e('code', null, 'python install.py --start'), '; this page carries on by itself.') : null,
++        stopped ? e('div', { className: 'stopped' }, e('b', null, 'FleetView stopped. '), 'This page is not getting updates any more' + (lastOk ? ' (last update ' + new Date(lastOk).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) + ')' : '') + '. Start it again with ', e('code', null, ((meta && meta.python) || (/Mac/.test(navigator.platform) ? 'python3' : 'python')) + ' install.py --start'), '; this page carries on by itself.') : null,
+         !data ? null : sessions.length === 0
+           ? e('div', { className: 'empty' }, 'No Claude Code sessions today yet. Start one in any folder and it appears here within 2 seconds.')
+           : e('div', { className: 'grid' }, sessions.map(s => e('div', { key: s.sessionId, className: stopped ? 'stale' : '' }, e(SessionCard, { s, st: shown(s, done) }))))
+diff --git a/public/graph.html b/public/graph.html
+index 8d87680..ae6aa40 100644
+--- a/public/graph.html
++++ b/public/graph.html
+@@ -258,6 +258,9 @@ function setStoppedWords(on){
+     nc.title = 'FleetView stopped. This is how it stood at ' + when + '.';
+   }
+ }
++// The Python word the server named (python3 on a Mac). A page opened while FleetView was already
++// stopped never heard it, so it falls back to what this browser says the computer is.
++function pyWord(){ return meta.python || (/Mac/.test(navigator.platform) ? 'python3' : 'python'); }
+ function setStopped(on){
+   if (on === stopped) { setStoppedWords(on); return; }
+   stopped = on;
+@@ -265,7 +268,7 @@ function setStopped(on){
+   el.style.display = on ? 'block' : 'none';
+   el.innerHTML = on ? '<b>FleetView stopped.</b> This page is not getting updates any more' +
+     (lastOkAt ? ' (last update ' + new Date(lastOkAt).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) + ')' : '') +
+-    '. What you see may be out of date. Start it again with <code>python install.py --start</code> in the FleetView folder; this page carries on by itself.' : '';
++    '. What you see may be out of date. Start it again with <code>' + esc(pyWord()) + ' install.py --start</code> in the FleetView folder; this page carries on by itself.' : '';
+   document.getElementById('live').style.background = on ? C.red : C.thinking;
+   setStoppedWords(on);
+   // The strip's ages are drawn from nowRef(). Drawing it again here is what
+diff --git a/watcher.js b/watcher.js
+index 66e96f6..0abfbbe 100644
+--- a/watcher.js
++++ b/watcher.js
+@@ -170,6 +170,8 @@ app.get('/api/meta', (req, res) => {
+     logsFolderFound: fs.existsSync(CFG.projectsDir),
+     logsFolder: CFG.hidePaths ? '(hidden)' : CFG.projectsDir,
+     pid: process.pid, port: CFG.port, folderId: FOLDER_ID,
++    // The command a member types to run Python, for the stopped banner: python3 on a Mac.
++    python: PY,
+   });
+ });
+ 

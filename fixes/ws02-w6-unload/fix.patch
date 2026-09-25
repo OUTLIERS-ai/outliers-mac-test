@@ -1,0 +1,20 @@
+diff --git a/install.py b/install.py
+index 6753bc9..b86ce70 100644
+--- a/install.py
++++ b/install.py
+@@ -584,7 +584,14 @@ def uninstall():
+             say("  %s starts the FleetView in %s, not this folder, so it was left alone." % (path.name, launcher_folder(text)))
+         elif LAUNCHER_MARK in text:
+             if sys.platform == "darwin":
+-                say("  First run:  launchctl unload -w \"%s\"" % path)
++                # Switch the job off first, while its file still exists: printing a launchctl line and
++                # then deleting the file it names left a line nobody could run (wave 6, 2026-09-25).
++                r = subprocess.run(["launchctl", "unload", "-w", str(path)], capture_output=True, text=True,
++                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++                if r.returncode == 0:
++                    say("  Switched off the LaunchAgent that started FleetView when you log in.")
++                else:
++                    say("  The LaunchAgent was not loaded, so there was nothing to switch off.")
+             path.unlink()
+             say("  Removed the file that started FleetView with the computer: %s" % path)
+         else:

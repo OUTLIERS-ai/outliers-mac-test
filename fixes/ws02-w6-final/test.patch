@@ -1,0 +1,180 @@
+diff --git a/tests/mac/mac_config_bom_words.py b/tests/mac/mac_config_bom_words.py
+new file mode 100644
+index 0000000..e1ef7e9
+--- /dev/null
++++ b/tests/mac/mac_config_bom_words.py
+@@ -0,0 +1,35 @@
++"""Mac only (wave 6, fault row 18 kind): the installer's own check of config.json must not name Notepad
++or PowerShell on a Mac.
++
++When config.json starts with an invisible byte-order mark, `install.py` (config_problem) said the mark
++is what "Notepad and PowerShell add when they save a file". A Mac has neither. lib/config.js already
++says it the Mac way (wave 1); install.py was missed. Found by the FleetView Mac-guide writer, 2026-09-25.
++Windows keeps its words, word for word.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_config_bom_words.py
++"""
++import importlib.util
++import re
++import sys
++from pathlib import Path
++
++import pytest
++
++HERE = Path(__file__).resolve().parents[2]
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++
++
++def load_install():
++    spec = importlib.util.spec_from_file_location("fleetview_install", HERE / "install.py")
++    mod = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(mod)
++    return mod
++
++
++def test_a_byte_order_mark_is_explained_without_naming_pc_programs():
++    install = load_install()
++    problem = install.config_problem(b"\xef\xbb\xbf{\"port\": 3010}")
++    assert problem is not None and problem["line"] == 1
++    msg = problem["message"]
++    assert not re.search(r"(?i)notepad|powershell|windows", msg), msg
++    assert "UTF-8" in msg and "mark" in msg, msg
+diff --git a/tests/mac/mac_stopped_banner_python.js b/tests/mac/mac_stopped_banner_python.js
+new file mode 100644
+index 0000000..f03050d
+--- /dev/null
++++ b/tests/mac/mac_stopped_banner_python.js
+@@ -0,0 +1,72 @@
++'use strict';
++// Wave 6 fault (build plan V3, fault row 18 kind): when FleetView stops, both pages show a banner
++// that tells the member how to start it again. The banner was written into public/graph.html and
++// public/cards.html as `python install.py --start`, so on a Mac it named a command a Mac does not
++// have (a Mac has python3 and no plain python). Found by the FleetView Mac-guide writer, 2026-09-25.
++//
++// The server now tells the page its Python word in /api/meta (`python`), the way ProjectForge's
++// board does (its fault row 7): python3 on a Mac, python everywhere else, so the Windows banner
++// reads word for word as before.
++//
++// Named mac_*.js so the plain `npm test` never runs it (the 60 checks the guides print stay 60).
++// Runs on every system, by name:  node --test tests/mac/mac_stopped_banner_python.js
++const test = require('node:test');
++const assert = require('node:assert');
++const fs = require('fs');
++const os = require('os');
++const path = require('path');
++const net = require('net');
++const http = require('http');
++const { spawn } = require('child_process');
++
++const HERE = path.join(__dirname, '..', '..');
++const WANT = process.platform === 'darwin' ? 'python3' : 'python';
++
++function freePort() {
++  return new Promise((resolve) => {
++    const s = net.createServer();
++    s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); });
++  });
++}
++
++function getJson(port, p) {
++  return new Promise((resolve, reject) => {
++    http.get({ host: '127.0.0.1', port, path: p, timeout: 5000 }, (res) => {
++      let body = '';
++      res.on('data', (c) => { body += c; });
++      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
++    }).on('error', reject);
++  });
++}
++
++test('the server tells the pages the Python word for this computer', { timeout: 60000 }, async () => {
++  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fleetview-banner-'));
++  const port = await freePort();
++  const cfg = path.join(root, 'config.json');
++  fs.writeFileSync(cfg, JSON.stringify({ port, host: '127.0.0.1', folders: [], usage: { enabled: false } }));
++  const claudeDir = path.join(root, '.claude');
++  fs.mkdirSync(path.join(claudeDir, 'projects'), { recursive: true });
++  const child = spawn(process.execPath, [path.join(HERE, 'watcher.js')], {
++    cwd: HERE, windowsHide: true, stdio: 'ignore',
++    env: { ...process.env, HOME: root, USERPROFILE: root, FLEETVIEW_CONFIG: cfg, CLAUDE_CONFIG_DIR: claudeDir, PORT: String(port) },
++  });
++  try {
++    let meta = null;
++    const end = Date.now() + 20000;
++    while (Date.now() < end && !meta) {
++      try { meta = await getJson(port, '/api/meta'); } catch { await new Promise((r) => setTimeout(r, 250)); }
++    }
++    assert.ok(meta, 'FleetView did not start');
++    assert.strictEqual(meta.python, WANT, '/api/meta says ' + JSON.stringify(meta.python) + ', not ' + WANT);
++  } finally { child.kill(); }
++});
++
++test('neither page writes the Python word into its stopped banner itself', () => {
++  for (const page of ['graph.html', 'cards.html']) {
++    const src = fs.readFileSync(path.join(HERE, 'public', page), 'utf8');
++    assert.ok(!/python install\.py --start/.test(src),
++      page + ' writes "python install.py --start" into its banner, which a Mac cannot run');
++    assert.ok(/meta\.python|m\.python/.test(src) || /\.python\b/.test(src),
++      page + ' does not take the Python word from /api/meta');
++  }
++});
+diff --git a/tests/mac/mac_uninstall_unloads.py b/tests/mac/mac_uninstall_unloads.py
+new file mode 100644
+index 0000000..9d75a5f
+--- /dev/null
++++ b/tests/mac/mac_uninstall_unloads.py
+@@ -0,0 +1,55 @@
++"""Mac only (wave 6): `python3 install.py --uninstall` must switch the LaunchAgent off itself.
++
++Before: it printed "First run:  launchctl unload -w <file>" and then deleted <file>, so the printed
++line could never be run, and the job stayed loaded in launchd until the member logged out. Found by
++the FleetView Mac-guide writer, 2026-09-25. Now the installer unloads the job, then removes the file,
++and says it did both.
++
++The test writes the real LaunchAgent (in a throwaway home folder), loads it with launchctl, runs
++the uninstall, and requires launchd to have forgotten the job. It always removes the job at the end.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_uninstall_unloads.py
++"""
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++HERE = Path(__file__).resolve().parents[2]
++LABEL = "com.outliers.fleetview"
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="LaunchAgents are a Mac feature")
++
++
++def launchctl(*args):
++    return subprocess.run(["launchctl", *args], capture_output=True, text=True, timeout=60)
++
++
++def install(args, home):
++    env = dict(os.environ, HOME=str(home), CLAUDE_CONFIG_DIR=str(home / ".claude"),
++               FLEETVIEW_CONFIG=str(home / "config.json"))
++    return subprocess.run([sys.executable, str(HERE / "install.py")] + args, env=env, capture_output=True,
++                          text=True, cwd=str(HERE), timeout=300)
++
++
++def test_uninstall_switches_the_launchagent_off_before_removing_it(tmp_path):
++    home = tmp_path / "home"
++    (home / ".claude" / "projects").mkdir(parents=True)
++    sb = tmp_path / "Second Brain"
++    sb.mkdir()
++    plist = home / "Library" / "LaunchAgents" / (LABEL + ".plist")
++    try:
++        r = install(["--yes", "--skip-npm", "--second-brain", str(sb), "--crm", "-", "--port", "3016",
++                     "--launcher", "--no-start"], home)
++        assert r.returncode == 0, r.stdout + r.stderr
++        assert plist.exists(), r.stdout
++        load = launchctl("load", "-w", str(plist))
++        assert launchctl("list", LABEL).returncode == 0, "the LaunchAgent did not load: " + load.stdout + load.stderr
++        u = install(["--uninstall"], home)
++        assert u.returncode == 0, u.stdout + u.stderr
++        assert not plist.exists(), u.stdout
++        assert "First run:" not in u.stdout, "it still tells the member to type a line whose file it then deletes:\n" + u.stdout
++        assert launchctl("list", LABEL).returncode != 0, "the job is still loaded in launchd after the uninstall:\n" + u.stdout
++    finally:
++        launchctl("remove", LABEL)

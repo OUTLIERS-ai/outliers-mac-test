@@ -1,0 +1,1 @@
+npm install --no-audit --no-fund >/dev/null 2>&1; node --test tests/mac/mac_stopped_banner_python.js || exit 1; [ -d ../v ] || $PY -m venv ../v; if [ -f ../v/bin/activate ]; then . ../v/bin/activate; else . ../v/Scripts/activate; fi; python -m pip install -q pytest; python -m pytest -q -p no:cacheprovider -rs tests/mac/mac_config_bom_words.py tests/mac/mac_uninstall_unloads.py

@@ -1,0 +1,1 @@
+npm install --no-audit --no-fund >/dev/null 2>&1; node --test tests/mac/mac_stopped_banner_python.js

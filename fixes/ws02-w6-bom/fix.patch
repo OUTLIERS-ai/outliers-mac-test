@@ -1,0 +1,15 @@
+diff --git a/install.py b/install.py
+index a2ac071..6753bc9 100644
+--- a/install.py
++++ b/install.py
+@@ -190,6 +190,10 @@ def config_problem(raw):
+     if raw == b"":
+         return {"line": 1, "column": 1, "message": "config.json is empty."}
+     if raw[:3] == b"\xef\xbb\xbf":
++        if sys.platform == "darwin":   # a Mac has no Notepad or PowerShell (as lib/config.js says it)
++            return {"line": 1, "column": 1,
++                    "message": "config.json starts with an invisible byte-order mark, which some editors add "
++                               "when they save a file. Save it again as UTF-8 without that mark."}
+         return {"line": 1, "column": 1,
+                 "message": "config.json starts with an invisible byte-order mark, which Notepad and "
+                            "PowerShell add when they save a file. Save it again as UTF-8 without that mark."}
