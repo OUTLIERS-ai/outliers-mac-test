@@ -1,0 +1,88 @@
+diff --git a/_regress/test_agent_private_folder.py b/_regress/test_agent_private_folder.py
+new file mode 100644
+--- /dev/null
++++ b/_regress/test_agent_private_folder.py
+@@ -0,0 +1,83 @@
++#!/usr/bin/env python3
++"""Wave s8s5 (2026-09-25), fathom-meeting-agent: on a Mac, Claude must be able to reach the Playwright
++the Mac guide installs.
++
++The Mac guide installs Playwright into a private Python folder, `.venv`, inside the download, because on
++a Mac where Homebrew's Python answers `python3` a plain `python3 -m pip install playwright` is refused
++("externally-managed-environment": wave 0a M4, and the Session 7 exploratory runs). The agent file is
++what Claude reads before it drives the browser. Before this fix it named only `python3`, and `python3`
++cannot see anything installed in `.venv`, so the agent would fail on every Mac that followed the guide.
++
++What passes:
++  1. `.claude/agents/fathom-meeting-triage.md` names `.venv/bin/python` in a sentence that names the
++     `.venv` folder: the Python Claude is told to use when that folder exists.
++  2. `.gitignore` keeps `.venv/` out of git (a private Python folder is thousands of files and is not
++     part of anyone's notes).
++  3. On a Mac (sys.platform == "darwin") only: a private folder made exactly as the Mac guide makes it
++     (`python3 -m venv .venv`, then Playwright installed into it) is found by that named Python:
++     `<named python> -c "import playwright"` exits 0. The folder is made in a temporary copy, never in
++     the member's download.
++
++Run from the repo under test:   python3 _regress/test_agent_private_folder.py
++Exit 0 = pass, 1 = fail.
++"""
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++sys.stdout.reconfigure(encoding="utf-8", errors="replace")
++ROOT = Path.cwd()
++NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++NAMED = re.compile(r"`(\.venv/bin/python3?)`")
++
++
++def fail(msg):
++    print("FAIL: " + msg)
++    return 1
++
++
++def main():
++    agent = (ROOT / ".claude" / "agents" / "fathom-meeting-triage.md").read_text(encoding="utf-8")
++    named = None
++    for para in re.split(r"\n\s*\n", agent):
++        m = NAMED.search(para)
++        if m and "`.venv`" in para:
++            named = m.group(1)
++            print("the agent file tells Claude to use: " + named)
++            print("in: " + " ".join(para.split())[:400])
++            break
++    if not named:
++        return fail("the agent file never tells Claude to run Python from the private folder .venv that "
++                    "the Mac guide installs Playwright into, so Claude's plain python3 cannot import Playwright")
++    ignore = (ROOT / ".gitignore").read_text(encoding="utf-8") if (ROOT / ".gitignore").exists() else ""
++    if not any(l.strip() in (".venv/", ".venv", "/.venv/", "/.venv") for l in ignore.splitlines()):
++        return fail(".gitignore does not keep .venv/ out of git")
++    print(".gitignore keeps .venv/ out of git")
++    if sys.platform != "darwin":
++        print("PASS (text checks; the private-folder run is Mac-only)")
++        return 0
++    tmp = Path(tempfile.mkdtemp(prefix="fathom-venv-"))
++    try:
++        def sh(cmd, timeout=900):
++            p = subprocess.run(cmd, cwd=str(tmp), shell=True, executable="/bin/bash", capture_output=True,
++                               text=True, timeout=timeout, creationflags=NOWIN)
++            print("$ %s -> exit %d\n%s" % (cmd, p.returncode, (p.stdout + p.stderr).strip()[-600:]))
++            return p.returncode
++        if sh("python3 -m venv .venv", 300):
++            return fail("python3 -m venv .venv did not work")
++        if sh("source .venv/bin/activate && python -m pip install -q playwright"):
++            return fail("Playwright did not install into .venv")
++        if sh("%s -c \"import playwright; print('Playwright found by %s')\"" % (named, named), 120):
++            return fail("%s cannot import Playwright from the private folder" % named)
++        sh("python3 -c \"import playwright\" 2>&1 | tail -1; echo '(plain python3, for comparison)'", 60)
++    finally:
++        shutil.rmtree(tmp, ignore_errors=True)
++    print("PASS")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
