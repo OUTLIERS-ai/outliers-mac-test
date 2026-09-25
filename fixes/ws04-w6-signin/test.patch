@@ -1,0 +1,67 @@
+diff --git a/tests/mac/mac_signin_wording.py b/tests/mac/mac_signin_wording.py
+new file mode 100644
+index 0000000..87929fe
+--- /dev/null
++++ b/tests/mac/mac_signin_wording.py
+@@ -0,0 +1,61 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (2026-09-25): on a Mac the installer says when its start-up file runs in the words Ashley
++ruled on 2026-09-24, "when you switch on your Mac and sign in". "Log in" alone reads as needing an
++account, and "when the computer starts" is the other system's wording. Windows keeps its words.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_signin_wording.py
++(pytest never collects tests/mac/ in a plain run, so the counts the guides print stay true.)
++"""
++import ast
++import re
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++ROOT = Path(__file__).resolve().parents[2]
++NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++MAC_WORDS = "switch on your Mac and sign in"
++WINDOWS_ONLY = ("The file that starts Jeeves when the computer starts is already in place",
++                "Jeeves will start by itself, with no window, when the computer starts",
++                "start Jeeves when the computer starts:")   # the Windows and Linux branches
++
++
++def printed_strings(text):
++    """Every string in install.py except docstrings and the WHEN_STARTS setting itself."""
++    tree = ast.parse(text)
++    skip = set()
++    for node in ast.walk(tree):
++        if isinstance(node, (ast.Module, ast.FunctionDef, ast.ClassDef)) and node.body:
++            first = node.body[0]
++            if isinstance(first, ast.Expr) and isinstance(getattr(first, "value", None), ast.Constant):
++                skip.add(id(first.value))
++        if isinstance(node, ast.Assign) and any(getattr(t, "id", "") in ("WHEN_STARTS", "EACH_TIME") for t in node.targets):
++            for sub in ast.walk(node.value):
++                skip.add(id(sub))
++    return [n.value for n in ast.walk(tree)
++            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in skip]
++
++
++def test_every_start_up_message_a_mac_can_print_takes_its_words_from_1_setting():
++    text = (ROOT / "install.py").read_text(encoding="utf-8")
++    for s in printed_strings(text):
++        if "when the computer starts" in s:
++            assert any(w in s for w in WINDOWS_ONLY), s
++    assert "To switch it on now run:" not in text
++    assert re.search(r'^WHEN_STARTS = "when you switch on your Mac and sign in" if _MAC', text, re.M)
++
++
++@pytest.mark.skipif(sys.platform != "darwin", reason="the Mac wording is printed on a Mac only")
++def test_on_a_mac_the_help_and_the_launcher_message_say_sign_in(tmp_path, monkeypatch):
++    r = subprocess.run([sys.executable, "install.py", "--help"], cwd=str(ROOT), capture_output=True, text=True,
++                       timeout=60, creationflags=NO_WINDOW)
++    out = " ".join(r.stdout.split())
++    assert r.returncode == 0, r.stderr
++    assert "when the computer starts" not in out and "when you " + MAC_WORDS in out, out
++    sys.path.insert(0, str(ROOT))
++    import install
++    monkeypatch.setattr(install, "home", lambda: tmp_path)
++    msg = " ".join(install.install_launcher().split())
++    assert "each time you " + MAC_WORDS in msg and "launchctl load" in msg, msg
