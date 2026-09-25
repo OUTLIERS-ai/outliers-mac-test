@@ -193,37 +193,50 @@ SPECS[M2] = {"steps": prereqs() + [
 ]}
 
 # ------------------------------------------------------------------ ProjectForge
+# Every printed command line of the ProjectForge Mac PDF (commands/ws-03.json, checked by check_specs.py).
 M3 = "outliers-ws-03-projectforge-mac"
+PF_UP = "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3020 | grep -E '^(2|3)'"
 SPECS[M3] = {"steps": prereqs() + [
-    run("python-version", "python3 --version", "guide, 'Before you start'", cwd="~"),
-    clone(M3)] + harness_steps(M3) + [
+    fresh_copies(),
+    run("git-version", "git --version", "guide, 'Before you start'", cwd="~", expect=r"git version"),
+    run("venv", VENV_MAKE, "guide, 'Before you start'", cwd="~", timeout=300),
+    run("pip-pytest", VENV_PIP, "guide, 'Before you start'", cwd="~", timeout=600),
+    clone(M3, "guide, 'Install it', step 2")] + harness_steps(M3) + [
     cd(M3),
-    run("install", "python3 install.py", "guide, Install (Enter for every default, including 'Go ahead?')", stdin=ENTER, timeout=600,
-        check="test -f data/forge.db && test -f ~/.claude/projectforge/forge_agent.py"),
+    run("install", "python3 install.py", "guide, 'Install it', step 2 (Enter for every default, including 'Go ahead?')",
+        stdin=ENTER, timeout=600, check="test -f data/forge.db && test -f ~/.claude/projectforge/forge_agent.py"),
     {"id": "board", "kind": "serve", "cmd": "python3 forge.py serve", "url": "http://127.0.0.1:3020", "wait": 40,
      "source": "guide, 'Your first day'", "desktop": True, "what": "the web board", "counts": True},
-    run("list", "python3 forge.py list", "guide, 'Every command and setting'"),
     run("projects", "python3 forge.py projects", "guide, 'Every command and setting'"),
     run("add-project", "python3 forge.py add-project \"Content week 39\" --dept content --actor you",
-        "guide, 'Every command and setting'", ok=[0, 1, 2]),
-    run("waiting", "python3 forge.py waiting", "guide, 'Every command and setting'"),
-    run("agent-tool", "forge=\"$HOME/.claude/projectforge/forge_agent.py\"\npython3 \"$forge\" open --agent content-lead --dept content --project \"Content week 39\" --title \"Newsletter\" --assignee writer-bot",
-        "guide, 'What your agents run'", cwd="~", ok="any", expect=r"(?i)refused|opened|card",
-        what="a worker is refused unless a manager was named at install"),
+        "guide, 'Adding work from the terminal'", expect=r"pf-p-"),
+    run("add-task", "", "guide, 'Adding work from the terminal'",
+        printed="python3 forge.py add-task pf-p-5baff3 \"Draft 3 posts\" --status ready --agent writer-bot --actor you",
+        not_testable="pf-p-5baff3 stands for your own project's id, which the line before prints"),
+    run("agent-tool", "forge=\"$HOME/.claude/projectforge/forge_agent.py\"\n"
+        "python3 $forge open --agent content-lead --dept content --project \"Content week 39\" --title \"Newsletter\" --assignee writer-bot",
+        "guide, 'What your agents run' (both lines, in 1 Terminal window)", cwd="~", ok="any",
+        expect=r"(?i)refused|opened|card", what="a worker is refused unless a manager was named at install"),
     {"id": "demo-board", "kind": "serve", "cmd": "python3 tools/demo_board.py --out demo --serve", "url": "http://127.0.0.1:3029",
      "wait": 40, "source": "guide, 'Every command and setting'", "what": "the demo board of made-up work", "counts": True},
     run("schedule-print", "python3 tools/schedule.py --print", "guide, 'Every command and setting'"),
-    run("start-with-computer", "python3 install.py --start-with-computer --yes", "guide, 'What the installer does'",
+    run("schedule-remove", "python3 tools/schedule.py --remove", "guide, 'What the download puts on your Mac'", ok=[0, 1]),
+    run("prompt-line", "", "guide, idea 8 (a prompt for Claude Code)", printed="python3 tools/schedule.py --install until I say yes.",
+        not_testable="a line of a prompt you paste into Claude Code, not a command to type"),
+    run("agent-open-pattern", "", "guide, 'Every command and setting'", printed="open --agent <manager> --dept --project --title",
+        not_testable="a list of the agents' tool's options, not a line to type as printed"),
+    run("start-with-computer", "python3 install.py --start-with-computer", "guide, 'Install it', step 7",
         stdin=ENTER, timeout=300),
     {"id": "board-at-login", "kind": "launchd", "wait": 15, "match": "(?i)forge|projectforge", "counts": True,
-     "what": "the LaunchAgent that starts the board when you log in: bootstrap it, the board should answer on 3020",
-     "check": "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3020 | grep -E '^(2|3)'", "check_tries": 12},
+     "what": "the LaunchAgent that starts the board when you log in: loaded and started; the board must answer on 3020",
+     "check": PF_UP, "check_tries": 12},
     {"id": "board-page-from-login-job", "kind": "shot", "url": "http://127.0.0.1:3020", "wait": 20,
      "what": "the board started by the LaunchAgent"},
-    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Before you start on a Mac', LaunchAgents", cwd="~"),
+    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Before you start on a Mac', LaunchAgents", cwd="~",
+        expect=r"ai[.]outliers[.]projectforge"),
     run("serve-stop", "python3 forge.py serve --stop", "guide, 'Every command and setting'", ok=[0, 1]),
+    run("tests", VENV_TEST, "guide, 'The safe way to change it'", timeout=1200, expect=r"157 passed, 1 skipped"),
     run("forge-run", "", "guide, '/forge-run in Claude Code'", not_testable=CLAUDE_NOT_TESTABLE),
-] + pytest_steps(r"157 passed, 1 skipped") + [
     run("uninstall", "python3 install.py --uninstall", "guide, 'What the installer does'", stdin="y\n" + ENTER, ok=[0],
         check="test ! -f ~/.claude/projectforge/forge_agent.py"),
 ]}
