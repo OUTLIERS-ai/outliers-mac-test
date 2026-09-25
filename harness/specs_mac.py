@@ -229,30 +229,63 @@ SPECS[M3] = {"steps": prereqs() + [
 ]}
 
 # ------------------------------------------------------------------ Jeeves
+# Every printed command line of the Jeeves Mac PDF (commands/ws-04.json, checked by check_specs.py).
 M4 = "outliers-ws-04-jeeves-mac"
+JV = "curl -s --max-time 5 http://127.0.0.1:%d/api/health"
+
+
+def jeeves_serve(id_, cmd, port, source, **kw):
+    d = {"id": id_, "kind": "serve", "cmd": cmd, "url": "http://127.0.0.1:%d/" % port, "wait": 45,
+         "source": source, "what": "Jeeves on %d" % port, "counts": True, "check": JV % port}
+    d.update(kw)
+    return d
+
+
 SPECS[M4] = {"steps": prereqs() + [
-    run("python-version", "python3 --version", "guide, 'Before you start'", cwd="~"),
-    clone(M4)] + harness_steps(M4) + [
+    fresh_copies(),
+    run("python-version", "python3 --version", "guide, 'What you need'", cwd="~", expect=r"Python 3"),
+    run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
+        what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+    run("claude-path", "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc", "guide, 'Before you start on a Mac'", cwd="~"),
+    run("claude-version", "claude --version", "guide, 'What you need'", cwd="~", expect=r"Claude Code"),
+    run("git-version", "git --version", "guide, 'What you need'", cwd="~", expect=r"git version"),
+    clone(M4, "guide, 'Install it', step 2")] + harness_steps(M4) + [
     cd(M4),
-    run("install", "python3 install.py", "guide, Install (Enter for each default)", stdin=ENTER, timeout=600,
-        check="test -f config.json && cat config.json"),
-    {"id": "jeeves-page", "kind": "serve", "cmd": "python3 start.py", "url": "http://127.0.0.1:4040/", "wait": 40,
-     "source": "guide, Install", "desktop": True, "what": "Jeeves over the test vaults", "counts": True,
-     "check": "curl -s http://127.0.0.1:4040/api/health"},
-    run("demo-data", "python3 tools/demo.py ../jeeves-demo", "guide, 'Try it on made-up data first'", ok=[0, 1], timeout=300),
+    run("install", "python3 install.py", "guide, 'Install it', step 3 (Enter for each default)", stdin=ENTER, timeout=600,
+        expect=r"Wrote config[.]json|Nothing changed", check="test -f config.json && cat config.json"),
+    jeeves_serve("jeeves-page", "python3 start.py", 4040, "guide, 'Install it', step 8", desktop=True),
+    run("stop", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
+    jeeves_serve("no-open", "python3 start.py --no-open", 4040, "guide, 'Every command and setting'"),
+    run("stop-2", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
+    run("install-yes", "python3 install.py --yes", "guide, 'Every command and setting'", timeout=300),
     {"id": "demo-page", "kind": "serve", "cmd": "python3 tools/demo.py ../jeeves-demo --serve --port 4099",
      "url": "http://127.0.0.1:4099/", "wait": 60, "source": "guide, 'Try it on made-up data first'",
      "what": "Sam the bookkeeper", "counts": True},
-    run("launcher", "python3 install.py --launcher --yes", "guide, 'Start it when you log in'", stdin=ENTER, timeout=300),
+    run("launcher", "python3 install.py --launcher --yes", "guide, 'Every command and setting'", stdin=ENTER, timeout=300,
+        expect=r"LaunchAgents/ai[.]outliers[.]jeeves[.]plist"),
     {"id": "start-at-login", "kind": "launchd", "wait": 15, "counts": True,
-     "what": "the LaunchAgent: bootstrap it; Jeeves should answer on 4040",
-     "check": "curl -s --max-time 5 http://127.0.0.1:4040/api/health", "check_tries": 12},
-    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Before you start on a Mac', LaunchAgents", cwd="~"),
-    run("stop", "python3 start.py --stop", "guide, 'Start and stop'", ok=[0, 1]),
+     "what": "the LaunchAgent: loaded and started as your Mac would at log-in; Jeeves must answer on 4040",
+     "check": JV % 4040, "check_tries": 12},
+    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Every command and setting'", cwd="~", expect=r"ai[.]outliers[.]jeeves"),
+    run("stop-3", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
+    run("copy", "python3 install.py --copy ../jeeves-trial", "guide, 'The safe way to change it'", timeout=300,
+        expect=r"Made a copy of Jeeves to experiment on"),
+    run("cd-copy", "cd ../jeeves-trial", "guide, 'The safe way to change it'", check="test -d ~/jeeves-trial"),
+    run("venv", VENV_MAKE, "guide, 'The safe way to change it'", cwd="~", timeout=300),
+    run("pip-pytest", VENV_PIP, "guide, 'The safe way to change it'", cwd="~", timeout=600),
+    run("tests", VENV_TEST, "guide, 'The safe way to change it'", cwd="~/jeeves-trial", timeout=1200, expect=r"64 passed, 13 skipped"),
+    run("port-install", "python3 install.py --port 4041", "guide, 'When it goes wrong'", stdin=ENTER, timeout=300),
+    jeeves_serve("port-start", "python3 start.py --port 4041", 4041, "guide, 'When it goes wrong'"),
+    run("stop-4", "python3 start.py --stop", "guide, 'Stopping it'", expect=r"Stopped Jeeves|not running"),
+    run("folders", "", "guide, 'Every command and setting'", printed="python3 install.py --vault <folder> --crm <folder> --agents <folder>",
+        not_testable="a pattern, not a line to type as printed: you put your own folders where <folder> is"),
+    run("config", "", "guide, 'Every command and setting'", printed="python3 start.py --config <file>",
+        not_testable="a pattern, not a line to type as printed: you put your own settings file where <file> is"),
+    run("today", "", "guide, 'Today'", printed="python3 _engine/today.py --write",
+        not_testable="run in your CRM folder; _engine/today.py comes with CRM layer 7, and this test's CRM has layer 1 only"),
     run("chat", "", "guide, the Chat panel", not_testable=CLAUDE_NOT_TESTABLE),
-] + pytest_steps(r"64 passed, 13 skipped") + [
-    run("uninstall", "python3 install.py --uninstall", "guide, Uninstall", stdin=ENTER,
-        check="! ls ~/Library/LaunchAgents/ | grep -i jeeves"),
+    run("uninstall", "python3 install.py --uninstall", "guide, 'Every command and setting'", stdin=ENTER,
+        expect=r"removed|Nothing was set", check="! ls ~/Library/LaunchAgents/ | grep -i jeeves"),
 ]}
 
 
