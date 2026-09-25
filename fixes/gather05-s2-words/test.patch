@@ -1,0 +1,254 @@
+diff --git a/_mac_regress/mac_words.py b/_mac_regress/mac_words.py
+new file mode 100644
+index 0000000..3c85664
+--- /dev/null
++++ b/_mac_regress/mac_words.py
+@@ -0,0 +1,248 @@
++"""
++Wave s2 (2026-09-26), Mac build plan V3: the words a Mac member reads while installing and signing in.
++
++Two rulings from the Session 7 round (wave6-apply.md, "Installers' own words"), applied to Gather:
++
++  1. The key. A Mac keyboard's key is Return. On a Mac, every "press Enter" that the sign-in flow and the
++     installer print says Return instead. Windows prints Enter, exactly as before.
++  2. Start-up. On a Mac, something that starts by itself "starts by itself when you switch on your Mac
++     and sign in". "Log in", "logon" and "at login" are never used for it, because "log in" reads as
++     needing an account. Windows prints what it always printed.
++
++It runs each printed path twice in a throwaway folder, once told it is on a Mac and once told it is on
++Windows, and reads what was printed:
++  - the sign-in flow (layers 1 and 4), with a stand-in browser: no browser opens, no site is reached;
++  - the installer (layers 4 and 5), with the answers it offers;
++  - the timetable's start-up commands and help (layer 5), with a stand-in for the command that would
++    schedule anything, so nothing is ever scheduled on the machine running the test.
++
++Run it from the repo root:   python3 _mac_regress/mac_words.py      (exit 0 = green, 1 = red)
++"""
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++MAC_START = "when you switch on your Mac and sign in"
++
++LAYERS = {
++    "outliers-gather-01-foundation": {
++        "fake_engine": ["limits.py"],
++        "paths": ["sign_in"],
++        "browser": ("gather_browser", ("linkedin",)),
++        "windows_lines": ["  4. Then come back here and press Enter.",
++                          "  Press Enter once you are signed in and can see your home page... "],
++        "mac_lines": ["  4. Then come back here and press Return.",
++                      "  Press Return once you are signed in and can see your home page... "],
++    },
++    "outliers-gather-04-facebook": {
++        "fake_engine": ["limits.py"],
++        "paths": ["sign_in", "install", "install_terms"],
++        "browser": ("facebook_browser", ()),
++        "answers": [""] * 20,
++        "windows_lines": ["  4. Then come back here and press Enter.",
++                          "  Press Enter once you are signed in and can see your feed... ",
++                          "  A search term is a phrase you would type into Facebook's own group search, like "
++                          "\"UK bookkeepers\". Press Enter to leave the list empty, which is what most people "
++                          "should do: which groups your people are actually in is the question this layer exists "
++                          "to make you answer, and it is worth an hour rather than a guess at an installer prompt. "
++                          "Separate several with commas."],
++        "mac_lines": ["  4. Then come back here and press Return.",
++                      "  Press Return once you are signed in and can see your feed... ",
++                      "  A search term is a phrase you would type into Facebook's own group search, like "
++                      "\"UK bookkeepers\". Press Return to leave the list empty, which is what most people "
++                      "should do: which groups your people are actually in is the question this layer exists "
++                      "to make you answer, and it is worth an hour rather than a guess at an installer prompt. "
++                      "Separate several with commas."],
++        "also_mac": ["  Press Return to keep them. Anything you type replaces them, separated by commas."],
++        "also_windows": ["  Press Enter to keep them. Anything you type replaces them, separated by commas."],
++    },
++    "outliers-gather-05-timetable": {
++        "fake_engine": [],
++        "paths": ["install", "timetable"],
++        # first command: none; start by itself: the offered yes (the scheduler is a stand-in)
++        "answers": [""] * 12,
++        "windows_lines": [
++            "Should it start every time you log in?",
++            "  On Windows this is a logon task pointed at the copy of Python that has no console window. On a "
++            "Mac it is a LaunchAgent. Neither asks for an administrator password, and neither puts anything on "
++            "your screen.",
++            "  Installed. The task is called 'Outliers Timetable' and starts the timetable every time you log "
++            "in, with no window.",
++            "  It is pointed at the copy of Python that has no console window, so",
++            "  nothing appears on screen when you log in. That single detail is the",
++            "  Removed. It will not start at login any more.",
++            "  python timetable.py install-startup      start it every time you log in"],
++        "mac_lines": [
++            "Should it start by itself when you switch on your Mac and sign in?",
++            "  It is a LaunchAgent: a small file in your ~/Library/LaunchAgents folder that tells your Mac to "
++            "start the timetable by itself when you switch on your Mac and sign in. It does not ask for an "
++            "administrator password, and it puts nothing on your screen.",
++            "  Installed. com.outliers.gather.timetable starts the timetable by itself when you switch on your "
++            "Mac and sign in.",
++            "  Removed. It will no longer start by itself when you switch on your Mac and sign in.",
++            "  python3 timetable.py install-startup      start it by itself when you switch on your Mac and sign in",
++            "  Nothing appears on your screen when it runs: on a Mac, a program running in the",
++            "  background has no window to show."],
++    },
++}
++
++BOOT = r'''
++import sys, os, io, json, re, shutil, subprocess, runpy, importlib, contextlib, datetime
++import pathlib, tempfile, time, random, hashlib, plistlib, textwrap, string, math, csv, glob
++sys.platform = sys.argv[1]
++root, what = sys.argv[2], sys.argv[3]
++
++class Done:
++    returncode, stdout, stderr = 0, "", ""
++subprocess.run = lambda *a, **k: Done()          # nothing is scheduled: launchctl and schtasks never run
++
++class Keyboard(io.StringIO):
++    def isatty(self):
++        return True
++sys.stdin = Keyboard(sys.stdin.read())
++
++if what in ("install", "install_terms"):
++    sys.argv = [os.path.join(root, "install.py")]
++    try:
++        runpy.run_path(sys.argv[0], run_name="__main__")
++    except SystemExit:
++        pass
++elif what == "sign_in":
++    mod_name, args = json.loads(os.environ["MAC_WORDS_BROWSER"])
++    sys.path.insert(0, os.path.join(root, "engine"))
++    mod = importlib.import_module(mod_name)
++
++    class Page:
++        url = ""
++        def goto(self, *a, **k):
++            return None
++        def locator(self, *a, **k):
++            class L:
++                def count(self):
++                    return 0
++            return L()
++
++    @contextlib.contextmanager
++    def window(*a, **k):
++        yield Page()
++    mod.window = window
++    mod.sign_in(*args)
++elif what == "timetable":
++    engine = os.path.join(os.environ["OUTLIERS_CRM"], "_engine")
++    for argv in (["timetable.py", "install-startup"], ["timetable.py", "install-startup", "--remove"],
++                 ["timetable.py", "help"]):
++        sys.argv = [os.path.join(engine, argv[0])] + argv[1:]
++        for name in [m for m in sys.modules if m.startswith("timetable")]:
++            del sys.modules[name]
++        try:
++            runpy.run_path(sys.argv[0], run_name="__main__")
++        except SystemExit:
++            pass
++sys.stdout.flush()
++'''
++
++
++def run_as(platform, layer, work, what):
++    home = work / ("home-%s-%s" % (platform, what))
++    crm = home / "CRM"
++    (crm / "_layers").mkdir(parents=True)
++    # install_terms: search words already written, so the installer offers to keep them
++    (crm / "_layers" / "config.json").write_text(
++        '{"facebook": {"search-terms": ["UK bookkeepers"]}}' if what == "install_terms" else "{}", encoding="utf-8")
++    (crm / "_engine").mkdir()
++    for name in layer["fake_engine"]:
++        (crm / "_engine" / name).write_text("# stand-in for the test\n", encoding="utf-8")
++    env = dict(os.environ)
++    env.update({"HOME": str(home), "USERPROFILE": str(home), "OUTLIERS_CRM": str(crm),
++                "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"})
++    if layer.get("browser"):
++        import json
++        env["MAC_WORDS_BROWSER"] = json.dumps(list(layer["browser"]))
++    out = ""
++    steps = ["install", "timetable"] if what == "timetable" else [what]
++    for step in steps:
++        done = subprocess.run([sys.executable, "-c", BOOT, platform, str(ROOT), step],
++                              input="\n".join(layer.get("answers", [""] * 4)) + "\n", capture_output=True,
++                              text=True, encoding="utf-8", errors="replace", env=env, cwd=str(work),
++                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++        out += done.stdout + done.stderr
++    for form in sorted({str(work), os.path.realpath(str(work))}, key=len, reverse=True):
++        out = out.replace(form, "<tmp>")
++    return out
++
++
++failures = []
++
++
++def check(what, ok, detail=""):
++    print("%s  %s" % ("PASS" if ok else "FAIL", what))
++    if not ok:
++        failures.append(what)
++        if detail:
++            print("        " + detail.replace("\n", "\n        "))
++
++
++ENTER = re.compile(r"\bEnter\b")
++LOGIN_START = re.compile(r"(?i)\blog(?:-| )?in\b|\blogon\b")
++
++
++def main():
++    name = ROOT.name if ROOT.name in LAYERS else None
++    if name is None:
++        for candidate in LAYERS:
++            cfg = ROOT / ".git" / "config"
++            if cfg.exists() and candidate in cfg.read_text(errors="replace"):
++                name = candidate
++    if name is None:
++        print("Cannot tell which layer this is (folder %s)." % ROOT)
++        return 2
++    layer = LAYERS[name]
++    print("Layer: %s" % name)
++    work = Path(tempfile.mkdtemp(prefix="mac-words-"))
++    mac, win = "", ""
++    try:
++        for what in layer["paths"]:
++            mac += run_as("darwin", layer, work, what)
++            win += run_as("win32", layer, work, what)
++    finally:
++        shutil.rmtree(work, ignore_errors=True)
++
++    print("\n=== told it is on a Mac ===")
++    mac_lines = mac.splitlines()
++    enter = [l for l in mac_lines if ENTER.search(l)]
++    check("no line tells a Mac member to press Enter (a Mac's key is Return)", not enter, "\n".join(enter))
++    if name == "outliers-gather-05-timetable":
++        login = [l for l in mac_lines if LOGIN_START.search(l)]
++        check("no line says log in, logon or at login for starting by itself", not login, "\n".join(login))
++        console = [l for l in mac_lines if "console" in l.lower()]
++        check("no line talks about console windows, which a Mac does not give a background program",
++              not console, "\n".join(console))
++    for want in layer["mac_lines"]:
++        check("printed on a Mac: %s" % want.strip()[:100], want in mac_lines)
++    for want in layer.get("also_mac", []):
++        check("printed on a Mac: %s" % want.strip(), want in mac_lines)
++
++    print("\n=== told it is on Windows ===")
++    win_lines = win.splitlines()
++    for want in layer["windows_lines"]:
++        check("printed on Windows, as before: %s" % want.strip()[:100], want in win_lines)
++    for want in layer.get("also_windows", []):
++        check("printed on Windows, as before: %s" % want.strip(), want in win_lines)
++
++    print()
++    if os.environ.get("MAC_WORDS_SHOW"):
++        print("---- Mac output ----\n" + mac + "\n---- Windows output ----\n" + win)
++    if failures:
++        print("RED: %d check(s) failed" % len(failures))
++        return 1
++    print("GREEN: every check passed")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
