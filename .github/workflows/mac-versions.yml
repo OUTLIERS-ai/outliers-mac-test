@@ -53,6 +53,7 @@ jobs:
           MACTEST_BRANCH: ${{ inputs.branch }}
           MACTEST_FROM_MAIN: ${{ inputs.from_main }}
           MACTEST_TAIL: "30000"
+        timeout-minutes: 35
         run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
       - name: Scan every printed output
         if: always()
@@ -89,6 +90,7 @@ jobs:
           MACTEST_BRANCH: ${{ inputs.branch }}
           MACTEST_FROM_MAIN: ${{ inputs.from_main }}
           MACTEST_TAIL: "30000"
+        timeout-minutes: 35
         run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
       - name: Homebrew set-up, order B
         if: always()
@@ -102,6 +104,7 @@ jobs:
           MACTEST_BRANCH: ${{ inputs.branch }}
           MACTEST_FROM_MAIN: ${{ inputs.from_main }}
           MACTEST_TAIL: "30000"
+        timeout-minutes: 35
         run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
       - name: Scan every printed output
         if: always()

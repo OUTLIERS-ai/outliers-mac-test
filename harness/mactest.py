@@ -685,9 +685,17 @@ def main():
     report = {"meta": meta, "environment": "BEFORE (runner as GitHub gives it):\n" + runner_env
               + "\n\nCHANGES: " + "; ".join(meta["made_like_a_member_mac"])
               + "\n\nAFTER (what the member steps see):\n" + environment(ctx), "spec_notes": spec.get("notes", []), "steps": []}
+    progress = out / ("progress-%s--%s.jsonl" % (repo, mac_label))
     for step in spec["steps"]:
+        # written before and after each step, so a job the runner ends by its time limit still shows
+        # which step was running (wave 6, 2026-09-25: a cancelled job keeps no log)
+        with open(progress, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"started": step["id"], "at": now()}) + "\n")
         rec = run_step(step, ctx)
         report["steps"].append(rec)
+        with open(progress, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"id": rec["id"], "verdict": rec.get("verdict"), "at": now(),
+                                 "tail": [a.get("output_tail", "")[-1500:] for a in rec.get("attempts", [])]}) + "\n")
         print("[%s] %s" % (rec.get("verdict"), step["id"]), flush=True)
     report["launchd_cleanup"] = launchd_cleanup(ctx)
     for s in report["steps"]:
