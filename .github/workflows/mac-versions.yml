@@ -18,6 +18,14 @@ on:
         description: "Repo to test"
         required: false
         default: "outliers-crm-02-rules"
+      branch:
+        description: "Branch of a -mac repo to switch to after the printed clone (pending until recorded); empty = none"
+        required: false
+        default: ""
+      from_main:
+        description: "1 = exploratory run before the -mac repo exists: clone the main repo into the -mac folder name"
+        required: false
+        default: "0"
 
 permissions:
   contents: read
@@ -42,6 +50,9 @@ jobs:
           MAC_LABEL: ${{ matrix.os }}-clean
           MACTEST_STRICT: "1"
           MACTEST_LOGIN: "1"
+          MACTEST_BRANCH: ${{ inputs.branch }}
+          MACTEST_FROM_MAIN: ${{ inputs.from_main }}
+          MACTEST_TAIL: "30000"
         run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
       - name: Scan every printed output
         if: always()
@@ -75,6 +86,9 @@ jobs:
           MAC_LABEL: ${{ matrix.os }}-homebrew-A
           MACTEST_STRICT: "1"
           MACTEST_LOGIN: "1"
+          MACTEST_BRANCH: ${{ inputs.branch }}
+          MACTEST_FROM_MAIN: ${{ inputs.from_main }}
+          MACTEST_TAIL: "30000"
         run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
       - name: Homebrew set-up, order B
         if: always()
@@ -85,6 +99,9 @@ jobs:
           MAC_LABEL: ${{ matrix.os }}-homebrew-B
           MACTEST_STRICT: "1"
           MACTEST_LOGIN: "1"
+          MACTEST_BRANCH: ${{ inputs.branch }}
+          MACTEST_FROM_MAIN: ${{ inputs.from_main }}
+          MACTEST_TAIL: "30000"
         run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
       - name: Scan every printed output
         if: always()

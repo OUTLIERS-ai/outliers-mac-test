@@ -30,6 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import specs  # noqa: E402
+import hashlib  # noqa: E402
 
 HOME = Path.home()
 UID = os.getuid()
@@ -473,6 +474,37 @@ def run_interactive(step, ctx):
     return attempts, "FAILS", ""
 
 
+def fingerprint_step(ctx):
+    """The fingerprint of the downloaded files: the same sum as the vault's macgen.fingerprint
+    (build plan V3, 9e step 3). Every file git tracks, except the paths the repo's stamp file
+    leaves out (the Mac PDF, the HTML guides and the stamp itself), as 'path NUL sha256 LF' lines
+    in path order, then the sha256 of those lines. Recorded before any step can change a file."""
+    d = Path(ctx["repo_dir"])
+    stamp = d / ".mac-version.json"
+    try:
+        info = json.loads(stamp.read_text(encoding="utf-8"))
+        left = sorted(info.get("left_out_of_fingerprint", []))
+    except (OSError, ValueError):
+        info, left = {}, [".mac-version.json"]
+    out = subprocess.run(["git", "-c", "core.quotepath=off", "ls-files", "-z"], cwd=str(d),
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.decode("utf-8", "replace")
+    files = sorted(f for f in out.split(chr(0)) if f)
+    lines = []
+    for rel in files:
+        if rel in left:
+            continue
+        lines.append(rel + chr(0) + hashlib.sha256((d / rel).read_bytes()).hexdigest() + chr(10))
+    fp = hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
+    code, head, _ = run_shell("git log -1 --format='%H %an <%ae>'", str(d), "", 30)
+    STATE["fingerprint"] = {"fingerprint": fp, "left_out": left, "files": len(lines),
+                            "head": head.strip(), "stamp_main_commit": info.get("main_commit"),
+                            "stamp_fingerprint": info.get("fingerprint")}
+    ok = (not info.get("fingerprint")) or info.get("fingerprint") == fp
+    return {"verdict": "WORKS" if ok else "FAILS",
+            "reason": "" if ok else "the downloaded files do not match the stamp's fingerprint",
+            "fingerprint": STATE["fingerprint"]}
+
+
 def run_step(step, ctx):
     kind = step.get("kind", "run")
     rec = {"id": step["id"], "kind": kind, "what": step.get("what", ""), "source": step.get("source", ""),
@@ -494,6 +526,8 @@ def run_step(step, ctx):
             # A check the harness makes itself; there is no printed command to try first.
             a = attempt(step["cmd"], step, ctx, "harness check")
             rec.update(verdict="WORKS" if a["ok"] else "FAILS", attempts=[a], substitute="")
+        elif kind == "fingerprint":
+            rec.update(fingerprint_step(ctx), attempts=[])
         elif kind == "shot":
             up = wait_for_url(step["url"], step.get("wait", 45))
             rec["http_status"] = up
@@ -620,11 +654,20 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     out = out.resolve()
     os.environ["OUT"] = str(out)
-    spec = specs.get(repo)
+    if repo.endswith("-mac"):
+        import specs_mac  # the Mac member steps, as the Mac guide prints them (build plan V3, 9a-9b)
+        spec = specs_mac.get(repo)
+    else:
+        spec = specs.get(repo)
     STATE["plists_before"] = list_plists()
     ctx = {"repo": repo, "mac": mac_label, "out": out, "repo_dir": HOME / repo}
     meta = {"repo": repo, "mac_label": mac_label, "started": now(), "strict": STRICT, "login_shell": LOGIN,
-            "runner_os": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion")}
+            "runner_os": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion"),
+            "exploratory_from_main": os.environ.get("MACTEST_FROM_MAIN") == "1",
+            "branch": os.environ.get("MACTEST_BRANCH", ""),
+            "run_url": "%s/%s/actions/runs/%s" % (os.environ.get("GITHUB_SERVER_URL", ""),
+                                                   os.environ.get("GITHUB_REPOSITORY", ""),
+                                                   os.environ.get("GITHUB_RUN_ID", ""))}
     _, arch, _ = run_shell("uname -m", "/tmp", "", 10)
     _, ver, _ = run_shell("sw_vers -productVersion", "/tmp", "", 10)
     meta["arch"], meta["macos"] = arch.strip(), ver.strip()
@@ -648,6 +691,7 @@ def main():
     report["verdict"], report["failed_steps"], report["substitute_steps"] = repo_verdict(report["steps"])
     report["shots"] = STATE["shots"]
     report["venv_used"] = STATE["venv"]
+    report["fingerprint"] = STATE.get("fingerprint")
     meta["finished"] = now()
     base = "%s--%s" % (repo, mac_label)
     (out / (base + ".json")).write_text(json.dumps(report, indent=2), encoding="utf-8")
