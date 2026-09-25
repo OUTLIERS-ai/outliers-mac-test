@@ -66,6 +66,15 @@ def cd(mac):
     return run("cd", "cd %s" % mac, "guide, Download", cwd="~", check="test -d ~/%s" % mac)
 
 
+def fresh_copies():
+    """Harness only: a practice copy or private Python folder left by an earlier member test on the
+    same Mac (Homebrew order A, then B) is moved aside, so each order starts as a new member does."""
+    return check("fresh-copies", "mkdir -p /tmp/earlier-copies; for d in ~/agent-flow-test ~/fleetview-test "
+                 "~/projectforge-practice ~/jeeves-trial ~/jeeves-demo ~/outliers-checks; do "
+                 "[ -e \"$d\" ] && mv \"$d\" /tmp/earlier-copies/$(basename \"$d\")-$$; done; true",
+                 "harness only: move aside copies an earlier member test on this Mac left", cwd="~")
+
+
 def prereqs():
     # An earlier part the member already has: their second brain and their CRM. Installed with
     # python3 from the main repos (the -mac repos of those parts come in waves 3 and 4); not counted.
@@ -92,70 +101,95 @@ def pytest_steps(expect, source="guide, 'The safe way to change it'"):
 SPECS = {}
 
 # ------------------------------------------------------------------ agent-flow
+# Every printed command line of the agent-flow Mac PDF (the guide writer's list,
+# D:/Sandbox/wave6-s7-2026-09-25/commands/ws-01.json, checked both ways by check_specs.py).
 M1 = "outliers-ws-01-agent-flow-mac"
 SPECS[M1] = {"steps": prereqs() + [
-    run("python-version", "python3 --version", "guide, 'What you need'", cwd="~"),
-    run("node-version", "node --version", "guide, 'What you need'", cwd="~"),
-    clone(M1)] + harness_steps(M1) + [
+    fresh_copies(),
+    run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
+        what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+    run("node-version", "node --version", "guide, 'What to check'", cwd="~", expect=r"^v(2[2-9]|[3-9][0-9])[.]"),
+    run("claude-path", "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc", "guide, 'Before you start on a Mac'", cwd="~"),
+    run("claude-version", "claude --version", "guide, 'What to check'", cwd="~", expect=r"[0-9]+[.][0-9]+"),
+    run("python-version", "python3 --version", "guide, 'What to check'", cwd="~", expect=r"^Python 3[.](1[1-9]|[2-9][0-9])"),
+    run("git-version", "git --version", "guide, 'What to check'", cwd="~", expect=r"^git version"),
+    clone(M1, "guide, 'Install it', step 2")] + harness_steps(M1) + [
     cd(M1),
-    run("install", "python3 install.py", "guide, Install step 3", stdin=ENTER, timeout=900,
+    run("install", "python3 install.py", "guide, 'Install it', step 2", stdin=ENTER, timeout=900,
         check="ls ~/Library/LaunchAgents/ && python3 -c \"import json,os;d=json.load(open(os.path.expanduser('~/.claude/settings.json')));print(list(d.get('hooks',{})))\""),
     {"id": "start-at-login", "kind": "launchd", "wait": 20, "cwd": "{repo}", "counts": True,
-     "what": "the LaunchAgent the installer wrote: bootstrap it and see if the page on 3001 answers",
+     "what": "the LaunchAgent the installer wrote: loaded and started as your Mac would at log-in; the page on 3001 must answer",
      "check": "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3001 | grep -E '^(2|3)'", "check_tries": 24,
      "log_glob": "logs/*.log"},
     {"id": "page-3001", "kind": "shot", "url": "http://127.0.0.1:3001", "desktop": True, "wait": 20,
      "what": "the live agent-flow page"},
-    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Before you start on a Mac', LaunchAgents", cwd="~"),
-    run("status", "python3 start.py --status", "guide, 'Keeping it running'", ok=[0, 1]),
-    run("check-hooks", "python3 check_hooks.py", "guide, Install step 9", expect=r"RESULT: OK"),
-    run("cleanup-dry-run", "python3 cleanup.py --dry-run", "guide, 'Every command and setting'"),
-    run("stop", "python3 start.py --stop", "guide, 'Keeping it running'", ok=[0, 1]),
-    run("start", "python3 start.py", "guide, Install step 6", timeout=300,
+    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Files the kit makes'", cwd="~", expect=r"com[.]outliers[.]agent-flow"),
+    run("status", "python3 start.py --status", "guide, 'Using it day to day'", expect=r"Running for"),
+    run("check-hooks", "python3 check_hooks.py", "guide, 'Install it', step 9", expect=r"RESULT: OK"),
+    run("stop", "python3 start.py --stop", "guide, 'Using it day to day'", expect=r"Stopped agent-flow|was not running"),
+    run("start", "python3 start.py", "guide, 'Install it', step 6", timeout=300,
         check="curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3001 | grep -E '^(2|3)'"),
-    run("stop-2", "python3 start.py --stop", "guide, 'Keeping it running'", ok=[0, 1]),
-    run("start-now", "python3 install.py --start-now", "guide, 'Every command and setting'", stdin=ENTER, timeout=600,
-        check="curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3001 | grep -E '^(2|3)'"),
-    run("stop-3", "python3 start.py --stop", "guide, 'Keeping it running'", ok=[0, 1]),
-] + pytest_steps(r"54 passed, 5 skipped") + [
-    run("new-claude-session", "", "guide, Install step 8", not_testable=CLAUDE_NOT_TESTABLE),
-    run("uninstall", "python3 install.py --uninstall", "guide, Install tip", stdin=ENTER,
+    run("stop-2", "python3 start.py --stop", "guide, 'Using it day to day'", expect=r"Stopped agent-flow"),
+    run("cleanup", "python3 cleanup.py", "guide, 'When it goes wrong'", expect=r"Registration folder"),
+    run("copy", "cp -R outliers-ws-01-agent-flow-mac agent-flow-test", "guide, 'The safe way', step 1", cwd="~",
+        check="test -f ~/agent-flow-test/start.py"),
+    run("cd-copy", "cd agent-flow-test", "guide, 'The safe way', step 2", cwd="~"),
+    run("rm-logs", "rm -rf logs", "guide, 'The safe way', step 2", cwd="~/agent-flow-test", check="test ! -e ~/agent-flow-test/logs"),
+    run("venv", VENV_MAKE, "guide, 'The safe way', step 3", cwd="~", timeout=300),
+    run("pip-pytest", VENV_PIP, "guide, 'The safe way', step 3", cwd="~", timeout=600),
+    run("tests", VENV_TEST, "guide, 'The safe way', step 4", cwd="~/agent-flow-test", timeout=1200, expect=r"54 passed, 5 skipped"),
+    run("port-3002", "", "guide, 'When it goes wrong'", printed="python3 install.py --port 3002",
+        not_testable="only for a Mac whose port 3001 is taken; the member test keeps the default port"),
+    run("autostart", "", "guide, 'Using it day to day'", printed="python3 install.py --autostart",
+        not_testable="only after an earlier --no-autostart, which this test does not choose"),
+    run("new-claude-session", "", "guide, 'Install it', step 8", printed="claude", not_testable=CLAUDE_NOT_TESTABLE),
+    run("uninstall", "python3 install.py --uninstall", "guide, 'Install it', tip", stdin=ENTER,
         check="! ls ~/Library/LaunchAgents/ | grep -i agent-flow"),
 ]}
 
 # ------------------------------------------------------------------ FleetView
+# Every printed command line of the FleetView Mac PDF (commands/ws-02.json, checked by check_specs.py).
 M2 = "outliers-ws-02-fleetview-mac"
+FV_UP = "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3010/graph.html | grep -E '^2'"
 SPECS[M2] = {"steps": prereqs() + [
-    run("node-version", "node --version", "guide, 'What you need'", cwd="~"),
-    run("python-version", "python3 --version", "guide, 'What you need'", cwd="~"),
-    clone(M2)] + harness_steps(M2) + [
+    fresh_copies(),
+    run("git-version", "git --version", "guide, 'Before you start'", cwd="~", expect=r"git version"),
+    clone(M2, "guide, 'Install it', step 2")] + harness_steps(M2) + [
     cd(M2),
-    run("install", "python3 install.py", "guide, Install (Enter for every default, yes to start it)", stdin=ENTER, timeout=900,
-        check="curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3010/graph.html | grep -E '^2'"),
+    run("install", "python3 install.py", "guide, 'Install it', step 2 (Enter for every default, yes to start it)",
+        stdin=ENTER, timeout=900, check=FV_UP),
     {"id": "page-3010", "kind": "shot", "url": "http://localhost:3010/graph.html", "desktop": True, "wait": 30,
      "what": "FleetView started by the installer"},
     dict(check("token-panel", "sleep 20; curl -s http://127.0.0.1:3010/api/usage; echo; ! curl -s http://127.0.0.1:3010/api/usage | grep -i 'could not run'",
                "the token panel (no Claude Code sessions exist on this machine)", timeout=120)),
     run("stop", "python3 install.py --stop", "guide, 'Every command and setting'", ok=[0, 1]),
     {"id": "start-at-login", "kind": "launchd", "wait": 15, "counts": True,
-     "what": "the LaunchAgent: bootstrap it; the page should answer and the token panel should run",
-     "check": "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3010/graph.html | grep -E '^2' && sleep 25 && "
-              "echo 'token panel under launchd:' && curl -s http://127.0.0.1:3010/api/usage",
+     "what": "the LaunchAgent: loaded and started as your Mac would at log-in; the page must answer",
+     "check": FV_UP + " && sleep 25 && echo 'token panel under launchd:' && curl -s http://127.0.0.1:3010/api/usage",
      "check_tries": 6, "log_glob": "fleetview.log"},
-    run("launchctl-list", "launchctl list | grep outliers", "guide, 'Before you start on a Mac', LaunchAgents", cwd="~"),
-    run("start", "python3 install.py --start", "guide, 'Every command and setting'", ok=[0, 1]),
     run("stop-2", "python3 install.py --stop", "guide, 'Every command and setting'", ok=[0, 1]),
-    run("npm-install", "npm install", "guide, 'See it before your own sessions exist'", timeout=600),
+    run("start", "python3 install.py --start", "guide, 'Every command and setting'", expect=r"FleetView (started|is already running)",
+        check=FV_UP),
+    run("stop-3", "python3 install.py --stop", "guide, 'Every command and setting'", ok=[0, 1]),
+    {"id": "watcher", "kind": "serve", "cmd": "node watcher.js", "url": "http://localhost:3010/graph.html", "wait": 40,
+     "source": "guide, 'Every command and setting'", "what": "FleetView in this Terminal window", "counts": True},
+    {"id": "npm-start", "kind": "serve", "cmd": "npm start", "url": "http://localhost:3010/graph.html", "wait": 40,
+     "source": "guide, 'Every command and setting'", "what": "the same, through npm", "counts": True},
     {"id": "demo", "kind": "serve", "cmd": "npm run demo", "url": "http://localhost:3011/graph.html", "wait": 60,
-     "source": "guide, 'See it before your own sessions exist'", "desktop": False, "what": "made-up sessions on 3011",
-     "counts": True},
+     "source": "guide, 'Install it', tip", "desktop": False, "what": "made-up sessions on 3011", "counts": True},
+    run("make-demo", "", "guide, 'Every command and setting'", printed="node tools/make-demo.js <folder> --sessions 30",
+        not_testable="a pattern, not a line to type as printed: you put your own folder name where <folder> is"),
     run("npm-test", "npm test", "guide, 'The safe way to change it'", timeout=900,
-        # Node's own test runner prints "# pass 60" (no terminal) or an information sign then
-        # "pass 60" (nodejs.org's Node): both mean the same, and "fail 0" must follow.
+        # Node's own test runner prints "# pass 60" (no terminal) or an information sign then "pass 60"
+        # (nodejs.org's Node): both mean the same, and "fail 0" must follow.
         expect=r"^\S pass 60\s*$.*^\S fail 0\s*$"),
-] + pytest_steps(r"27 passed, 3 skipped") + [
+    run("venv", VENV_MAKE, "guide, 'The safe way to change it'", cwd="~", timeout=300),
+    run("pip-pytest", VENV_PIP, "guide, 'The safe way to change it'", cwd="~", timeout=600),
+    run("tests", VENV_TEST, "guide, 'The safe way to change it'", timeout=1200, expect=r"27 passed, 3 skipped"),
+    run("install-yes", "python3 install.py --yes", "guide, 'Every command and setting'", timeout=900, expect=r"config[.]json"),
+    run("stop-4", "python3 install.py --stop", "guide, 'Every command and setting'", ok=[0, 1]),
     run("uninstall", "python3 install.py --uninstall", "guide, 'Every command and setting'", stdin=ENTER,
-        check="! ls ~/Library/LaunchAgents/ | grep -i fleet"),
+        expect=r"FleetView uninstall", check="! ls ~/Library/LaunchAgents/ | grep -i fleet"),
 ]}
 
 # ------------------------------------------------------------------ ProjectForge

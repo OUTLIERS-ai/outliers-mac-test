@@ -508,7 +508,7 @@ def fingerprint_step(ctx):
 def run_step(step, ctx):
     kind = step.get("kind", "run")
     rec = {"id": step["id"], "kind": kind, "what": step.get("what", ""), "source": step.get("source", ""),
-           "command_as_printed": step.get("cmd"), "counts": step.get("counts", kind != "prereq"),
+           "command_as_printed": step.get("printed") or step.get("cmd"), "command_run": step.get("cmd"), "counts": step.get("counts", kind != "prereq"),
            "started": now()}
     try:
         if step.get("not_testable"):
