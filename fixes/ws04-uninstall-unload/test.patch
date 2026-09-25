@@ -1,0 +1,58 @@
+diff --git a/tests/mac/mac_uninstall_unloads_launchagent.py b/tests/mac/mac_uninstall_unloads_launchagent.py
+new file mode 100644
+index 0000000..20e12a9
+--- /dev/null
++++ b/tests/mac/mac_uninstall_unloads_launchagent.py
+@@ -0,0 +1,52 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (build plan V3): on a Mac, `install.py --uninstall` must switch the LaunchAgent off, not only delete it.
++
++Found by the Mac guide writer on 2026-09-25: `python3 install.py --uninstall` removed
++~/Library/LaunchAgents/ai.outliers.jeeves.plist but never told launchd, so `launchctl list` still
++showed ai.outliers.jeeves (and a Jeeves it had started kept running) until the next log-out.
++The uninstall now asks launchd to unload the job first, then removes the file.
++
++The check never loads a real job: it records the launchctl calls the installer makes, so no
++Jeeves is started on the test Mac. It also checks the call is hidden (no window on any system).
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_uninstall_unloads_launchagent.py
++(pytest never collects tests/mac/ in a plain run, so the counts the guides print stay true.)
++"""
++import importlib
++import json
++import subprocess
++import sys
++
++import pytest
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="LaunchAgents are a Mac feature")
++
++
++def test_uninstall_unloads_the_launchagent_before_removing_it(world, tmp_path, monkeypatch, fake_home):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    monkeypatch.setenv("JEEVES_CONFIG", str(tmp_path / "out" / "config.json"))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes",
++                         "--skip-claude-check", "--launcher"]) == 0
++    plist = fake_home / "Library" / "LaunchAgents" / "ai.outliers.jeeves.plist"
++    assert plist.exists(), "the launcher step must write the LaunchAgent first"
++
++    calls = []
++    real_run = subprocess.run
++
++    def record(args, *a, **kw):
++        if args and str(args[0]).endswith("launchctl"):
++            calls.append({"args": [str(x) for x in args], "file_there": plist.exists(),
++                          "creationflags": kw.get("creationflags", None)})
++            return subprocess.CompletedProcess(args, 0, "", "")
++        return real_run(args, *a, **kw)
++
++    monkeypatch.setattr(install.subprocess, "run", record)
++    assert install.main(["--uninstall"]) == 0
++    assert not plist.exists()
++    unloads = [c for c in calls if any(x in c["args"] for x in ("unload", "bootout"))]
++    assert unloads, "uninstall removed the LaunchAgent file without unloading it: %s" % calls
++    assert unloads[0]["file_there"], "the job must be unloaded while its file still exists"
++    assert str(plist) in " ".join(unloads[0]["args"])
++    assert unloads[0]["creationflags"] is not None, "the launchctl call must pass creationflags"

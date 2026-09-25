@@ -1,0 +1,1 @@
+[ -d ../v ] || $PY -m venv ../v; if [ -f ../v/bin/activate ]; then . ../v/bin/activate; else . ../v/Scripts/activate; fi; python -m pip install -q pytest; python -m pytest -q -p no:cacheprovider tests/mac/mac_no_pip_install_sentence.py

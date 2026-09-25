@@ -1,0 +1,30 @@
+diff --git a/install.py b/install.py
+index a16a9fe..dab6a87 100644
+--- a/install.py
++++ b/install.py
+@@ -264,12 +264,25 @@ def install_launcher():
+             "     @reboot cd %s && %s start.py --no-open" % (HERE, sys.executable))
+ 
+ 
++def unload_launch_agent(path):
++    """Mac: switch the job off in launchd before its file goes, so `launchctl list` no longer
++    shows it and a Jeeves it started stops now, not at the next log-out (wave 6, 2026-09-25).
++    A job that was never loaded makes launchctl say so; that is not an error here."""
++    try:
++        subprocess.run(["launchctl", "unload", str(path)], capture_output=True, text=True,
++                       timeout=30, creationflags=NO_WINDOW)
++    except Exception:  # noqa: BLE001
++        pass
++
++
+ def remove_launcher():
+     done, kept = [], []
+     for p in launcher_files():
+         if not p.exists():
+             continue
+         if belongs_here(p):
++            if sys.platform == "darwin" and p.suffix == ".plist":
++                unload_launch_agent(p)
+             p.unlink()
+             done.append(str(p))
+         else:

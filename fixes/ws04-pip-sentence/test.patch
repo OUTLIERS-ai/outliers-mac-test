@@ -1,0 +1,30 @@
+diff --git a/tests/mac/mac_no_pip_install_sentence.py b/tests/mac/mac_no_pip_install_sentence.py
+new file mode 100644
+index 0000000..02b566e
+--- /dev/null
++++ b/tests/mac/mac_no_pip_install_sentence.py
+@@ -0,0 +1,24 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (build plan V3, fault row 18 kind): the installer's version line must not read as a command.
++
++On every test Mac (exploratory run 36129717441, 2026-09-25) `python3 install.py` printed
++"Python 3.14.7 - nothing to pip install." The Mac output check reads "pip install" in a sentence as
++a command a member should type. The line now says "nothing to install with pip", as the README has
++since wave 0b. The words are the same on every system, so this check runs everywhere.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_no_pip_install_sentence.py
++(pytest never collects tests/mac/ in a plain run, so the counts the guides print stay true.)
++"""
++import importlib
++import json
++
++
++def test_the_version_line_is_a_sentence_not_a_command(world, tmp_path, monkeypatch, capsys):
++    w = json.loads(world.read_text(encoding="utf-8"))
++    monkeypatch.setenv("JEEVES_CONFIG", str(tmp_path / "out" / "config.json"))
++    import install
++    importlib.reload(install)
++    assert install.main(["--vault", w["second_brain"], "--crm", w["crm_vault"], "--yes", "--skip-claude-check"]) == 0
++    out = capsys.readouterr().out
++    assert "pip install" not in out, [ln for ln in out.splitlines() if "pip install" in ln]
++    assert "nothing to install with pip" in out
