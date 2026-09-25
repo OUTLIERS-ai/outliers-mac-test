@@ -2,6 +2,7 @@
 
     python ws04e_shot.py <url> <tab text> <out.png>
 """
+import re
 import sys
 from playwright.sync_api import sync_playwright
 
@@ -12,7 +13,8 @@ with sync_playwright() as pw:
         page = b.new_page(viewport={"width": 1400, "height": 860}, device_scale_factor=2)
         page.goto(url, wait_until="load")
         page.wait_for_timeout(3000)
-        page.get_by_text(tab, exact=True).first.click()
+        # the tab text is lower case in the page; CSS shows it in capitals
+        page.get_by_text(re.compile("^" + re.escape(tab) + "$", re.I)).first.click()
         page.wait_for_timeout(2500)
         page.screenshot(path=out)
         print("saved", out)
