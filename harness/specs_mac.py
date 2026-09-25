@@ -388,5 +388,99 @@ SPECS[M4] = {"steps": prereqs() + [
 ]}
 
 
+# ================================================================== Session 5 and Fathom (wave s8s5)
+# The Mac PDFs of The Critic, Drawing With A Program and The Meeting Agent, and the Mac READMEs,
+# 2026-09-25. Every printed line, in the order the Mac PDF or README prints it.
+
+def fresh_s5():
+    """Harness only: what an earlier member test on the same Mac left (Homebrew order A, then B)
+    and the setup script does not move (it moves only ~/outliers-*), moved aside."""
+    return check("fresh-copies", "mkdir -p /tmp/earlier-copies; for d in ~/fathom-meeting-agent-mac ~/.claude/agents; do "
+                 "[ -e \"$d\" ] && mv \"$d\" /tmp/earlier-copies/$(basename \"$d\")-$$; done; true",
+                 "harness only: move aside copies an earlier member test on this Mac left", cwd="~")
+
+
+# ------------------------------------------------------------------ The Critic
+M5 = "outliers-critic-mac"
+SPECS[M5] = {"steps": [
+    fresh_s5(),
+    clone(M5, "guide, part 1 'Where' (the address), and the box")] + harness_steps(M5) + [
+    check("no-backslash-paths", r"! grep -n '[\\]' the-critic.md && echo 'no backslash in any folder path'",
+          "harness only: the agent file writes every folder path with /, which a Mac reads as a folder"),
+    check("canon-named", "grep -n 'design-critique-canon' the-critic.md | head -5",
+          "harness only: the agent file names the canon by its file name, as the guide says"),
+    check("copy-into-agents", "mkdir -p ~/.claude/agents && cp the-critic.md design-critique-canon.md ~/.claude/agents/ "
+          "&& ls -la ~/.claude/agents", "harness only: the 2 files copied into a folder named agents, as the guide says in words"),
+]}
+
+# ------------------------------------------------------------------ Drawing With A Program
+M6 = "outliers-diagrams-mac"
+DG = "source ~/outliers-diagrams-python/bin/activate && "
+SPECS[M6] = {"steps": [
+    fresh_s5(),
+    run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
+        what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+    clone(M6, "guide, 'Making it yours' (the address), and the box")] + harness_steps(M6) + [
+    cd(M6),
+    run("venv", "python3 -m venv ~/outliers-diagrams-python", "README, 'Running it'", timeout=300),
+    run("pip", DG + "python -m pip install pillow playwright", "README, 'Running it'", timeout=900,
+        expect=r"Successfully installed|already satisfied"),
+    run("chromium", DG + "python -m playwright install chromium", "README, 'Running it'", timeout=900),
+    run("make-diagrams", DG + "python make_diagrams.py", "README, 'Running it'", timeout=600,
+        check="n=$(ls png/*.png | wc -l | tr -d ' '); echo \"$n pictures in png/\"; test \"$n\" -ge 10 "
+              "&& mkdir -p \"$OUT/shots\" && cp png/*.png \"$OUT/shots/\""),
+    run("cd-labs", "cd labs", "labs/README.md, 'Running any of them'", check="test -d ~/%s/labs" % M6),
+    run("lab-ten", DG + "python ten_design_systems.py", "labs/README.md, 'Running any of them'", cwd="{repo}/labs",
+        timeout=600),
+    check("lab-colour", DG + "python colour_measure.py", "harness only: another lab, in the same private folder",
+          cwd="{repo}/labs", timeout=300),
+    check("lab-phone", DG + "python phone_width.py", "harness only: another lab, in the same private folder",
+          cwd="{repo}/labs", timeout=300),
+    check("lab-background", DG + "python what_a_background_is_for.py", "harness only: another lab, in the same private folder",
+          cwd="{repo}/labs", timeout=300),
+]}
+
+# ------------------------------------------------------------------ The Meeting Agent (Fathom)
+M7 = "fathom-meeting-agent-mac"
+FA = "source .venv/bin/activate && "
+FA_OPEN = FA + "python -m playwright open --user-data-dir=.browser-profile https://fathom.video"
+
+
+def fathom_clone():
+    printed = "git clone %s%s.git" % (GH, M7)
+    if FROM_MAIN:
+        return {"id": "clone", "kind": "run", "counts": True, "source": "guide, step 2",
+                "what": "EXPLORATORY: the main repo cloned into the -mac folder name (no -mac repo yet)",
+                "printed": printed, "cmd": "git clone %sfathom-meeting-agent.git %s" % (GH, M7), "cwd": "~",
+                "check": "test -d ~/%s" % M7, "no_auto_retry": True}
+    return {"id": "clone", "kind": "run", "counts": True, "source": "guide, step 2", "what": "copy the repo down",
+            "cmd": printed, "cwd": "~", "check": "test -d ~/%s" % M7, "no_auto_retry": True}
+
+
+SPECS[M7] = {"steps": [W.claude_code_prereq(), fresh_s5(),
+    run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
+        what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+    run("claude-path", "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc", "guide, 'Before you start on a Mac'", cwd="~"),
+    run("claude-version", "claude --version", "guide, 'Before you start on a Mac'", cwd="~", expect=r"Claude Code"),
+    fathom_clone()] + harness_steps(M7) + [
+    cd(M7),
+    run("venv", "python3 -m venv .venv", "guide, step 3", timeout=300),
+    run("pip", FA + "python -m pip install playwright", "guide, step 3", timeout=900,
+        expect=r"Successfully installed|already satisfied"),
+    run("chromium", FA + "python -m playwright install chromium", "guide, step 3", timeout=900),
+    run("open-fathom", "", "guide, step 4", printed=FA_OPEN,
+        not_testable="it opens a browser window for you to log into Fathom by hand, which a script cannot do; "
+                     "the same line with a blank page in place of Fathom's address did open the browser"),
+    check("open-blank", FA + "python -m playwright open --user-data-dir=.browser-profile about:blank > \"$OUT/open-blank.log\" 2>&1 & "
+          "p=$!; for i in $(seq 1 40); do [ -d .browser-profile ] && break; sleep 1; done; sleep 3; "
+          "pkill -f 'user-data-dir=.browser-profile' ; kill $p 2>/dev/null; sleep 1; "
+          "test -d .browser-profile && echo 'the browser opened and made the .browser-profile folder'",
+          "harness only: the step 4 line with a blank page in place of Fathom's address (Fathom is never contacted)",
+          timeout=120),
+    check("agent-python", ".venv/bin/python -c \"import playwright; print('Playwright found by .venv/bin/python')\"",
+          "harness only: the Python the agent file tells Claude to use on a Mac finds Playwright"),
+]}
+
+
 def get(repo):
     return SPECS[repo]
