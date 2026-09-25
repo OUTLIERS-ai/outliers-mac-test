@@ -56,9 +56,9 @@ SPEC = {"steps": SM.prereqs() + [
     SM.run("list", "python3 forge.py list", "scenario", ok=ANY),
     SM.run("waiting", "python3 forge.py waiting", "scenario", ok=ANY),
     # 4. what the agents run, and the 3 refusals
-    SM.run("manager-open", FORGE + "python3 \"$forge\" open --agent content-lead --dept content --project \"Content week 39\" "
+    SM.run("manager-open", FORGE + "python3 $forge open --agent content-lead --dept content --project \"Content week 39\" "
            "--title \"Newsletter\" --assignee writer-bot; echo \"exit code $?\"", "scenario", cwd="~", ok=ANY),
-    SM.run("worker-open", FORGE + "python3 \"$forge\" open --agent writer-bot --dept content --project \"Content week 39\" "
+    SM.run("worker-open", FORGE + "python3 $forge open --agent writer-bot --dept content --project \"Content week 39\" "
            "--title \"More posts\"; echo \"exit code $?\"", "scenario", cwd="~", ok=ANY),
     SM.run("worker-move", CARD + "python3 forge.py move \"$C\" done --actor writer-bot; echo \"exit code $?\"", "scenario", ok=ANY),
     SM.run("thin-handoff", CARD + "python3 \"$HOME/.claude/projectforge/forge_agent.py\" handoff --card \"$C\" --from writer-bot "
