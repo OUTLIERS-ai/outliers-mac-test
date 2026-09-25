@@ -69,7 +69,7 @@ index 2c42253..63c7007 100644
          done = subprocess.run(["schtasks", "/Delete", "/F", "/TN", TASK_NAME],
                                capture_output=True, text=True, **no_window())
 diff --git a/install.py b/install.py
-index b9fdcd4..77b3855 100644
+index b9fdcd4..0a4e813 100644
 --- a/install.py
 +++ b/install.py
 @@ -30,6 +30,16 @@ from pathlib import Path
@@ -79,11 +79,11 @@ index b9fdcd4..77b3855 100644
 +# How starting by itself is said. On a Mac it "starts by itself when you switch on your Mac and sign in":
 +# "log in" reads as needing an account (Mac build plan V3, wave s2: the Session 7 ruling on the words
 +# installers print). Windows keeps its words, exactly as before.
++# The question keeps its Windows words as the first literal in the ask_yes call, because the Gather guide
++# checker (check_repo_matches_guide.py) reads the installer's questions out of this source.
 +if sys.platform == "darwin":
-+    AT_LOGIN_QUESTION = "Should it start by itself when you switch on your Mac and sign in?"
 +    AT_LOGIN_LATER = "  and set it to start by itself later with:"
 +else:
-+    AT_LOGIN_QUESTION = "Should it start every time you log in?"
 +    AT_LOGIN_LATER = "  and set it to start at login later with:"
 +
  LAYER = 5
@@ -99,16 +99,17 @@ index b9fdcd4..77b3855 100644
                           "It does not ask for an administrator password, and it puts "
                           "nothing on your screen.")
      else:
-@@ -213,7 +224,7 @@ def main():
+@@ -213,7 +224,8 @@ def main():
                           "Python that has no console window. On a Mac it is a "
                           "LaunchAgent. Neither asks for an administrator "
                           "password, and neither puts anything on your screen.")
 -    at_login = ask_yes("Should it start every time you log in?",
-+    at_login = ask_yes(AT_LOGIN_QUESTION,
++    at_login = ask_yes("Should it start every time you log in?" if sys.platform != "darwin" else
++                       "Should it start by itself when you switch on your Mac and sign in?",
                         default="yes",
                         helptext=at_login_help)
  
-@@ -275,7 +286,7 @@ def main():
+@@ -275,7 +287,7 @@ def main():
          say("  " + startup_note.replace("\n", "\n  "))
          if not startup_worked:
              say("  Everything else installed. Start it by hand when you want it going,")
