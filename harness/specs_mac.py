@@ -416,6 +416,8 @@ SPECS[M5] = {"steps": [
     run("copy-into-agents", "cp outliers-critic-mac/the-critic.md outliers-critic-mac/design-critique-canon.md ~/.claude/agents/",
         "guide, part 1 'Where'", cwd="~",
         check="ls -la ~/.claude/agents && test -f ~/.claude/agents/the-critic.md && test -f ~/.claude/agents/design-critique-canon.md"),
+    run("claude-edit", "", "guide, part 1 'Where' (the prompt that changes the canon's place)", printed="claude",
+        not_testable="it opens Claude Code to make the change, which needs your own Claude Code login"),
 ]}
 
 # ------------------------------------------------------------------ Drawing With A Program
@@ -483,6 +485,8 @@ SPECS[M7] = {"steps": [W.claude_code_prereq(), fresh_s5(),
           "test -d .browser-profile && echo 'the browser opened and made the .browser-profile folder'",
           "harness only: the step 4 line with a blank page in place of Fathom's address (Fathom is never contacted)",
           timeout=120),
+    run("claude-step5", "", "guide, step 5", printed="claude",
+        not_testable="it opens Claude Code, which needs your own Claude Code login"),
     check("agent-python", ".venv/bin/python -c \"import playwright; print('Playwright found by .venv/bin/python')\"",
           "harness only: the Python the agent file tells Claude to use on a Mac finds Playwright"),
 ]}
