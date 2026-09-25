@@ -20,6 +20,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -42,6 +43,10 @@ def judge(stamp, main_head, main_sha, mac_sha):
     return "green"
 
 
+def placeholder_state():
+    return "not published yet (placeholder main)"
+
+
 def head(url):
     p = subprocess.run(["git", "ls-remote", url, "HEAD"], capture_output=True, text=True, timeout=120)
     return p.stdout.split()[0] if p.returncode == 0 and p.stdout.strip() else None
@@ -61,6 +66,12 @@ def check_pair(name, tmp):
     try:
         with urllib.request.urlopen(RAW % mac, timeout=60) as r:
             stamp = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            # build plan 9e: a new -mac repo's main is a 1-line placeholder until its Mac test is
+            # recorded and Ashley publishes it; nothing a member downloads can drift yet
+            return placeholder_state()
+        return "RED: no readable stamp (%s)" % e
     except Exception as e:
         return "RED: no readable stamp (%s)" % e
     main_head = head(GH + name) or ""
@@ -80,9 +91,10 @@ def main():
     red = [r for r in rows if r["state"].startswith("RED")]
     date = datetime.datetime.utcnow().strftime("%Y-%m-%d")
     (out / "drift.json").write_text(json.dumps({"date": date, "pairs": rows, "red": len(red)}, indent=2))
-    print("drift %s: %d pairs, %d green, %d not created yet, %d RED" % (
+    print("drift %s: %d pairs, %d green, %d not created yet, %d not published yet, %d RED" % (
         date, len(rows), sum(r["state"] == "green" for r in rows),
-        sum(r["state"] == "not created yet" for r in rows), len(red)))
+        sum(r["state"] == "not created yet" for r in rows),
+        sum(r["state"].startswith("not published yet") for r in rows), len(red)))
     return 1 if red else 0
 
 
