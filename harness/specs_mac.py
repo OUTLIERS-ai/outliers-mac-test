@@ -72,9 +72,18 @@ def prereqs():
     return [W.prereq("outliers-sb-01-memory"), W.prereq("outliers-crm-01-foundation"), W.claude_code_prereq()]
 
 
+VENV_MAKE = "python3 -m venv ~/outliers-checks"
+VENV_PIP = "source ~/outliers-checks/bin/activate && python -m pip install pytest"
+VENV_TEST = "source ~/outliers-checks/bin/activate && python -m pytest -q"
+
+
 def pytest_steps(expect, source="guide, 'The safe way to change it'"):
-    return [run("pip-pytest", "python3 -m pip install pytest", source, timeout=600),
-            run("tests", "python3 -m pytest -q", source, timeout=1200, expect=expect),
+    # Ruling 2 (wave 6): the self-checks run in a private Python folder, because on Apple Silicon
+    # with Homebrew added after python.org a plain `python3 -m pip install` is refused (wave 0a M4,
+    # and the exploratory runs of 2026-09-25, Homebrew order B).
+    return [run("venv", VENV_MAKE, source, cwd="~", timeout=300),
+            run("pip-pytest", VENV_PIP, source, timeout=600),
+            run("tests", VENV_TEST, source, timeout=1200, expect=expect),
             dict(check("tests-full-record", "python3 -m pytest -v -rA -p no:cacheprovider > \"$OUT/pytest-full.log\" 2>&1; "
                        "echo \"pytest exit $?\"; tail -60 \"$OUT/pytest-full.log\"",
                        "the same tests again, every test named, full record kept (diagnosis only)", timeout=1500))]
@@ -140,7 +149,7 @@ SPECS[M2] = {"steps": prereqs() + [
     {"id": "demo", "kind": "serve", "cmd": "npm run demo", "url": "http://localhost:3011/graph.html", "wait": 60,
      "source": "guide, 'See it before your own sessions exist'", "desktop": False, "what": "made-up sessions on 3011",
      "counts": True},
-    run("npm-test", "npm test", "guide, 'The safe way to change it'", timeout=900, expect=r"# pass 60"),
+    run("npm-test", "npm test", "guide, 'The safe way to change it'", timeout=900, expect=r"(?:#|ℹ) pass 60"),
 ] + pytest_steps(r"27 passed, 3 skipped") + [
     run("uninstall", "python3 install.py --uninstall", "guide, 'Every command and setting'", stdin=ENTER,
         check="! ls ~/Library/LaunchAgents/ | grep -i fleet"),
