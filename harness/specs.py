@@ -5,12 +5,19 @@ runs it exactly like that first, then tries the obvious Mac substitute. Steps a 
 do on a public test machine (anything needing their own Claude, LinkedIn, Facebook or Fathom
 login) are listed with "not_testable" so the gap is visible rather than silently skipped.
 
-Repos checked against GitHub on 2026-09-24. `outliers-content-engine` is PRIVATE and is not
+Repos checked against GitHub on 2026-09-24. Updated 2026-09-25 after the wave 1 push: on a Mac a new
+second brain lives at `~/Second Brain` (Windows keeps `~/Documents/Second Brain`), and Part 4 puts the
+morning list on a LaunchAgent, so the 2 crontab steps are gone. `outliers-content-engine` is PRIVATE and is not
 tested here: a public repo's workflow cannot clone it without a secret, and this repo holds none.
 """
 
+import sys
+
 GH = "https://github.com/OUTLIERS-ai/"
-VAULT = "~/Documents/Second Brain"
+# Wave 1 row 23: Part 1 on a Mac makes a new second brain at ~/Second Brain; Windows keeps Documents.
+MAC = sys.platform == "darwin"
+VAULT = "~/Second Brain" if MAC else "~/Documents/Second Brain"
+SB = "$HOME/Second Brain" if MAC else "$HOME/Documents/Second Brain"  # the same folder, for bash checks
 CRM = "~/CRM"
 ENTER = "\n" * 60
 CLAUDE_NOT_TESTABLE = "needs Claude Code logged in to a paid plan: not testable on a public runner"
@@ -88,9 +95,9 @@ SPECS["outliers-sb-01-memory"] = {"steps": [
     clone("outliers-sb-01-memory"),
     run("install", "python install.py", "README, 'What this does about it'", stdin=ENTER,
         what="3 questions, Enter for each default",
-        check="test -f \"$HOME/Documents/Second Brain/CLAUDE.md\" && test -f \"$HOME/Documents/Second Brain/_layers/config.json\" "
-              "&& git -C \"$HOME/Documents/Second Brain\" log --oneline -1"),
-    check("vault-readable", "ls -la \"$HOME/Documents/Second Brain\"; tail -20 ~/.claude/CLAUDE.md && grep -q 'Second Brain' ~/.claude/CLAUDE.md",
+        check="test -f \"" + SB + "/CLAUDE.md\" && test -f \"" + SB + "/_layers/config.json\" "
+              "&& git -C \"" + SB + "\" log --oneline -1"),
+    check("vault-readable", "ls -la \"" + SB + "\"; tail -20 ~/.claude/CLAUDE.md && grep -q 'Second Brain' ~/.claude/CLAUDE.md",
           "the folder, its history and the pointer in ~/.claude/CLAUDE.md are there"),
     run("claude-reads-it", "", "PDF: 'open Claude Code, drag this PDF in'",
         not_testable=CLAUDE_NOT_TESTABLE + " (the promise 'it tells you something a fresh chat could not')"),
@@ -100,7 +107,7 @@ SPECS["outliers-sb-02-standards"] = {"steps": [
     prereq("outliers-sb-01-memory"),
     clone("outliers-sb-02-standards"),
     run("install", "python install.py", "README, 'What this does about it'", stdin=ENTER,
-        check="test -f \"$HOME/Documents/Second Brain/_engine/doctor.py\""),
+        check="test -f \"" + SB + "/_engine/doctor.py\""),
     run("doctor", "python _engine/doctor.py", "README, 'Then:'", cwd=VAULT, ok=[0, 1]),
     run("repair", "python _engine/repair.py", "README, 'Then:'", cwd=VAULT, ok=[0, 1]),
     run("repair-apply", "python _engine/repair.py --apply", "README, 'Then:'", cwd=VAULT, ok=[0, 1]),
@@ -111,7 +118,7 @@ SPECS["outliers-sb-03-capture"] = {"steps": [
     prereq("outliers-sb-01-memory"), prereq("outliers-sb-02-standards"),
     clone("outliers-sb-03-capture"),
     run("install", "python install.py", "README, 'What this does about it'", stdin=ENTER,
-        check="ls \"$HOME/Documents/Second Brain/.claude/agents\" && test -f \"$HOME/Documents/Second Brain/.claude/skills/youtube-to-notes/SKILL.md\""),
+        check="ls \"" + SB + "/.claude/agents\" && test -f \"" + SB + "/.claude/skills/youtube-to-notes/SKILL.md\""),
     run("youtube-to-notes", "python \".claude/skills/youtube-to-notes/scripts/youtube_words.py\" \"https://www.youtube.com/watch?v=jNQXAC9IVRw\"",
         "youtube-to-notes/SKILL.md step 1 (Claude runs it; SKILL.md says use python3 on a Mac)", cwd=VAULT,
         what="the YouTube helper on a 19-second public video; expect it to ask for yt-dlp first",
@@ -122,53 +129,27 @@ SPECS["outliers-sb-03-capture"] = {"steps": [
         not_testable=CLAUDE_NOT_TESTABLE),
 ] + tests(["python tests/test_youtube_words.py"], "README prints no test command; tests/ holds one file")}
 
-def cron_test(fixed):
-    """Put the crontab line the installer printed into the real cron, due 2 minutes from now,
-    wrapped only so its output (errors included) lands in a file. `fixed` = the obvious Mac
-    repair: quote the folder name (it has a space) and say python3."""
-    log = "/tmp/cron-today-%s.log" % ("fixed" if fixed else "printed")
-    fix = (" LINE=$(echo \"$LINE\" | sed -E 's#^cd (.*) && python #cd \"\\1\" \\&\\& python3 #'); "
-           "echo \"line after the Mac repair: $LINE\"; ") if fixed else ""
-    return ("rm -f %s /tmp/cron-alive.log; H=$(date +%%-H); M=$(date +%%-M); M=$(( M + 2 )); "
-            "if [ $M -ge 60 ]; then M=$(( M - 60 )); H=$(( (H + 1) %% 24 )); fi; "
-            "LINE=$(grep -m1 -o 'cd .*today.py' \"$HOME/sb04-install.log\"); echo \"line printed by the installer: $LINE\"; %s"
-            "printf '%%s %%s * * * { %%s ; } >> %s 2>&1\\n* * * * * echo cron-is-running >> /tmp/cron-alive.log\\n' \"$M\" \"$H\" \"$LINE\" | crontab - && crontab -l; "
-            "sleep 170; echo '--- control job (proves cron itself runs):'; cat /tmp/cron-alive.log; "
-            "echo '--- what the line printed when cron ran it:'; cat %s; crontab -r; "
-            "test -s %s && ! grep -q -i -E 'Traceback|not found|No such file|too many|Operation not permitted' %s"
-            % (log, fix, log, log, log, log))
-
-
-def cron_steps():
-    return [check("crontab-line-as-printed", cron_test(False),
-                  "the crontab line the installer prints for a Mac, run by the real cron 2 minutes later", cwd="~", timeout=260),
-            dict(check("crontab-line-mac-repair", cron_test(True),
-                       "the same line with the folder name quoted and python3: does cron then make the morning list?",
-                       cwd="~", timeout=260), counts=False)]
-
 SPECS["outliers-sb-04-operations"] = {"steps": [
     prereq("outliers-sb-01-memory"), prereq("outliers-sb-02-standards"), prereq("outliers-sb-03-capture"),
     clone("outliers-sb-04-operations"),
-    run("install", "python install.py | tee ~/sb04-install.log", "README, 'What this does about it' (tee added to keep the printed crontab line)",
-        stdin=ENTER, expect=r"Installed the record", check="test -f \"$HOME/Documents/Second Brain/_engine/today.py\""),
+    run("install", "python install.py", "README, 'What this does about it'",
+        stdin=ENTER, expect=r"Installed the record", check="test -f \"" + SB + "/_engine/today.py\""),
     {"id": "start-at-login", "kind": "launchd", "expect_plist": True,
      "what": "does the installer put the morning list on a Mac clock (a LaunchAgent)?"},
     run("today", "python _engine/today.py", "README, 'Then:'", cwd=VAULT),
     run("ledger", "python _engine/ledger.py", "README, 'Then:'", cwd=VAULT),
-] + cron_steps() + [
 ]}
 
 SPECS["outliers-second-brain"] = {"steps": [
     clone("outliers-second-brain", source="README, top"),
-    run("install", "python install.py | tee ~/sb04-install.log", "README, top (tee added to keep the printed crontab line)",
+    run("install", "python install.py", "README, top",
         stdin=ENTER, timeout=900,
-        check="test -f \"$HOME/Documents/Second Brain/_engine/today.py\" && test -f \"$HOME/Documents/Second Brain/_engine/doctor.py\""),
+        check="test -f \"" + SB + "/_engine/today.py\" && test -f \"" + SB + "/_engine/doctor.py\""),
     {"id": "start-at-login", "kind": "launchd", "expect_plist": True,
      "what": "does the installer put the morning list on a Mac clock (a LaunchAgent)?"},
     run("doctor", "python _engine/doctor.py", "Part 2 guide", cwd=VAULT, ok=[0, 1]),
     run("today", "python _engine/today.py", "Part 4 guide", cwd=VAULT),
     run("ledger", "python _engine/ledger.py", "Part 4 guide", cwd=VAULT),
-] + cron_steps() + [
 ] + tests(["python parts/02-standards/tests/test_check_does_not_cry_wolf.py",
            "python parts/02-standards/tests/test_repair_only_when_certain.py",
            "python parts/03-capture/tests/test_youtube_words.py"], "parts/*/tests (no command printed)")}
