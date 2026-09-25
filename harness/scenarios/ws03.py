@@ -22,6 +22,10 @@ TODAY = ("mkdir -p ~/CRM/People && printf '# Today\\n\\n| # | Who | Why they are
          "printf '# Dan Pike\\nMade-up person.\\n' > ~/CRM/People/'Dan Pike.md' && "
          "printf '# Mia Lowe\\nMade-up person.\\n' > ~/CRM/People/'Mia Lowe.md' && cat ~/CRM/Today.md")
 
+NL = chr(92) + "n"      # the 2 characters backslash and n, for printf
+ANSWERS = ("printf '%s" + NL + "%s" + NL + NL + "content-lead" + NL * 9 + "' "
+           "\"$HOME/Second Brain\" \"$HOME/CRM\"")
+
 SPEC = {"steps": SM.prereqs() + [
     SM.run("claude-path", "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc", "scenario", cwd="~"),
     SM.run("v-python", "python3 --version", "scenario", cwd="~"),
@@ -38,7 +42,9 @@ SPEC = {"steps": SM.prereqs() + [
     # 2. made-up agents and a made-up CRM Today page, then an install naming a manager
     SM.check("agents", AGENTS, "harness: 3 made-up agents", cwd="~"),
     SM.check("today", TODAY, "harness: a made-up Today.md with 2 made-up people", cwd="~"),
-    SM.run("install", "python3 install.py", "scenario", stdin="\n\n\ncontent-lead\n" + SM.ENTER, timeout=600, ok=ANY),
+    # ProjectForge finds a vault only by its .obsidian folder, which a new second brain has not got yet,
+    # so the answers are typed: the second brain, the CRM, Enter for the agents folder, 1 manager.
+    SM.run("install", ANSWERS + " | python3 install.py", "scenario", timeout=600, ok=ANY),
     # 3. projects and cards from the terminal
     SM.run("add-project", "python3 forge.py add-project \"Content week 39\" --dept content --actor you", "scenario", ok=ANY),
     SM.run("bad-dept", "python3 forge.py add-project \"Launch\" --dept marketing --actor you", "scenario", ok=ANY),
