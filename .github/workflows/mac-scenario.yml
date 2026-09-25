@@ -1,0 +1,53 @@
+name: Mac scenario for a guide picture
+
+# Build plan V3, section 8d (wave 6, 2026-09-25): a Mac guide's pictures show what a program really
+# printed on a test Mac. Some situations a guide pictures (a broken settings file, a port already in
+# use, a server left behind) are not steps a member types in order, so the member test never shows
+# them. This runs 1 scenario file, harness/scenarios/<name>.py, on 1 test Mac with the clean set-up
+# (python.org Python, nodejs.org Node.js, no Homebrew) and keeps every printed output whole.
+# Its record is for drawing pictures only: it is never used for a "What was run on a Mac" box.
+# Started by hand only. No secret is used or needed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "The -mac folder name the scenario runs in (e.g. outliers-ws-01-agent-flow-mac)"
+        required: true
+      scenario:
+        description: "Scenario file under harness/scenarios/, without .py (e.g. ws01)"
+        required: true
+      os:
+        description: "Test Mac"
+        required: false
+        default: "macos-15"
+
+permissions:
+  contents: read
+
+jobs:
+  scenario:
+    name: ${{ inputs.scenario }} on ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: _mactest
+      - name: Clean set-up
+        run: bash _mactest/setup/clean.sh "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/setup-clean.log"; exit ${PIPESTATUS[0]}
+      - name: Scenario
+        env:
+          MAC_LABEL: ${{ inputs.os }}-scenario
+          MACTEST_STRICT: "1"
+          MACTEST_LOGIN: "1"
+          MACTEST_FROM_MAIN: "1"
+          MACTEST_SCENARIO: ${{ inputs.scenario }}
+          MACTEST_TAIL: "60000"
+        run: /usr/bin/python3 _mactest/harness/mactest.py "${{ inputs.repo }}" "$RUNNER_TEMP/out"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-${{ inputs.scenario }}--${{ inputs.os }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30

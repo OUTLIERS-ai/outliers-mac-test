@@ -654,7 +654,12 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     out = out.resolve()
     os.environ["OUT"] = str(out)
-    if repo.endswith("-mac"):
+    if os.environ.get("MACTEST_SCENARIO"):
+        # a picture scenario (mac-scenario.yml): harness/scenarios/<name>.py, variable SPEC
+        import importlib
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "scenarios"))
+        spec = importlib.import_module(os.environ["MACTEST_SCENARIO"]).SPEC
+    elif repo.endswith("-mac"):
         import specs_mac  # the Mac member steps, as the Mac guide prints them (build plan V3, 9a-9b)
         spec = specs_mac.get(repo)
     else:
