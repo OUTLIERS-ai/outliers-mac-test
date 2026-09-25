@@ -1,0 +1,136 @@
+diff --git a/tests/mac/mac_ccusage_advice.py b/tests/mac/mac_ccusage_advice.py
+new file mode 100644
+index 0000000..8146b56
+--- /dev/null
++++ b/tests/mac/mac_ccusage_advice.py
+@@ -0,0 +1,33 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (2026-09-25): on a Mac, the advice for installing ccusage must be a line that works.
++
++With Node.js from nodejs.org, `npm install -g ccusage` is refused on a Mac ("EACCES: permission
++denied": the global folder belongs to the system). `npm install -g --prefix ~/.local ccusage` works
++with no password and puts ccusage in ~/.local/bin, where Jeeves finds it from Terminal and from its
++LaunchAgent (GitHub's test Macs, runs 36154211225 and 36154873391). The installer (install.py) and
++the Tokens panel (jeeves/sessions.py) both advised the refused line. Windows keeps its line.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_ccusage_advice.py
++"""
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++WORKS = "npm install -g --prefix ~/.local ccusage"
++
++
++def test_the_tokens_panel_names_the_line_that_works(monkeypatch):
++    from jeeves import sessions
++    monkeypatch.setattr(sessions.shutil, "which", lambda name: None)
++    reason = sessions.ccusage_block({})["reason"]
++    assert WORKS in reason, reason
++
++
++def test_the_installer_names_the_line_that_works():
++    text = (ROOT / "install.py").read_text(encoding="utf-8")
++    assert "npm install -g ccusage" not in text, "install.py still prints the line a Mac refuses"
++    from jeeves import config
++    assert config.CCUSAGE_INSTALL == WORKS
+diff --git a/tests/mac/mac_demo_links.py b/tests/mac/mac_demo_links.py
+new file mode 100644
+index 0000000..6b68f8c
+--- /dev/null
++++ b/tests/mac/mac_demo_links.py
+@@ -0,0 +1,22 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (2026-09-25): the practice world (tools/demo.py) links a Mac member to the Mac downloads.
++
++tools/demo.py wrote the Windows addresses of the Work board and FleetView into the practice
++config.json on every computer, while the installer takes them from jeeves.config.app_repo, which on
++a Mac gives the `-mac` repos. A Windows member keeps the Windows addresses (checked on every system).
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_demo_links.py
++"""
++import json
++import sys
++
++import demo
++
++BASE = "https://github.com/OUTLIERS-ai/"
++
++
++def test_the_practice_world_uses_the_same_download_links_as_the_installer(tmp_path):
++    cfg = json.loads(demo.build(tmp_path / "world").read_text(encoding="utf-8"))
++    end = "-mac" if sys.platform == "darwin" else ""
++    assert cfg["apps"]["projectforge"]["repo"] == BASE + "outliers-ws-03-projectforge" + end
++    assert cfg["apps"]["fleetview"]["repo"] == BASE + "outliers-ws-02-fleetview" + end
+diff --git a/tests/mac/mac_today_names_python3.py b/tests/mac/mac_today_names_python3.py
+index ea8ae0f..bec8fb0 100644
+--- a/tests/mac/mac_today_names_python3.py
++++ b/tests/mac/mac_today_names_python3.py
+@@ -23,6 +23,9 @@ def test_the_today_panel_says_python3(tmp_path):
+     from jeeves import vaults
+     crm = tmp_path / "CRM"
+     crm.mkdir()
++    # the instruction is only given when the CRM has the program it names (wave 6, 2026-09-25)
++    (crm / "_engine").mkdir()
++    (crm / "_engine" / "today.py").write_text("print('today')\n", encoding="utf-8")
+     brain = tmp_path / "Second Brain"
+     brain.mkdir()
+     out = vaults.today({"crm_vault": str(crm), "second_brain": str(brain)})
+diff --git a/tests/mac/mac_today_without_tool.py b/tests/mac/mac_today_without_tool.py
+new file mode 100644
+index 0000000..dde36a1
+--- /dev/null
++++ b/tests/mac/mac_today_without_tool.py
+@@ -0,0 +1,49 @@
++# -*- coding: utf-8 -*-
++"""Wave 6 (2026-09-25): on a Mac, a CRM with no Today list builder is not told to run it.
++
++A CRM made in the first CRM sessions has no `_engine/today.py`: that program comes with part 7 of
++the CRM sessions. Yet the Today panel and the overview card told every member with no Today.md to
++run `python3 _engine/today.py --write` in the CRM folder, which then fails (GitHub's test Macs,
++run 36154211225). With the program there, the old instruction stays.
++
++Mac only in this wave: the Windows guide's pictures show today's Windows text, which is unchanged.
++
++Run by name only:  python3 -m pytest -q tests/mac/mac_today_without_tool.py
++"""
++import sys
++
++import pytest
++
++from conftest import ROOT
++
++pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Mac wording")
++
++
++def _today(tmp_path, with_tool):
++    from jeeves import vaults
++    crm = tmp_path / "CRM"
++    crm.mkdir()
++    if with_tool:
++        (crm / "_engine").mkdir()
++        (crm / "_engine" / "today.py").write_text("print('today')\n", encoding="utf-8")
++    brain = tmp_path / "Second Brain"
++    brain.mkdir()
++    return vaults.today({"crm_vault": str(crm), "second_brain": str(brain)})["crm"]
++
++
++def test_a_crm_without_the_builder_is_not_told_to_run_it(tmp_path):
++    crm = _today(tmp_path, with_tool=False)
++    assert crm["found"] is False and crm.get("no_today_tool") is True
++    assert "--write" not in crm["hint"], crm["hint"]
++    assert "part 7 of the CRM sessions" in crm["hint"], crm["hint"]
++
++
++def test_a_crm_with_the_builder_keeps_the_instruction(tmp_path):
++    crm = _today(tmp_path, with_tool=True)
++    assert "python3 _engine/today.py --write" in crm["hint"]
++    assert not crm.get("no_today_tool")
++
++
++def test_the_overview_card_shows_the_servers_words_when_the_builder_is_missing():
++    js = (ROOT / "jeeves" / "static" / "app.js").read_text(encoding="utf-8")
++    assert "td.crm.no_today_tool" in js
