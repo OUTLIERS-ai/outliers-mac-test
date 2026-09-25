@@ -1,0 +1,119 @@
+diff --git a/engine/timetable.py b/engine/timetable.py
+index 33d7b36..69770d7 100644
+--- a/engine/timetable.py
++++ b/engine/timetable.py
+@@ -300,7 +300,8 @@ def cmd_install_startup(argv):
+     say("  " + message.replace("\n", "\n  "))
+     say()
+     if not worked:
+-        say("  Nothing is scheduled at login. Everything else still works: start it")
++        say("  Nothing is set to start by itself. Everything else still works: start it" if machine.IS_MAC
++            else "  Nothing is scheduled at login. Everything else still works: start it")
+         say("  by hand with `%s timetable.py start` whenever you want it going." % PY)
+         say()
+         return 1
+@@ -309,8 +310,8 @@ def cmd_install_startup(argv):
+         say("  nothing appears on screen when you log in. That single detail is the")
+         say("  difference between a timetable people keep and one they switch off.")
+     elif machine.IS_MAC:
+-        say("  Nothing appears on screen on a Mac, because a Mac has no console")
+-        say("  window for a background program to be given.")
++        say("  Nothing appears on your screen when it runs: on a Mac, a program running in the")
++        say("  background has no window to show.")
+     say()
+     say("  To undo it:  %s timetable.py install-startup --remove" % PY)
+     say()
+@@ -329,7 +330,7 @@ USAGE = """timetable - run any command on a schedule, without a window
+   %(py)s timetable.py start                the loop, in the background, no window
+   %(py)s timetable.py stop
+   %(py)s timetable.py status
+-  %(py)s timetable.py install-startup      start it every time you log in
++  %(py)s timetable.py install-startup      %(startup)s
+ 
+   add also takes:
+     --minutes N     how long this one may take before it is ended. Default 45.
+@@ -337,7 +338,10 @@ USAGE = """timetable - run any command on a schedule, without a window
+     --shift N       how far its minute may move, either way. Default 4.
+ 
+ Run this from the _engine folder inside your CRM.
+-""" % {"py": PY}
++""" % {"py": PY,
++       # wave s2: on a Mac it starts "when you switch on your Mac and sign in"; Windows keeps its words
++       "startup": ("start it by itself when you switch on your Mac and sign in" if sys.platform == "darwin"
++                   else "start it every time you log in")}
+ 
+ 
+ def main(argv):
+diff --git a/engine/timetable_platform.py b/engine/timetable_platform.py
+index 2c42253..63c7007 100644
+--- a/engine/timetable_platform.py
++++ b/engine/timetable_platform.py
+@@ -449,8 +449,8 @@ def _install_launch_agent(script, work_dir, log_path):
+     done = subprocess.run(["launchctl", "load", "-w", str(target)],
+                           capture_output=True, text=True)
+     if done.returncode == 0:
+-        return True, ("Installed. %s starts the timetable every time you log in."
+-                      % LAUNCH_AGENT_LABEL)
++        return True, ("Installed. %s starts the timetable by itself when you switch on your Mac "
++                      "and sign in." % LAUNCH_AGENT_LABEL)
+     return False, ("launchctl refused, so NOTHING is scheduled: %s"
+                    % ((done.stderr or done.stdout).strip()[:200] or "no reason given"))
+ 
+@@ -464,7 +464,7 @@ def remove_startup():
+         subprocess.run(["launchctl", "unload", str(target)],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+         target.rename(target.with_suffix(".plist.removed"))
+-        return True, "Removed. It will not start at login any more."
++        return True, "Removed. It will no longer start by itself when you switch on your Mac and sign in."
+     if IS_WINDOWS:
+         done = subprocess.run(["schtasks", "/Delete", "/F", "/TN", TASK_NAME],
+                               capture_output=True, text=True, **no_window())
+diff --git a/install.py b/install.py
+index b9fdcd4..77b3855 100644
+--- a/install.py
++++ b/install.py
+@@ -30,6 +30,16 @@ from pathlib import Path
+ # keeps `python`, exactly as before.
+ PY = "python3" if sys.platform == "darwin" else "python"
+ 
++# How starting by itself is said. On a Mac it "starts by itself when you switch on your Mac and sign in":
++# "log in" reads as needing an account (Mac build plan V3, wave s2: the Session 7 ruling on the words
++# installers print). Windows keeps its words, exactly as before.
++if sys.platform == "darwin":
++    AT_LOGIN_QUESTION = "Should it start by itself when you switch on your Mac and sign in?"
++    AT_LOGIN_LATER = "  and set it to start by itself later with:"
++else:
++    AT_LOGIN_QUESTION = "Should it start every time you log in?"
++    AT_LOGIN_LATER = "  and set it to start at login later with:"
++
+ LAYER = 5
+ LAYER_NAME = "The Timetable"
+ SERIES = "Gather"
+@@ -205,7 +215,8 @@ def main():
+ 
+     if sys.platform == "darwin":
+         at_login_help = ("It is a LaunchAgent: a small file in your ~/Library/LaunchAgents "
+-                         "folder that tells your Mac to start the timetable when you log in. "
++                         "folder that tells your Mac to start the timetable by itself when you "
++                         "switch on your Mac and sign in. "
+                          "It does not ask for an administrator password, and it puts "
+                          "nothing on your screen.")
+     else:
+@@ -213,7 +224,7 @@ def main():
+                          "Python that has no console window. On a Mac it is a "
+                          "LaunchAgent. Neither asks for an administrator "
+                          "password, and neither puts anything on your screen.")
+-    at_login = ask_yes("Should it start every time you log in?",
++    at_login = ask_yes(AT_LOGIN_QUESTION,
+                        default="yes",
+                        helptext=at_login_help)
+ 
+@@ -275,7 +286,7 @@ def main():
+         say("  " + startup_note.replace("\n", "\n  "))
+         if not startup_worked:
+             say("  Everything else installed. Start it by hand when you want it going,")
+-            say("  and set it to start at login later with:")
++            say(AT_LOGIN_LATER)
+             say("      %s timetable.py install-startup" % PY)
+ 
+     say()
