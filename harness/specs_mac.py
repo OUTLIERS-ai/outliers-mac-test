@@ -492,5 +492,192 @@ SPECS[M7] = {"steps": [W.claude_code_prereq(), fresh_s5(),
 ]}
 
 
+
+# ================================================================== Session 2 (wave s2, 2026-09-26)
+# The Mac PDFs of the 4 Gather layers with code (1, 2, 4, 5) and the Seven Ratings sheet, and their Mac
+# READMEs. Every printed line, in the order the Mac PDF prints it, plus the README lines named below.
+# On a Mac, Gather keeps Playwright in 1 private Python folder, ~/outliers-gather-python, made in
+# Layer 1 (and again in Layer 4, which stands on its own): a Mac whose `python3` is Homebrew's refuses a
+# plain `python3 -m pip install` (wave 0a M4). Every Gather command box on a Mac starts with the line
+# that switches the Terminal window into that folder; a step prints that line and the command after it,
+# and runs both in 1 Terminal window, as a member types them (the ProjectForge 'agent-tool' shape).
+
+GP = "~/outliers-gather-python"
+GACT = "source ~/outliers-gather-python/bin/activate"
+ENGINE = "~/CRM/_engine"
+
+
+def gstep(id_, line, source, cwd=ENGINE, **kw):
+    """A Gather line typed in a Terminal window switched into the private folder: both lines, 1 window."""
+    return run(id_, GACT + "\n" + line, source, cwd=cwd, **kw)
+
+
+def fresh_gather():
+    """Harness only: Playwright's browser folder left by an earlier member test on the same Mac
+    (Homebrew order A, then B) is moved aside, so each order downloads the browser as a new member
+    does. The setup script already moves ~/outliers-*, ~/CRM and ~/.outliers-* (homebrew.sh B)."""
+    return check("fresh-copies", "mkdir -p /tmp/earlier-copies; for d in ~/Library/Caches/ms-playwright; do "
+                 "[ -e \"$d\" ] && mv \"$d\" /tmp/earlier-copies/$(basename \"$d\")-$$; done; true",
+                 "harness only: move aside the browser an earlier member test on this Mac downloaded", cwd="~")
+
+
+def gather_python_prereq():
+    """The private folder Layer 1 makes, with Playwright and its browser in it (not counted: the Layer 1
+    member test runs these lines as printed)."""
+    return {"id": "prereq-gather-python", "kind": "prereq", "counts": False,
+            "what": "the Gather private Python folder, made as Layer 1 prints it (not scored here)",
+            "cmd": "python3 -m venv ~/outliers-gather-python && " + GACT + " && python3 -m pip install playwright "
+                   "&& python3 -m playwright install chromium",
+            "cwd": "~", "no_auto_retry": True, "timeout": 1200}
+
+
+def gather_folder_steps(source):
+    """The Python check, then the lines that make the private folder and put Playwright and its browser in it."""
+    return [
+        run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
+            what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+        run("venv", "python3 -m venv " + GP, source, cwd="~", timeout=300, check="test -x " + GP + "/bin/python3"),
+        gstep("pip", "python3 -m pip install playwright", source, cwd="~", timeout=900,
+              expect=r"Successfully installed|already satisfied"),
+        gstep("chromium", "python3 -m playwright install chromium", source, cwd="~", timeout=1200),
+        check("sizes", "du -sk " + GP + "/lib/python3*/site-packages/playwright ~/Library/Caches/ms-playwright/* "
+              "&& du -sk ~/Library/Caches/ms-playwright",
+              "harness only: the size of Playwright in the private folder and of the browser in its own folder "
+              "(for the guide's 'About ... MB in all')", cwd="~"),
+    ]
+
+
+def gather_install(mac, expect_file, source="guide, 'Build it'"):
+    return [clone(mac, source)] + harness_steps(mac) + [
+        cd(mac),
+        gstep("install", "python3 install.py", source + " (Return for every answer it offers)", cwd="{repo}",
+              stdin=ENTER, timeout=600, refuse=r"ONE MORE STEP", check="test -f %s/%s" % (ENGINE, expect_file)),
+    ]
+
+
+def cd_engine(source):
+    return run("cd-engine", "cd " + ENGINE, source, cwd="~", check="test -d " + ENGINE)
+
+
+def login_opens(line, what):
+    """Harness only: the sign-in line opens its browser window from the private folder. The harness
+    photographs the screen, then presses Return; nobody signs in, so no site is ever logged into."""
+    return {"id": "login-opens", "kind": "interactive", "counts": False, "cwd": ENGINE, "wait": 40,
+            "cmd": GACT + "\n" + line, "what": what}
+
+
+# ------------------------------------------------------------------ Gather Layer 1: The Doorman
+M8 = "outliers-gather-01-foundation-mac"
+SPECS[M8] = {"steps": W.crm_prereqs(6) + [fresh_gather()] + gather_folder_steps("guide, 'Before you start on a Mac'") + [
+    run("python-version", "python3 --version", "README, 'Before you start'", cwd="~", expect=r"^Python 3[.]"),
+    ] + gather_install(M8, "gather.py") + [
+    run("tests", "python3 tests/test_doorman.py", "README, 'The tests are the proof'", timeout=600,
+        expect=r"all checks passed"),
+    cd_engine("guide, 'Now use it'"),
+    gstep("status", "python3 gather.py status", "guide, 'Now use it'", expect=r"(?i)blocked"),
+    login_opens("python3 gather.py login", "harness only: the LinkedIn sign-in line opens its own browser window "
+                "(photographed); Return is pressed and nobody signs in"),
+    run("login", "", "guide, 'Now use it'", printed="python3 gather.py login",
+        not_testable="it needs you to sign in to LinkedIn by hand, with your own account"),
+    run("tests-crm", "", "README, 'The tests are the proof'",
+        printed="OUTLIERS_CRM=/path/to/your/CRM python3 tests/test_doorman.py",
+        not_testable="it is a pattern: you type your own CRM folder where /path/to/your/CRM is"),
+]}
+
+# ------------------------------------------------------------------ Gather Layer 2: Going and Looking
+M9 = "outliers-gather-02-basics-mac"
+MADE_UP = ("printf 'First Name,Last Name,URL,Email Address,Company,Position,Connected On\\n"
+           "Sam,Testperson,https://www.linkedin.com/in/sam-testperson-000,,Made Up Ltd,Owner,01 Sep 2026\\n' > %s/Connections.csv"
+           " && cat %s/Connections.csv" % (ENGINE, ENGINE))
+SPECS[M9] = {"steps": W.crm_prereqs(6) + [W.prereq("outliers-gather-01-foundation"), gather_python_prereq(),
+                                           fresh_gather()] + gather_install(M9, "gather_find.py") + [
+    run("tests", "python3 tests/test_jobs.py", "README, 'The tests are the proof'", timeout=600,
+        expect=r"all checks passed"),
+    cd_engine("guide, 'Now use it'"),
+    check("made-up-export", MADE_UP, "harness only: a 1-row made-up LinkedIn export saved into the _engine folder, "
+          "as the guide says to save yours", cwd=ENGINE),
+    gstep("find-export", "python3 gather.py find export Connections.csv", "guide, 'Now use it'", timeout=300),
+    run("undo-probe", "", "guide, 'Now use it'", printed="python3 gather.py undo --probe",
+        not_testable="it opens LinkedIn, which needs you to sign in by hand with your own account (Layer 1)"),
+]}
+
+# ------------------------------------------------------------------ Gather Layer 4: The Same Shape
+M10 = "outliers-gather-04-facebook-mac"
+FB_NOT = "it needs you to sign in to Facebook by hand, with your own account"
+SPECS[M10] = {"steps": W.crm_prereqs(6) + [fresh_gather()] + gather_folder_steps("guide, 'Before you start on a Mac'")
+              + gather_install(M10, "facebook.py") + [
+    run("tests", "python3 tests/test_governor.py", "README, 'The tests are the proof'", timeout=600,
+        expect=r"all checks passed"),
+    cd_engine("guide, 'Prove it, in this order'"),
+    gstep("status", "python3 facebook.py status", "README, 'Use it'", expect=r"(?i)blocked"),
+    login_opens("python3 facebook.py login", "harness only: the Facebook sign-in line opens its own browser window "
+                "(photographed); Return is pressed and nobody signs in"),
+    run("login", "", "guide, 'Prove it', step 1", printed="python3 facebook.py login", not_testable=FB_NOT),
+    run("probe", "", "guide, 'Prove it', step 2", printed="python3 facebook.py probe",
+        not_testable="it opens your Facebook home page, which needs your own Facebook sign-in first"),
+    run("find-query", "", "guide, 'Prove it', step 3", printed='python3 facebook.py find-groups --query "your words here"',
+        not_testable="it searches Facebook, which needs your own Facebook sign-in first"),
+    run("find-groups", "", "guide, 'Once it is proven'", printed="python3 facebook.py find-groups",
+        not_testable="it searches Facebook, which needs your own Facebook sign-in first"),
+    run("join-commit", "", "guide, 'Once it is proven'", printed="python3 facebook.py join --commit",
+        not_testable="it asks to join groups on Facebook, which needs your own Facebook sign-in and your own list"),
+]}
+
+# ------------------------------------------------------------------ Gather Layer 5: When You Are Not There
+M11 = "outliers-gather-05-timetable-mac"
+TT_PLIST = "~/Library/LaunchAgents/com.outliers.gather.timetable.plist"
+SPECS[M11] = {"steps": W.crm_prereqs(1) + [gather_python_prereq(), fresh_gather()] + gather_install(
+        M11, "timetable.py", "guide, 'Build it'") + [
+    {"id": "start-at-login", "kind": "launchd", "cwd": ENGINE, "wait": 15, "counts": True,
+     "match": r"com[.]outliers[.]gather[.]timetable[.]plist$",
+     "what": "the LaunchAgent the installer writes: switched on and started as your Mac does when you sign in; "
+             "the timetable must report itself running",
+     "check": "python3 timetable.py status", "check_tries": 6, "log_glob": "../_state/timetable/*.log"},
+    check("timetable-python", "p=$(plutil -extract ProgramArguments.0 raw -o - " + TT_PLIST + "); echo \"the LaunchAgent starts: $p\"; "
+          "case \"$p\" in \"$HOME/outliers-gather-python/bin/\"*) ;; *) echo 'not the private folder'; exit 1;; esac; "
+          "\"$p\" -c \"import playwright; print('that Python finds Playwright, so the jobs it starts can open the browser')\"",
+          "harness only: the LaunchAgent starts the timetable with the private folder's Python, which finds Playwright"),
+    run("tests", "python3 tests/test_timetable.py", "README, 'The tests are the proof'", timeout=600,
+        expect=r"all checks passed"),
+    cd_engine("guide, 'Now use it'"),
+    gstep("add", 'python3 timetable.py add "python3 gather.py undo" --at 09:30 --days mon,wed,fri', "guide, 'Now use it'"),
+    gstep("dry-run", "python3 timetable.py run --dry-run", "guide, 'Now use it'", expect=r"[0-9]{2}:[0-9]{2}"),
+    gstep("add-minutes", 'python3 timetable.py add "python3 gather.py undo" --at 09:30 --days mon,wed,fri --minutes 20',
+          "guide, 'Now use it'"),
+    gstep("start", "python3 timetable.py start", "guide, 'Now use it' (in a sentence)", timeout=120),
+    gstep("status", "python3 timetable.py status", "guide, 'How it works' (in a sentence)", ok=[0, 1]),
+    gstep("stop", "python3 timetable.py stop", "README, 'Use it'", ok=[0, 1]),
+    gstep("install-startup", "python3 timetable.py install-startup", "guide, 'Build it' (in a sentence)",
+          timeout=120, expect=r"Installed"),
+]}
+
+# ------------------------------------------------------------------ The Seven Ratings
+M12 = "outliers-seven-ratings-mac"
+CLAUDE_OWN = "it needs your own Claude Code login, on a paid plan"
+SPECS[M12] = {"steps": [
+    run("git-version", "git --version", "sheet, step 2", cwd="~", expect=r"^git version"),
+    run("install-claude", "curl -fsSL https://claude.ai/install.sh | bash", "sheet, step 3", cwd="~", timeout=600),
+    run("claude-path", "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc", "sheet, step 3", cwd="~"),
+    run("claude-version", "claude --version", "sheet, step 3", cwd="~", expect=r"[0-9]+[.][0-9]+"),
+    run("claude-login", "", "sheet, step 4", printed="claude", not_testable=CLAUDE_OWN),
+    run("exit", "", "sheet, step 4 (in a sentence)", printed="/exit",
+        not_testable="it is typed inside Claude Code, after you have logged in"),
+    run("cd-home", "cd ~", "sheet, step 5", cwd="~", check="test -d ~"),
+    dict(clone(M12, "sheet, step 5"), **({"printed": "git clone %s%s.git" % (GH, M12),
+                                          "cmd": "git clone %s%s.git %s" % (GH, M12[:-4], M12)} if FROM_MAIN
+                                         else {"cmd": "git clone %s%s.git" % (GH, M12)})),
+    ] + harness_steps(M12) + [
+    cd(M12),
+    run("ls", "ls", "sheet, 'If it goes wrong' (in a sentence)", expect=r"SEND-AI-Working-Assessment[.]md"),
+    run("add-dir", "", "sheet, step 6", printed="claude --add-dir ~", not_testable=CLAUDE_OWN),
+    run("add-dir-inside", "", "sheet, step 6 (in a sentence)", printed="/add-dir",
+        not_testable="it is typed inside Claude Code, after you have logged in"),
+    run("prompt", "", "sheet, step 7",
+        printed="Read `SEND-AI-Working-Assessment.md` and assess my whole system against it. Follow the instructions "
+                "in the section headed *For the machine doing the reading*.",
+        not_testable="it is typed into Claude Code, which needs your own Claude Code login"),
+]}
+
+
 def get(repo):
     return SPECS[repo]
