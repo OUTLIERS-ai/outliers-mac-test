@@ -404,13 +404,18 @@ def fresh_s5():
 M5 = "outliers-critic-mac"
 SPECS[M5] = {"steps": [
     fresh_s5(),
-    clone(M5, "guide, part 1 'Where' (the address), and the box")] + harness_steps(M5) + [
+    clone(M5, "guide, part 1 'Where'")] + harness_steps(M5) + [
     check("no-backslash-paths", r"! grep -n '[\\]' the-critic.md && echo 'no backslash in any folder path'",
           "harness only: the agent file writes every folder path with /, which a Mac reads as a folder"),
-    check("canon-named", "grep -n 'design-critique-canon' the-critic.md | head -5",
-          "harness only: the agent file names the canon by its file name, as the guide says"),
-    check("copy-into-agents", "mkdir -p ~/.claude/agents && cp the-critic.md design-critique-canon.md ~/.claude/agents/ "
-          "&& ls -la ~/.claude/agents", "harness only: the 2 files copied into a folder named agents, as the guide says in words"),
+    # wave s8s5 second round: grep piped into head exited 0 with nothing found (the file writes the name
+    # with capitals). grep alone exits 1 when nothing matches, so this check can no longer pass unseen.
+    check("canon-named", "grep -n -i 'design-critique-canon' the-critic.md",
+          "harness only: the agent file names the canon (in any capitals), and where it looks for it"),
+    run("mkdir-agents", "mkdir -p ~/.claude/agents", "guide, part 1 'Where'", cwd="~",
+        check="test -d ~/.claude/agents"),
+    run("copy-into-agents", "cp outliers-critic-mac/the-critic.md outliers-critic-mac/design-critique-canon.md ~/.claude/agents/",
+        "guide, part 1 'Where'", cwd="~",
+        check="ls -la ~/.claude/agents && test -f ~/.claude/agents/the-critic.md && test -f ~/.claude/agents/design-critique-canon.md"),
 ]}
 
 # ------------------------------------------------------------------ Drawing With A Program
@@ -464,13 +469,14 @@ SPECS[M7] = {"steps": [W.claude_code_prereq(), fresh_s5(),
     run("claude-version", "claude --version", "guide, 'Before you start on a Mac'", cwd="~", expect=r"Claude Code"),
     fathom_clone()] + harness_steps(M7) + [
     cd(M7),
+    run("cd-zip", "", "guide, step 3 (zip route)", printed="cd ~/Downloads/fathom-meeting-agent-mac-main",
+        not_testable="it is only for the zip route, which was not tried on the test Macs"),
     run("venv", "python3 -m venv .venv", "guide, step 3", timeout=300),
     run("pip", FA + "python -m pip install playwright", "guide, step 3", timeout=900,
         expect=r"Successfully installed|already satisfied"),
     run("chromium", FA + "python -m playwright install chromium", "guide, step 3", timeout=900),
     run("open-fathom", "", "guide, step 4", printed=FA_OPEN,
-        not_testable="it opens a browser window for you to log into Fathom by hand, which a script cannot do; "
-                     "the same line with a blank page in place of Fathom's address did open the browser"),
+        not_testable="it needs you to log into Fathom by hand; see the next page"),
     check("open-blank", FA + "python -m playwright open --user-data-dir=.browser-profile about:blank > \"$OUT/open-blank.log\" 2>&1 & "
           "p=$!; for i in $(seq 1 40); do [ -d .browser-profile ] && break; sleep 1; done; sleep 3; "
           "pkill -f 'user-data-dir=.browser-profile' ; kill $p 2>/dev/null; sleep 1; "
