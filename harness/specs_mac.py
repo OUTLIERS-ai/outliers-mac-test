@@ -694,5 +694,197 @@ SPECS[M12] = {"steps": [
 ]}
 
 
+
+# ================================================================== Session 1: the CRM (wave s1, 2026-09-26)
+# The Mac PDFs of the 8 CRM layers and their Mac READMEs. Every printed line, in the order the Mac PDF prints it,
+# then the README lines it does not print, in README order. The CRM installs no add-ons (standard library only),
+# so there is no private Python folder. Each layer's run first installs the layers before it the way a member
+# does: their -mac downloads, each installer with every offered answer (not counted; each layer's own run
+# counts its lines). While the -mac repos wait on `pending`, the earlier layers come from `pending` too.
+
+CRM_MAC = ["outliers-crm-01-foundation-mac", "outliers-crm-02-rules-mac", "outliers-crm-03-records-mac",
+           "outliers-crm-04-capture-mac", "outliers-crm-05-judgement-mac", "outliers-crm-06-safety-mac",
+           "outliers-crm-07-today-mac", "outliers-crm-08-verification-mac"]
+CRM_HOME = "~/CRM"
+CRM_ENGINE = "~/CRM/_engine"
+ROWAN_LINK = "https://www.linkedin.com/in/rowan-ashdown-000"
+
+
+def crm_prereqs(upto):
+    """The CRM layers before this one, installed as a member does (not counted)."""
+    out = []
+    for mac in CRM_MAC[:upto]:
+        main = mac[:-len("-mac")]
+        if FROM_MAIN:
+            fetch = "git clone -q %s%s ~/%s && cd ~/%s" % (GH, main, mac, mac)
+        else:
+            fetch = "git clone -q %s%s ~/%s && cd ~/%s%s" % (GH, mac, mac, mac,
+                                                          (" && git checkout -q %s" % BRANCH) if BRANCH else "")
+        out.append({"id": "prereq-outliers-%s" % mac, "kind": "prereq", "counts": False,
+                    "what": "earlier CRM layer, installed as a member does, every offered answer taken (not scored here)",
+                    "cmd": "rm -rf ~/%s && %s && python3 install.py" % (mac, fetch),
+                    "cwd": "~", "stdin": ENTER, "no_auto_retry": True, "timeout": 900})
+    return out
+
+
+def crm_install(mac, source="guide, 'Build it'"):
+    return [clone(mac, source)] + harness_steps(mac) + [
+        cd(mac),
+        run("install", "python3 install.py", source + " (Return for every answer it offers)", stdin=ENTER, timeout=900,
+            check="ls %s/_layers && cat %s/_layers/config.json" % (CRM_HOME, CRM_HOME)),
+    ]
+
+
+def crm_files(what="harness only: the folders and files the installer made (the test Macs have no Obsidian)"):
+    return check("crm-files", "ls -la %s %s/People %s/_layers && cat %s/_layers/config.json"
+                 % (CRM_HOME, CRM_HOME, CRM_HOME, CRM_HOME), what, cwd="~")
+
+
+def crm_tests(mac, files, source="README, 'Run the tests'"):
+    """The README's test lines, typed in the download folder (the README's cd line first)."""
+    steps = [run("cd-download", "cd ~/%s" % mac, source, cwd="~", check="test -d ~/%s" % mac)]
+    for i, f in enumerate(files, 1):
+        steps.append(run("tests" if len(files) == 1 else "tests-%d" % i, "python3 tests/%s" % f, source,
+                         timeout=900, expect=r"ALL PASS"))
+    return steps
+
+
+def cd_crm(source):
+    return run("cd-crm", "cd " + CRM_HOME, source, cwd="~", check="test -d " + CRM_HOME)
+
+
+def crm_run(id_, line, source, cwd=CRM_HOME, **kw):
+    return run(id_, line, source, cwd=cwd, **kw)
+
+
+# ------------------------------------------------------------------ CRM Layer 1: Foundation
+M13 = CRM_MAC[0]
+SPECS[M13] = {"steps": [
+    run("python-prefix", 'python3 -c "import sys; print(sys.prefix)"', "guide, 'Before you start on a Mac'", cwd="~",
+        what="the guide's Python check; its answer differs with Homebrew (the guide says what each answer means)"),
+    ] + crm_install(M13) + [
+    check("no-stray-nul-file", "ls -la; test ! -e nul && echo 'no file called nul in the download folder'",
+          "harness only: the installer's history step leaves no file called nul (wave 1 row 1)"),
+    check("crm-built", "ls -la ~/CRM ~/CRM/People ~/CRM/_layers; cat ~/.outliers-crm; git -C ~/CRM log --oneline -3",
+          "harness only: the folders, the pointer file and the first saved version are there", cwd="~"),
+    crm_files(),
+    run("cd-zip", "", "guide, 'Run it', and README, 'Install' (zip route)",
+        printed="cd ~/Downloads/outliers-crm-01-foundation-mac-main",
+        not_testable="it is only for the zip route, which was not tried on the test Macs"),
+]}
+
+# ------------------------------------------------------------------ CRM Layer 2: The Rules
+M14 = CRM_MAC[1]
+SEED_ROWAN = ("p=~/CRM/People/'Rowan Ashdown.md'; python3 -c \"import pathlib,sys; p=pathlib.Path(sys.argv[1]); "
+              "t=p.read_text(); assert 'linkedin-url:\\n' in t, 'no blank link line'; "
+              "p.write_text(t.replace('linkedin-url:\\n', 'linkedin-url: %s\\n', 1)); "
+              "print('gave Rowan Ashdown the link %s')\" \"$p\" && grep -n linkedin-url \"$p\"" % (ROWAN_LINK, ROWAN_LINK))
+SPECS[M14] = {"steps": crm_prereqs(1) + crm_install(M14) + [
+    check("seed-rowan", SEED_ROWAN, "harness only: the made-up person Layer 1 puts in every CRM gets the made-up "
+          "profile link the guide's lines use", cwd="~"),
+    crm_files(),
+    run("cd-engine", "cd " + CRM_ENGINE, "guide, 'Now use it'", cwd="~", check="test -d " + CRM_ENGINE),
+    crm_run("who-name", 'python3 identity.py who "Rowan Ashdown"', "guide, 'Now use it'", cwd=CRM_ENGINE,
+            expect=r'"slug": "rowan-ashdown-000"'),
+    crm_run("who-link", 'python3 identity.py who "%s"' % ROWAN_LINK, "guide, 'Now use it'", cwd=CRM_ENGINE,
+            expect=r'"slug": "rowan-ashdown-000"'),
+    run("who-nickname", "", "guide, 'Now use it' (in a sentence)", printed="python3 identity.py who",
+        not_testable="you type it with the nickname you add to the record yourself"),
+    cd_crm("README, 'Try it'"),
+    crm_run("stats", "python3 _engine/identity.py stats", "README, 'Try it'"),
+    crm_run("who-a-name", 'python3 _engine/identity.py who "a name"', "README, 'Try it'", ok=[0, 1],
+            expect=r"unresolved"),
+    crm_run("duplicates", "python3 _engine/identity.py duplicates", "README, 'Try it'"),
+    crm_run("collisions", "python3 _engine/identity.py collisions", "README, 'Try it'"),
+    crm_run("contract", "python3 _engine/schema.py contract", "README, 'Try it'"),
+    crm_run("sweep", "python3 _engine/schema.py sweep", "README, 'Try it'", ok=[0, 1]),
+    ] + crm_tests(M14, ["test_identity_resolution.py", "test_schema_contract.py"])}
+
+# ------------------------------------------------------------------ CRM Layer 3: What You Store
+M15 = CRM_MAC[2]
+SPECS[M15] = {"steps": crm_prereqs(2) + crm_install(M15) + [
+    crm_files(),
+    cd_crm("README, 'Try it'"),
+    crm_run("types", "python3 _engine/ledger.py types", "README, 'Try it'"),
+    crm_run("stats", "python3 _engine/ledger.py stats", "README, 'Try it'"),
+    crm_run("tail", "python3 _engine/ledger.py tail 20", "README, 'Try it'"),
+    crm_run("show", 'python3 _engine/derive.py show "a name or link"', "README, 'Try it'", ok=[0, 1]),
+    crm_run("quiet", "python3 _engine/derive.py quiet 60", "README, 'Try it'"),
+    crm_run("summary", "python3 _engine/derive.py summary", "README, 'Try it'"),
+    ] + crm_tests(M15, ["test_ledger_and_derive.py"])}
+
+# ------------------------------------------------------------------ CRM Layer 4: Capture
+M16 = CRM_MAC[3]
+MADE_UP_CSV = ("mkdir -p ~/exports && printf 'First Name,Last Name,URL,Email Address,Company,Position,Connected On\\n"
+               "Sam,Testperson,https://www.linkedin.com/in/sam-testperson-000,,Made Up Ltd,Owner,01 Sep 2026\\n' "
+               "> ~/exports/connections.csv && cat ~/exports/connections.csv")
+FILE_PATTERN = "it is a pattern: you type your own export file where <file.csv> is"
+SPECS[M16] = {"steps": crm_prereqs(3) + crm_install(M16) + [
+    crm_files(),
+    cd_crm("README, 'Try it'"),
+    crm_run("list", "python3 _engine/collect.py list", "README, 'Try it'"),
+    check("made-up-export", MADE_UP_CSV, "harness only: a 1-row made-up connections export", cwd="~"),
+    run("dry-run", "", "README, 'Try it'", printed="python3 _engine/collect.py run connections <file.csv> --dry-run",
+        not_testable=FILE_PATTERN),
+    check("dry-run-file", "python3 _engine/collect.py run connections ~/exports/connections.csv --dry-run",
+          "harness only: the pattern line with the made-up export in place of <file.csv>", cwd=CRM_HOME),
+    run("run-file", "", "README, 'Try it'", printed="python3 _engine/collect.py run connections <file.csv>",
+        not_testable=FILE_PATTERN),
+    check("run-file-real", "python3 _engine/collect.py run connections ~/exports/connections.csv",
+          "harness only: the pattern line with the made-up export in place of <file.csv>", cwd=CRM_HOME),
+    crm_run("all", "python3 _engine/collect.py all", "README, 'Try it'", ok=[0, 1]),
+    crm_run("due", "python3 _engine/refresh.py due", "README, 'Try it'"),
+    crm_run("tiers", "python3 _engine/refresh.py tiers", "README, 'Try it'"),
+    crm_run("checked", 'python3 _engine/refresh.py checked "a name"', "README, 'Try it'", ok=[0, 1]),
+    crm_run("person", 'python3 _engine/ledger.py person "a name"', "README, 'Try it'", ok=[0, 1]),
+    crm_run("quiet", "python3 _engine/derive.py quiet 60", "README, 'Try it'"),
+    ] + crm_tests(M16, ["test_capture.py", "test_refresh_tiers.py", "test_atomic_writes.py"])}
+
+# ------------------------------------------------------------------ CRM Layer 5: Judgement
+M17 = CRM_MAC[4]
+SPECS[M17] = {"steps": crm_prereqs(4) + crm_install(M17) + [
+    cd_crm("README, 'Check a definition'"),
+    crm_run("agent-check", "python3 _engine/agent_check.py _agents/", "README, 'Check a definition'", ok=[0, 1],
+            expect=r"(?i)fit-scorer"),
+    ] + crm_tests(M17, ["test_agent_definitions.py", "test_provenance_and_staging.py"])}
+
+# ------------------------------------------------------------------ CRM Layer 6: Order and Safety
+M18 = CRM_MAC[5]
+SPECS[M18] = {"steps": crm_prereqs(5) + crm_install(M18) + [
+    run("cd-engine", "cd " + CRM_ENGINE, "guide, 'Now use it'", cwd="~", check="test -d " + CRM_ENGINE),
+    crm_run("hold-rowan", 'python3 holds.py hold "Rowan Ashdown" "taking this one myself"', "guide, 'Now use it'",
+            cwd=CRM_ENGINE, expect=r"HELD Rowan Ashdown"),
+    crm_run("sendgate-rowan", 'python3 sendgate.py "Rowan Ashdown"', "guide, 'Now use it'", cwd=CRM_ENGINE,
+            ok="any", expect=r"REFUSED\. Nothing was staged and nothing was sent"),
+    cd_crm("README, 'Prove it to yourself'"),
+    crm_run("hold", 'python3 _engine/holds.py hold "Someone You Know" "testing the gate"', "README, 'Prove it to yourself'"),
+    crm_run("sendgate", 'python3 _engine/sendgate.py "Someone You Know"', "README, 'Prove it to yourself'", ok="any",
+            expect=r"REFUSED"),
+    crm_run("release", 'python3 _engine/holds.py release "Someone You Know"', "README, 'Prove it to yourself'"),
+    ] + crm_tests(M18, ["test_holds.py", "test_shared_limits_and_browser.py", "test_sequence_and_review.py",
+                        "test_send_gate_refuses.py", "test_nothing_can_send.py"])}
+
+# ------------------------------------------------------------------ CRM Layer 7: Today
+M19 = CRM_MAC[6]
+SPECS[M19] = {"steps": crm_prereqs(6) + crm_install(M19) + [
+    crm_files(),
+    cd_crm("guide, 'Now use it', and README, 'Build the page'"),
+    crm_run("today", "python3 _engine/today.py --write", "guide, 'Now use it', and README, 'Build the page'",
+            check="test -f ~/CRM/Today.md && head -30 ~/CRM/Today.md"),
+    ] + crm_tests(M19, ["test_today.py"])}
+
+# ------------------------------------------------------------------ CRM Layer 8: Verification
+M20 = CRM_MAC[7]
+SPECS[M20] = {"steps": crm_prereqs(7) + crm_install(M20) + [
+    run("cd-engine", "cd " + CRM_ENGINE, "guide, 'Now use it'", cwd="~", check="test -d " + CRM_ENGINE),
+    crm_run("watchdog-engine", "python3 watchdog.py", "guide, 'Now use it' (twice)", cwd=CRM_ENGINE, ok=[0, 1, 2],
+            expect=r"failing, \d+ passing"),
+    cd_crm("README, 'Is it true' and 'Is it working'"),
+    crm_run("fourbox", "python3 _engine/fourbox.py reply_in meeting_booked --within 30", "README, 'Is it true'", ok=[0, 1]),
+    crm_run("watchdog", "python3 _engine/watchdog.py", "README, 'Is it working'", ok=[0, 1, 2],
+            expect=r"failing, \d+ passing"),
+    ] + crm_tests(M20, ["test_fourbox.py", "test_watchdog.py"])}
+
+
 def get(repo):
     return SPECS[repo]
