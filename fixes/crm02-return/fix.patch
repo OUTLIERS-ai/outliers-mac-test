@@ -1,0 +1,33 @@
+diff --git a/install.py b/install.py
+index cfde52d..5749e97 100644
+--- a/install.py
++++ b/install.py
+@@ -27,6 +27,10 @@ from pathlib import Path
+ # `python` command, and `python` everywhere else, as the Windows guides print it.
+ PY = "python3" if sys.platform == "darwin" else "python"
+ 
++# The key a member presses. A Mac keyboard's key is Return; Windows keeps Enter, exactly as before
++# (Mac build plan V3, wave s1: the Session 7 ruling on the words installers print).
++KEY = "Return" if sys.platform == "darwin" else "Enter"
++
+ LAYER = 2
+ LAYER_NAME = "The Rules"
+ NEEDS_LAYER = 1
+@@ -200,7 +204,7 @@ def interview(cfg):
+     say("  the same person twice. This adds the rules, and something that checks")
+     say("  them. It asks two or three questions first.")
+     say()
+-    say(DIM + "  Press Enter to accept anything in [brackets]." + OFF)
++    say(DIM + "  Press %s to accept anything in [brackets]." % KEY + OFF)
+ 
+     default_key = cfg.get("identifier") or "linkedin-url"
+     default_choice = {"linkedin-url": "1", "email": "2", "phone": "3"}.get(default_key, "1")
+@@ -444,7 +448,7 @@ def look_at_their_records(home, answers):
+     say("  Give it a person one way, and it comes back with every other way that")
+     say("  same person can be reached. This is thirty seconds and it is the whole")
+     say("  idea of the layer made visible.")
+-    who = ask("A name, a link or an email address (or Enter to skip)", default="")
++    who = ask("A name, a link or an email address (or %s to skip)" % KEY, default="")
+     if not who.strip():
+         say(DIM + "  Skipped. You can run it any time:" + OFF)
+         say(DIM + "    %s _engine/identity.py who \"some name\"" % PY + OFF)

@@ -1,0 +1,32 @@
+diff --git a/install.py b/install.py
+index 4353e8d..fdf7352 100644
+--- a/install.py
++++ b/install.py
+@@ -31,6 +31,10 @@ from pathlib import Path
+ # `python` command, and `python` everywhere else, as the Windows guides print it.
+ PY = "python3" if sys.platform == "darwin" else "python"
+ 
++# The key a member presses. A Mac keyboard's key is Return; Windows keeps Enter, exactly as before
++# (Mac build plan V3, wave s1: the Session 7 ruling on the words installers print).
++KEY = "Return" if sys.platform == "darwin" else "Enter"
++
+ LAYER = 3
+ LAYER_NAME = "What You Store"
+ NEEDS_LAYER = 2
+@@ -233,14 +237,13 @@ def interview(cfg):
+     say()
+     say("  This layer stores facts and calculates the descriptions. Two questions.")
+     say()
+-    say(DIM + "  Press Enter to accept anything in [brackets]." + OFF)
++    say(DIM + "  Press %s to accept anything in [brackets]." % KEY + OFF)
+ 
+     raw = ask("What counts as contact in your business?",
+               default="",
+               helptext="Separate them with commas. A message, a call and a meeting "
+                        "are already covered, so only name anything unusual: a site "
+-                       "visit, a quote sent, a sample posted, a class attended. "
+-                       "Enter to skip.")
++                       "visit, a quote sent, a sample posted, a class attended. " + KEY + " to skip.")
+ 
+     added, covered = {}, []
+     for phrase in [p.strip() for p in raw.split(",") if p.strip()]:

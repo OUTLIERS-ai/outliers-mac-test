@@ -1,0 +1,60 @@
+diff --git a/install.py b/install.py
+index 7f316ef..272bf6b 100644
+--- a/install.py
++++ b/install.py
+@@ -29,6 +29,10 @@ from pathlib import Path
+ # `python` command, and `python` everywhere else, as the Windows guides print it.
+ PY = "python3" if sys.platform == "darwin" else "python"
+ 
++# The key a member presses. A Mac keyboard's key is Return; Windows keeps Enter, exactly as before
++# (Mac build plan V3, wave s1: the Session 7 ruling on the words installers print).
++KEY = "Return" if sys.platform == "darwin" else "Enter"
++
+ LAYER = 4
+ LAYER_NAME = "Capture"
+ NEEDS_LAYER = 3
+@@ -195,7 +199,7 @@ def interview(cfg):
+     say("  same person is the actual difficulty, and it never goes away. That is")
+     say("  what Layer 2 was for, and every collector here goes through it.")
+     say()
+-    say(DIM + "  Press Enter to accept anything in [brackets]." + OFF)
++    say(DIM + "  Press %s to accept anything in [brackets]." % KEY + OFF)
+ 
+     where = ask("Where do your conversations actually happen?",
+                 default="",
+@@ -206,7 +210,7 @@ def interview(cfg):
+     which = ask("Which of those can you export or connect?",
+                 default="",
+                 helptext="Most platforms have a download-your-data button somewhere. "
+-                         "Anything that gives you a .csv counts. Enter if you are "
++                         "Anything that gives you a .csv counts. " + KEY + " if you are "
+                          "not sure yet, and come back to it.")
+ 
+     places = [p.strip() for p in where.split(",") if p.strip()]
+@@ -450,7 +454,7 @@ def point_it_at_something(home, answers):
+     say("  It will read it without writing anything first, and tell you what it")
+     say("  would do. Nothing lands until you say so.")
+ 
+-    raw = ask("Path to the file, or Enter to skip", default="")
++    raw = ask("Path to the file, or %s to skip" % KEY, default="")
+     if not raw.strip():
+         say(DIM + "  Skipped. When you have one:" + OFF)
+         say(DIM + "    %s _engine/collect.py run connections <file.csv> --dry-run" % PY + OFF)
+@@ -480,7 +484,7 @@ def point_it_at_something(home, answers):
+         you = ask("That file says who sent each message but not which way it went. "
+                   "What name do you appear under in it?",
+                   default="",
+-                  helptext="So it can tell your messages from theirs. Enter to "
++                  helptext="So it can tell your messages from theirs. " + KEY + " to "
+                            "treat every row as one of yours.")
+ 
+     sys.path.insert(0, str(home / "_engine"))
+@@ -555,7 +559,7 @@ def read_a_history(home):
+     say()
+     say("  Pick somebody you had half forgotten. What comes back was typed by")
+     say("  nobody.")
+-    who = ask("A name, a link or an email address (or Enter to skip)", default="")
++    who = ask("A name, a link or an email address (or %s to skip)" % KEY, default="")
+     if not who.strip():
+         say(DIM + "  Skipped. Any time:  %s _engine/ledger.py person \"a name\"" % PY + OFF)
+         return

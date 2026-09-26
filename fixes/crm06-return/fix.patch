@@ -1,0 +1,24 @@
+diff --git a/install.py b/install.py
+index b731178..d579d8a 100644
+--- a/install.py
++++ b/install.py
+@@ -28,6 +28,10 @@ from pathlib import Path
+ # `python` command, and `python` everywhere else, as the Windows guides print it.
+ PY = "python3" if sys.platform == "darwin" else "python"
+ 
++# The key a member presses. A Mac keyboard's key is Return; Windows keeps Enter, exactly as before
++# (Mac build plan V3, wave s1: the Session 7 ruling on the words installers print).
++KEY = "Return" if sys.platform == "darwin" else "Enter"
++
+ LAYER = 6
+ LAYER_NAME = "Order and Safety"
+ NEEDS_LAYER = 5
+@@ -197,7 +201,7 @@ def interview(cfg):
+     say("  careful will sometimes not be. The restriction has to sit in the")
+     say("  machinery, where it is a fact about what the code can do.")
+     say()
+-    say(DIM + "  Two questions. Press Enter to accept anything in [brackets]." + OFF)
++    say(DIM + "  Two questions. Press %s to accept anything in [brackets]." % KEY + OFF)
+ 
+     raw_cap = ask("How many messages a day is safe in your world?",
+                   default="20",

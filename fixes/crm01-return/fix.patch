@@ -1,0 +1,44 @@
+diff --git a/install.py b/install.py
+index 4dfb2f1..dbed6fc 100644
+--- a/install.py
++++ b/install.py
+@@ -26,6 +26,10 @@ import unicodedata
+ from datetime import date
+ from pathlib import Path
+ 
++# The key a member presses. A Mac keyboard's key is Return; Windows keeps Enter, exactly as before
++# (Mac build plan V3, wave s1: the Session 7 ruling on the words installers print).
++KEY = "Return" if sys.platform == "darwin" else "Enter"
++
+ # ---------------------------------------------------------------- small helpers
+ 
+ # No colour codes anywhere. Plenty of terminals print them as literal gibberish
+@@ -114,7 +118,7 @@ def choose_home(default_home):
+         home = ask("Where should your CRM live?",
+                    default=default_home,
+                    helptext="A new folder on your own machine. If it does not exist, it "
+-                            "gets created. Press Enter to take the one in brackets.")
++                            "gets created. Press " + KEY + " to take the one in brackets.")
+         clash = vault_over(home)
+         if clash is None:
+             return home
+@@ -144,7 +148,7 @@ def interview():
+     say("  This builds your CRM. It asks four questions, then does the work.")
+     say("  Everything stays on this computer. Nothing is sent anywhere.")
+     say()
+-    say(DIM + "  Press Enter to accept anything in [brackets]." + OFF)
++    say(DIM + "  Press %s to accept anything in [brackets]." % KEY + OFF)
+ 
+     default_home = str(Path.home() / "CRM")
+     say()
+@@ -388,8 +392,8 @@ def offer_import(cfg, home):
+     say()
+     say(BOLD + "Do you have a contacts export handy?" + OFF)
+     say(DIM + "  A .csv from LinkedIn, your email, or your phone. Optional, and easy" + OFF)
+-    say(DIM + "  to skip: capture is handled properly later. Press Enter to skip." + OFF)
+-    raw = ask("Path to the file, or Enter to skip", default="")
++    say(DIM + "  to skip: capture is handled properly later. Press %s to skip." % KEY + OFF)
++    raw = ask("Path to the file, or %s to skip" % KEY, default="")
+     if not raw.strip():
+         say(DIM + "  Skipped. Your CRM starts empty, which is fine." + OFF)
+         return 0

@@ -1,0 +1,24 @@
+diff --git a/install.py b/install.py
+index 00d6beb..69e1635 100644
+--- a/install.py
++++ b/install.py
+@@ -28,6 +28,10 @@ from pathlib import Path
+ # `python` command, and `python` everywhere else, as the Windows guides print it.
+ PY = "python3" if sys.platform == "darwin" else "python"
+ 
++# The key a member presses. A Mac keyboard's key is Return; Windows keeps Enter, exactly as before
++# (Mac build plan V3, wave s1: the Session 7 ruling on the words installers print).
++KEY = "Return" if sys.platform == "darwin" else "Enter"
++
+ LAYER = 7
+ LAYER_NAME = "What Deserves Today"
+ NEEDS_LAYER = 6
+@@ -195,7 +199,7 @@ def interview(cfg):
+     say("  This builds one page: who to speak to, and why. Short enough to")
+     say("  finish, which is the only thing that makes it get read.")
+     say()
+-    say(DIM + "  Two questions. Press Enter to accept anything in [brackets]." + OFF)
++    say(DIM + "  Two questions. Press %s to accept anything in [brackets]." % KEY + OFF)
+ 
+     start = ask("What time do you start?",
+                 default="09:00",

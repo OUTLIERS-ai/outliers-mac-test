@@ -1,0 +1,1 @@
+for t in tests/test_*.py; do $PY "$t" > ../t.out 2>&1; echo "$t: exit $?, $(grep -c '^ *PASS' ../t.out) PASS lines, $(grep -c '^ *FAIL' ../t.out) FAIL lines, last line: $(tail -1 ../t.out)"; done
