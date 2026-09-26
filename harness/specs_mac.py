@@ -786,8 +786,11 @@ SPECS[M14] = {"steps": crm_prereqs(1) + crm_install(M14) + [
     run("cd-engine", "cd " + CRM_ENGINE, "guide, 'Now use it'", cwd="~", check="test -d " + CRM_ENGINE),
     crm_run("who-name", 'python3 identity.py who "Rowan Ashdown"', "guide, 'Now use it'", cwd=CRM_ENGINE,
             expect=r'"slug": "rowan-ashdown-000"'),
-    crm_run("who-link", 'python3 identity.py who "%s"' % ROWAN_LINK, "guide, 'Now use it'", cwd=CRM_ENGINE,
-            expect=r'"slug": "rowan-ashdown-000"'),
+    run("who-link", "", "guide, 'Now use it'", printed='python3 identity.py who "<their profile link>"',
+        not_testable="it is a pattern: you type your own person's profile link where <their profile link> is"),
+    dict(check("who-link-seeded", 'python3 identity.py who "%s"' % ROWAN_LINK,
+               "harness only: the pattern line with the made-up link it gave Rowan Ashdown; it must print the same "
+               "record as the name line", cwd=CRM_ENGINE, expect=r'"slug": "rowan-ashdown-000"')),
     run("who-nickname", "", "guide, 'Now use it' (in a sentence)", printed="python3 identity.py who",
         not_testable="you type it with the nickname you add to the record yourself"),
     cd_crm("README, 'Try it'"),
