@@ -720,7 +720,7 @@ def crm_prereqs(upto):
         else:
             fetch = "git clone -q %s%s ~/%s && cd ~/%s%s" % (GH, mac, mac, mac,
                                                           (" && git checkout -q %s" % BRANCH) if BRANCH else "")
-        out.append({"id": "prereq-outliers-%s" % mac, "kind": "prereq", "counts": False,
+        out.append({"id": "prereq-%s" % mac, "kind": "prereq", "counts": False,
                     "what": "earlier CRM layer, installed as a member does, every offered answer taken (not scored here)",
                     "cmd": "rm -rf ~/%s && %s && python3 install.py" % (mac, fetch),
                     "cwd": "~", "stdin": ENTER, "no_auto_retry": True, "timeout": 900})
@@ -824,11 +824,11 @@ SPECS[M16] = {"steps": crm_prereqs(3) + crm_install(M16) + [
     cd_crm("README, 'Try it'"),
     crm_run("list", "python3 _engine/collect.py list", "README, 'Try it'"),
     check("made-up-export", MADE_UP_CSV, "harness only: a 1-row made-up connections export", cwd="~"),
-    run("dry-run", "", "README, 'Try it'", printed="python3 _engine/collect.py run connections <file.csv> --dry-run",
+    run("collect-dry-run", "", "README, 'Try it'", printed="python3 _engine/collect.py run connections <file.csv> --dry-run",
         not_testable=FILE_PATTERN),
     check("dry-run-file", "python3 _engine/collect.py run connections ~/exports/connections.csv --dry-run",
           "harness only: the pattern line with the made-up export in place of <file.csv>", cwd=CRM_HOME),
-    run("run-file", "", "README, 'Try it'", printed="python3 _engine/collect.py run connections <file.csv>",
+    run("collect-run", "", "README, 'Try it'", printed="python3 _engine/collect.py run connections <file.csv>",
         not_testable=FILE_PATTERN),
     check("run-file-real", "python3 _engine/collect.py run connections ~/exports/connections.csv",
           "harness only: the pattern line with the made-up export in place of <file.csv>", cwd=CRM_HOME),
