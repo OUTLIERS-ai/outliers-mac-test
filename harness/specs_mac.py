@@ -601,7 +601,7 @@ SPECS[M9] = {"steps": W.crm_prereqs(6) + [W.prereq("outliers-gather-01-foundatio
     gstep("find-export", "python3 gather.py find export Connections.csv", "guide, 'Now use it'", timeout=300),
     # wave s2 readers: the guide says "add --commit to the same line"; the line is printed and run on the made-up file
     gstep("find-export-commit", "python3 gather.py find export Connections.csv --commit", "guide, 'Now use it'",
-          timeout=300, check="grep -rl -i 'testperson' ~/CRM --include=*.jsonl --include=*.md | head -3 | grep ."),
+          timeout=300, check="grep -rl -i 'testperson' ~/CRM --include='*.jsonl' --include='*.md' | head -3 | grep ."),
     run("undo-probe", "", "guide, 'Now use it'", printed="python3 gather.py undo --probe",
         not_testable="it opens LinkedIn, which needs you to sign in by hand with your own account (Layer 1)"),
     run("claude", "", "guide, 'Give this to your assistant'", printed="claude",
