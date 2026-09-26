@@ -581,7 +581,9 @@ SPECS[M8] = {"steps": W.crm_prereqs(6) + [fresh_gather()] + gather_folder_steps(
         not_testable="it needs you to sign in to LinkedIn by hand, with your own account"),
     run("tests-crm", "", "README, 'The tests are the proof'",
         printed="OUTLIERS_CRM=/path/to/your/CRM python3 tests/test_doorman.py",
-        not_testable="it is a pattern: you type your own CRM folder where /path/to/your/CRM is"),
+        not_testable="you type your own CRM folder where /path/to/your/CRM is"),
+    run("claude", "", "guide, 'Give this to your assistant'", printed="claude",
+        not_testable="it opens Claude Code, which needs your own Claude Code login"),
 ]}
 
 # ------------------------------------------------------------------ Gather Layer 2: Going and Looking
@@ -597,8 +599,13 @@ SPECS[M9] = {"steps": W.crm_prereqs(6) + [W.prereq("outliers-gather-01-foundatio
     check("made-up-export", MADE_UP, "harness only: a 1-row made-up LinkedIn export saved into the _engine folder, "
           "as the guide says to save yours", cwd=ENGINE),
     gstep("find-export", "python3 gather.py find export Connections.csv", "guide, 'Now use it'", timeout=300),
+    # wave s2 readers: the guide says "add --commit to the same line"; the line is printed and run on the made-up file
+    gstep("find-export-commit", "python3 gather.py find export Connections.csv --commit", "guide, 'Now use it'",
+          timeout=300, check="grep -rl -i 'testperson' ~/CRM --include=*.jsonl --include=*.md | head -3 | grep ."),
     run("undo-probe", "", "guide, 'Now use it'", printed="python3 gather.py undo --probe",
         not_testable="it opens LinkedIn, which needs you to sign in by hand with your own account (Layer 1)"),
+    run("claude", "", "guide, 'Give this to your assistant'", printed="claude",
+        not_testable="it opens Claude Code, which needs your own Claude Code login"),
 ]}
 
 # ------------------------------------------------------------------ Gather Layer 4: The Same Shape
@@ -621,12 +628,15 @@ SPECS[M10] = {"steps": W.crm_prereqs(6) + [fresh_gather()] + gather_folder_steps
         not_testable="it searches Facebook, which needs your own Facebook sign-in first"),
     run("join-commit", "", "guide, 'Once it is proven'", printed="python3 facebook.py join --commit",
         not_testable="it asks to join groups on Facebook, which needs your own Facebook sign-in and your own list"),
+    run("claude", "", "guide, 'Give this to your assistant'", printed="claude",
+        not_testable="it opens Claude Code, which needs your own Claude Code login"),
 ]}
 
 # ------------------------------------------------------------------ Gather Layer 5: When You Are Not There
 M11 = "outliers-gather-05-timetable-mac"
 TT_PLIST = "~/Library/LaunchAgents/com.outliers.gather.timetable.plist"
-SPECS[M11] = {"steps": W.crm_prereqs(1) + [gather_python_prereq(), fresh_gather()] + gather_install(
+SPECS[M11] = {"steps": W.crm_prereqs(6) + [W.prereq("outliers-gather-01-foundation"), W.prereq("outliers-gather-02-basics"),
+                                           gather_python_prereq(), fresh_gather()] + gather_install(
         M11, "timetable.py", "guide, 'Build it'") + [
     {"id": "start-at-login", "kind": "launchd", "cwd": ENGINE, "wait": 15, "counts": True,
      "match": r"com[.]outliers[.]gather[.]timetable[.]plist$",
@@ -649,6 +659,11 @@ SPECS[M11] = {"steps": W.crm_prereqs(1) + [gather_python_prereq(), fresh_gather(
     gstep("stop", "python3 timetable.py stop", "README, 'Use it'", ok=[0, 1]),
     gstep("install-startup", "python3 timetable.py install-startup", "guide, 'Build it' (in a sentence)",
           timeout=120, expect=r"Installed"),
+    # wave s2 readers: the example job needs Layers 1 and 2; with both installed, its line is run as the member would
+    gstep("example-job", "python3 gather.py undo", "guide, 'Your CRM' (the example job)", ok="any",
+          expect=r"(?i)switched off|blocked"),
+    run("claude", "", "guide, 'Give this to your assistant'", printed="claude",
+        not_testable="it opens Claude Code, which needs your own Claude Code login"),
 ]}
 
 # ------------------------------------------------------------------ The Seven Ratings
