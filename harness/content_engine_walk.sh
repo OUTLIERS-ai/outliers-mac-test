@@ -13,6 +13,7 @@ SUM="$OUT/summary.txt"
 FAILS=0
 
 PYVER=3.14.7
+KIT="${KIT:-outliers-content-engine}"   # or outliers-content-engine-mac
 FW="/Library/Frameworks/Python.framework/Versions/${PYVER%.*}/bin"
 
 note() { echo "$*" | tee -a "$LOG"; }
@@ -53,8 +54,8 @@ step "Python check: sys.prefix is python.org's" 0 "/Library/Frameworks/Python.fr
 WORK="$RUNNER_TEMP/member"
 mkdir -p "$WORK"; cd "$WORK"
 step "Download the kit from the public link" 0 "" -- \
-  env GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone -q https://github.com/OUTLIERS-ai/outliers-content-engine.git
-cd outliers-content-engine || { echo "FAIL  no kit folder" >> "$SUM"; exit 1; }
+  env GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone -q "https://github.com/OUTLIERS-ai/$KIT.git"
+cd "$KIT" || { echo "FAIL  no kit folder" >> "$SUM"; exit 1; }
 note "kit commit: $(git log --oneline -1)"
 step "cp config.example.json config.json" 0 "" -- cp config.example.json config.json
 step "post_checks on Sam's draft: both planted faults are hard fails" 1 "em dash or en dash present" -- \

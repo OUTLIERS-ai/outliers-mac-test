@@ -6,6 +6,11 @@ name: Content engine on a Mac
 
 on:
   workflow_dispatch:
+    inputs:
+      kit:
+        description: "Repo to walk: outliers-content-engine or outliers-content-engine-mac"
+        required: false
+        default: "outliers-content-engine-mac"
 
 permissions:
   contents: read
@@ -26,11 +31,12 @@ jobs:
       - name: Walk the guide as a Mac member
         env:
           MAC_LABEL: ${{ matrix.os }}
+          KIT: ${{ github.event.inputs.kit || 'outliers-content-engine-mac' }}
         run: bash _mactest/harness/content_engine_walk.sh "$RUNNER_TEMP/out"
       - name: Keep the record
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: content-engine--${{ matrix.os }}
+          name: ${{ github.event.inputs.kit || 'outliers-content-engine-mac' }}--${{ matrix.os }}
           path: ${{ runner.temp }}/out/
           retention-days: 30
