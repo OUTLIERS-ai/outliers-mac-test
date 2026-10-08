@@ -113,7 +113,8 @@ mkdir -p "$OUT/slides"; cp carousel/specs/example-*-output/phone/all-slides.png 
 for f in carousel/specs/example-*-output/phone/all-slides.png; do n=$(basename "$(dirname "$(dirname "$f")")"); cp "$f" "$OUT/slides/$n.png"; done
 
 # --- Carousels, Homebrew route (guide: "written from the code, not run on a Mac") -------------
-BREWPY="$(brew --prefix 2>/dev/null)/bin/python3"
+BREWPY="$(brew --prefix python3 2>/dev/null)/bin/python3"   # Homebrew's own, never python.org's /usr/local/bin link
+note "Homebrew python: $BREWPY -> $("$BREWPY" -c "import sys; print(sys.prefix)" 2>&1)"
 if [ -x "$BREWPY" ]; then
   step "Homebrew python refuses plain pip (externally-managed-environment)" any "externally-managed-environment" -- \
     "$BREWPY" -m pip install Pillow
