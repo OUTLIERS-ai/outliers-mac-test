@@ -103,7 +103,7 @@ step "Provenance stamp on a draft" 0 "stamped EX-01-01" -- \
   python3 engine/provenance.py stamp example/briefs/EXAMPLE-WAVE/drafts/EX-01-01-sunday-night-books.md
 
 # --- Carousels, python.org route ---------------------------------------------------------------
-step "Carousel set-up: pip install" 0 "" -- python3 -m pip install -q playwright img2pdf Pillow
+step "Carousel set-up: pip install" 0 "" -- python3 -m pip install -q playwright Pillow
 step "Carousel set-up: playwright install chromium" 0 "" -- python3 -m playwright install chromium
 step "slide_checks with no file prints its help" any "" -- python3 carousel/check/slide_checks.py
 for s in list split verdict; do
@@ -116,11 +116,11 @@ for f in carousel/specs/example-*-output/phone/all-slides.png; do n=$(basename "
 BREWPY="$(brew --prefix 2>/dev/null)/bin/python3"
 if [ -x "$BREWPY" ]; then
   step "Homebrew python refuses plain pip (externally-managed-environment)" any "externally-managed-environment" -- \
-    "$BREWPY" -m pip install img2pdf
+    "$BREWPY" -m pip install Pillow
   rm -rf "$HOME/carousel-python"
   step "Homebrew route: python3 -m venv ~/carousel-python" 0 "" -- "$BREWPY" -m venv "$HOME/carousel-python"
   step "Homebrew route: pip install in the private folder" 0 "" -- bash -c \
-    'source ~/carousel-python/bin/activate && python -m pip install -q playwright img2pdf Pillow'
+    'source ~/carousel-python/bin/activate && python -m pip install -q playwright Pillow'
   step "Homebrew route: playwright install chromium" 0 "" -- bash -c \
     'source ~/carousel-python/bin/activate && python -m playwright install chromium'
   rm -rf carousel/specs/example-list-output
